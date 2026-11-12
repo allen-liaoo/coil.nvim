@@ -148,6 +148,76 @@ describe("column view keys", function()
     assert_view_intact(view)
   end)
 
+  ---Run `reload`, wait for oil to finish reloading the middle buffer (its OilEnter), then check
+  ---that <C-s> there is coil's wrapper again
+  ---@param view coil.View
+  ---@param reload fun()
+  local function reload_middle(view, reload)
+    local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+    local reloaded = false
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "OilEnter",
+      once = true,
+      callback = function(args)
+        reloaded = args.data and args.data.buf == bufnr
+      end,
+    })
+    reload()
+    assert.is_true(h.wait(function()
+      return reloaded
+    end))
+    local m = vim.api.nvim_buf_call(bufnr, function()
+      return vim.fn.maparg("<C-s>", "n", false, true)
+    end)
+    assert.truthy((m.desc or ""):match("^coil: "), vim.inspect(m.desc))
+  end
+
+  for _, reload in ipairs({
+    {
+      name = "<C-l> (refresh)",
+      run = function()
+        h.press("<C-l>")
+      end,
+    },
+    {
+      name = ":edit",
+      run = function()
+        vim.cmd.edit()
+      end,
+    },
+    {
+      name = ":Coil on the same directory",
+      run = function()
+        vim.cmd("Coil " .. proj)
+      end,
+    },
+  }) do
+    it(
+      "keeps split keys in the editing tab after " .. reload.name .. " reloads the middle",
+      function()
+        local view = h.open_view(proj)
+        reload_middle(view, reload.run)
+        h.cursor_to(view.panes.current, "a.txt")
+        h.press("<C-s>")
+        assert.is_true(h.wait(function()
+          return #vim.api.nvim_tabpage_list_wins(origin_tab) == 2
+        end))
+        assert_view_intact(view)
+      end
+    )
+  end
+
+  it("opens a visual selection in the editing tab, not in the middle pane", function()
+    local view = h.open_view(proj)
+    h.cursor_to(view.panes.current, "a.txt")
+    h.press("V<C-s>")
+    assert.is_true(h.wait(function()
+      return #vim.api.nvim_tabpage_list_wins(origin_tab) == 2
+    end))
+    assert.equals(proj .. "/a.txt", vim.api.nvim_buf_get_name(0))
+    assert_view_intact(view)
+  end)
+
   it("bounces focus from the parent pane back to the middle", function()
     local view = h.open_view(proj)
     vim.api.nvim_set_current_win(view.panes.parent)

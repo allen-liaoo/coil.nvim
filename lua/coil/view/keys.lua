@@ -81,28 +81,34 @@ local function fallback(lhs, original)
   end
 end
 
+-- Actions also wrapped in visual mode, where oil opens every selected entry. Without the wrap,
+-- oil would open the selection in splits of the middle pane. (L and H stay Vim motions there.)
+local VISUAL_ACTIONS = { open = true, open_vsplit = true, open_split = true, open_tab = true }
+
 ---Wrap coil's keys in an oil buffer. Safe to call repeatedly: keys that are already wrapped are
 ---skipped, and keys oil re-mapped (e.g. after reloading the buffer) are wrapped again.
 ---@param bufnr integer
 M.wrap_buffer = function(bufnr)
   for action, lhs in pairs(config.get().keymaps) do
     if lhs and M.actions[action] then
-      local original = vim.api.nvim_buf_call(bufnr, function()
-        return vim.fn.maparg(lhs, "n", false, true)
-      end)
-      if not vim.startswith(original.desc or "", DESC_PREFIX) then
-        vim.keymap.set("n", lhs, function()
-          local view = state.get()
-          if view and vim.api.nvim_get_current_win() == view.panes.current then
-            M.actions[action](view)
-          else
-            fallback(lhs, original)
-          end
-        end, {
-          buffer = bufnr,
-          nowait = true,
-          desc = DESC_PREFIX .. action .. " (column view only)",
-        })
+      for _, mode in ipairs(VISUAL_ACTIONS[action] and { "n", "x" } or { "n" }) do
+        local original = vim.api.nvim_buf_call(bufnr, function()
+          return vim.fn.maparg(lhs, mode, false, true)
+        end)
+        if not vim.startswith(original.desc or "", DESC_PREFIX) then
+          vim.keymap.set(mode, lhs, function()
+            local view = state.get()
+            if view and vim.api.nvim_get_current_win() == view.panes.current then
+              M.actions[action](view)
+            else
+              fallback(lhs, original)
+            end
+          end, {
+            buffer = bufnr,
+            nowait = true,
+            desc = DESC_PREFIX .. action .. " (column view only)",
+          })
+        end
       end
     end
   end
@@ -141,6 +147,23 @@ M.attach = function(view)
         end)
       elseif winid == view.panes.preview then
         map_preview_buffer(view, args.buf)
+      end
+    end,
+  })
+  vim.api.nvim_create_autocmd("User", {
+    group = view.group,
+    pattern = "OilEnter",
+    desc = "Re-wrap coil keys after oil reloads the middle buffer",
+    callback = function(args)
+      -- A reload (<C-l>, :edit, :Coil on the same directory) re-runs oil's buffer setup, which sets
+      -- oil's keymaps again over coil's wrappers. OilEnter fires after that, every time.
+      local bufnr = args.data and args.data.buf
+      if
+        bufnr
+        and vim.api.nvim_win_is_valid(view.panes.current)
+        and vim.api.nvim_win_get_buf(view.panes.current) == bufnr
+      then
+        M.wrap_buffer(bufnr)
       end
     end,
   })
