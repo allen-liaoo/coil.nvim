@@ -13,6 +13,7 @@ local M = {}
 ---@field panes coil.Panes Window IDs
 ---@field origin {tab: integer, win: integer} Where :Coil was run from; files open there
 ---@field group integer Autocmd group for this view
+---@field cleanup fun()[] Run once when the view goes away
 
 M.ROLES = { "parent", "current", "preview" }
 

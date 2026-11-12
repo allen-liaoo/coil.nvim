@@ -157,6 +157,19 @@ M.url_for_path = function(dir)
   return require("oil").get_url_for_path(dir, false)
 end
 
+---The parent directory of an oil directory URL
+---@param url string
+---@return nil|string parent_url nil at the root
+---@return nil|string name The directory's name inside its parent
+M.parent_of = function(url)
+  local parent_url, name = require("oil").get_buffer_parent_url(url, true)
+  -- At the root oil returns the URL itself, with no name
+  if parent_url == url or not name then
+    return nil
+  end
+  return parent_url, name
+end
+
 ---Open an oil directory in the current window
 ---@param url string
 ---@param focus_name? string Entry to put the cursor on once the listing renders

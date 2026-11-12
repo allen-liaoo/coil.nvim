@@ -2,11 +2,13 @@ local M = {}
 
 ---@class (exact) coil.Config
 ---@field ratio integer[] Relative widths of the parent, current and preview panes
+---@field debounce_ms integer Wait this long after the cursor stops before updating the preview
 ---@field preview table Options for the preview module (see coil.PreviewOpts)
 
 ---@type coil.Config
 local defaults = {
   ratio = { 1, 4, 3 },
+  debounce_ms = 30,
   preview = {},
 }
 

@@ -3,7 +3,18 @@ local bridge = require("coil.oil_bridge")
 local config = require("coil.config")
 local layout = require("coil.view.layout")
 local state = require("coil.view.state")
+local sync = require("coil.view.sync")
 local M = {}
+
+---Stop everything the view started (autocmds, timers)
+---@param view coil.View
+local function teardown(view)
+  for _, fn in ipairs(view.cleanup) do
+    pcall(fn)
+  end
+  view.cleanup = {}
+  pcall(vim.api.nvim_del_augroup_by_id, view.group)
+end
 
 ---Close a tabpage. A tab can't be closed while it is the only one, so open a spare first.
 ---@param tab integer
@@ -27,7 +38,7 @@ M.close = function()
     return
   end
   state.clear()
-  pcall(vim.api.nvim_del_augroup_by_id, view.group)
+  teardown(view)
   close_tab(view.tab)
   if vim.api.nvim_win_is_valid(view.origin.win) then
     vim.api.nvim_set_current_win(view.origin.win)
@@ -67,7 +78,7 @@ local function attach_autocmds(view)
         if state.get() == nil or state.get() == view then
           state.clear()
         end
-        pcall(vim.api.nvim_del_augroup_by_id, view.group)
+        teardown(view)
       end
     end,
   })
@@ -104,9 +115,12 @@ M.open = function(dir)
     panes = panes,
     origin = origin,
     group = vim.api.nvim_create_augroup("CoilView", { clear = true }),
+    cleanup = {},
   }
   state.set(view)
   attach_autocmds(view)
+  -- Attached before oil opens, so the first BufWinEnter in the middle pane fills the side panes
+  table.insert(view.cleanup, sync.attach(view))
 
   bridge.open_dir(url, focus_name)
   layout.reflow(panes, config.get().ratio)
