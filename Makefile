@@ -1,5 +1,5 @@
 NVIM ?= $(if $(COIL_NVIM),$(COIL_NVIM),nvim)
-LUA_DIRS := lua plugin tests
+LUA_DIRS := lua plugin scripts tests
 
 ## help: print this help message
 .PHONY: help
@@ -12,6 +12,16 @@ help:
 test:
 	$(NVIM) --headless --clean -u tests/minimal_init.lua \
 		-c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal_init.lua', sequential = true}"
+
+## dev: open your editor (nvim on PATH) with this working copy of coil and oil loaded
+.PHONY: dev
+dev:
+	nvim --cmd "luafile scripts/dev.lua"
+
+## dev-clean: like dev, but in a clean Neovim without your config
+.PHONY: dev-clean
+dev-clean:
+	$(NVIM) --clean --cmd "luafile scripts/dev.lua"
 
 ## fmt: format Lua sources with stylua
 .PHONY: fmt
