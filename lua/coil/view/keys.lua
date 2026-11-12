@@ -47,7 +47,7 @@ M.actions = {
     vim.api.nvim_set_current_win(view.panes.preview)
   end,
   toggle_hidden = function(view)
-    bridge.toggle_hidden()
+    bridge.toggle_hidden(view.panes.current)
     sync.all(view)
   end,
   close = function()

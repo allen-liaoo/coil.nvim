@@ -104,6 +104,22 @@ M.selected_lines = function(winid)
   return ret
 end
 
+---Highlight group of each line in a coil listing (parent pane or directory preview)
+---@param winid integer
+---@return table<string, string> line text -> highlight group
+M.line_highlights = function(winid)
+  local bufnr = vim.api.nvim_win_get_buf(winid)
+  local ns = vim.api.nvim_create_namespace("coil_preview")
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local ret = {}
+  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })) do
+    if mark[4].hl_group then
+      ret[lines[mark[2] + 1]] = mark[4].hl_group
+    end
+  end
+  return ret
+end
+
 ---Type keys as the user would, running mappings
 ---@param keys string
 M.press = function(keys)

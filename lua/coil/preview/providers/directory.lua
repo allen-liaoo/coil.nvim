@@ -6,10 +6,35 @@ local M = {}
 ---@field name string
 ---@field type string Entry type as reported by the lister ("file", "directory", "link", ...)
 ---@field is_dir boolean True for directories and links to directories
+---@field is_hidden? boolean Shown greyed out (e.g. dotfiles while hidden files are shown)
+
+---Link to `preferred` (e.g. oil's group, so coil matches oil's look and the user's oil colours)
+---when it exists, otherwise to `fallback`. `default` keeps any colours the user set for coil.
+---@param name string
+---@param preferred string
+---@param fallback string
+local function link(name, preferred, fallback)
+  local target = vim.fn.hlexists(preferred) == 1 and preferred or fallback
+  vim.api.nvim_set_hl(0, name, { link = target, default = true })
+end
 
 M.set_highlights = function()
-  vim.api.nvim_set_hl(0, "CoilDir", { link = "Directory", default = true })
-  vim.api.nvim_set_hl(0, "CoilLink", { link = "Constant", default = true })
+  link("CoilDir", "OilDir", "Directory")
+  link("CoilLink", "OilLink", "Constant")
+  link("CoilDirHidden", "OilDirHidden", "Comment")
+  link("CoilFileHidden", "OilFileHidden", "Comment")
+  link("CoilLinkHidden", "OilLinkHidden", "Comment")
+end
+
+---@param entry coil.ListEntry
+---@return nil|string
+local function highlight_for(entry)
+  if entry.is_hidden then
+    return entry.is_dir and "CoilDirHidden"
+      or (entry.type == "link" and "CoilLinkHidden")
+      or "CoilFileHidden"
+  end
+  return entry.is_dir and "CoilDir" or (entry.type == "link" and "CoilLink") or nil
 end
 
 ---@param entry coil.ListEntry
@@ -33,7 +58,7 @@ M.fill = function(bufnr, entries)
   vim.bo[bufnr].modifiable = modifiable
   vim.api.nvim_buf_clear_namespace(bufnr, buffer.ns, 0, -1)
   for i, entry in ipairs(entries) do
-    local hl = entry.is_dir and "CoilDir" or (entry.type == "link" and "CoilLink") or nil
+    local hl = highlight_for(entry)
     if hl then
       vim.api.nvim_buf_set_extmark(bufnr, buffer.ns, i - 1, 0, {
         end_col = #lines[i],

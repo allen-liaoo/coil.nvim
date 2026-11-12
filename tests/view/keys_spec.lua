@@ -175,6 +175,35 @@ describe("column view keys", function()
     assert.is_nil(state.get())
   end)
 
+  it("g. keeps the cursor on the same entry", function()
+    local view = h.open_view(proj)
+    local function cursor_name()
+      return (require("oil").get_cursor_entry() or {}).name
+    end
+    local function shows_dot()
+      for _, line in ipairs(h.win_lines(view.panes.current)) do
+        if vim.endswith(line, " .dot") then
+          return true
+        end
+      end
+      return false
+    end
+
+    -- Showing hidden files inserts ../ and .dot above a.txt
+    h.cursor_to(view.panes.current, "a.txt")
+    h.press("g.")
+    assert.is_true(h.wait(function()
+      return shows_dot() and cursor_name() == "a.txt"
+    end))
+
+    -- Hiding them while on .dot moves to the nearest entry that stays visible
+    h.cursor_to(view.panes.current, ".dot")
+    h.press("g.")
+    assert.is_true(h.wait(function()
+      return not shows_dot() and cursor_name() == "a.txt"
+    end))
+  end)
+
   it("g. toggles hidden files in every pane", function()
     local view = h.open_view(proj)
     h.wait_lines(view.panes.parent, { "proj/" })

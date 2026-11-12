@@ -97,4 +97,39 @@ describe("oil_bridge", function()
   it("returns nil outside oil buffers", function()
     assert.is_nil(bridge.cursor_target(vim.api.nvim_get_current_win()))
   end)
+
+  it("marks hidden entries, and lists an always_show entry even when hidden", function()
+    h.write(dir .. "/.hidden", { "" })
+    h.write(dir .. "/.other", { "" })
+    h.write(dir .. "/a.txt", { "" })
+
+    local _, entries = list("oil://" .. dir .. "/")
+    assert.same(
+      { "a.txt" },
+      vim.tbl_map(function(e)
+        return e.name
+      end, assert(entries))
+    )
+
+    local done, result = false, nil
+    bridge.list_dir("oil://" .. dir .. "/", function(_, r)
+      done, result = true, r
+    end, { always_show = ".hidden" })
+    assert(h.wait(function()
+      return done
+    end))
+    local hidden = {}
+    for _, e in ipairs(assert(result)) do
+      hidden[e.name] = e.is_hidden
+    end
+    assert.same({ [".hidden"] = true, ["a.txt"] = false }, hidden)
+
+    require("oil.config").view_options.show_hidden = true
+    _, entries = list("oil://" .. dir .. "/")
+    hidden = {}
+    for _, e in ipairs(assert(entries)) do
+      hidden[e.name] = e.is_hidden
+    end
+    assert.same({ [".hidden"] = true, [".other"] = true, ["a.txt"] = false }, hidden)
+  end)
 end)

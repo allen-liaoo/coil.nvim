@@ -99,9 +99,13 @@ M.list_dir = function(url, cb, opts)
       return cb(err)
     end
     local view = require("oil.view")
+    ---@type table<oil.InternalEntry, boolean>
+    local hidden = {}
     local visible = vim.tbl_filter(function(entry)
       local name = entry[FIELD_NAME]
-      return name == opts.always_show or (view.should_display(name, opts.bufnr or 0))
+      local display, is_hidden = view.should_display(name, opts.bufnr or 0)
+      hidden[entry] = is_hidden
+      return display or name == opts.always_show
     end, raw)
     sort_entries(adapter, visible)
     ---@type coil.ListEntry[]
@@ -111,6 +115,7 @@ M.list_dir = function(url, cb, opts)
         name = entry[FIELD_NAME],
         type = entry[FIELD_TYPE] or "file",
         is_dir = is_dir_entry(entry),
+        is_hidden = hidden[entry] == true,
       })
     end
     cb(nil, entries)
@@ -208,8 +213,55 @@ M.select = function(cb)
   })
 end
 
-M.toggle_hidden = function()
-  require("oil").toggle_hidden()
+---Toggle hidden files, keeping the cursor of `winid` (an oil window) on the same entry. oil itself
+---keeps the cursor on the same line number, which lands on a different entry once hidden entries
+---appear or disappear above it.
+---@param winid integer
+M.toggle_hidden = function(winid)
+  local oil = require("oil")
+  local view = require("oil.view")
+  for _, bufnr in ipairs(view.get_all_buffers()) do
+    if vim.bo[bufnr].modified then
+      -- oil refuses to toggle with unsaved changes; let it explain
+      return oil.toggle_hidden()
+    end
+  end
+
+  local bufnr = vim.api.nvim_win_get_buf(winid)
+  local hiding = require("oil.config").view_options.show_hidden
+  local lnum = vim.api.nvim_win_get_cursor(winid)[1]
+  local line_count = vim.api.nvim_buf_line_count(bufnr)
+
+  ---@param l integer
+  ---@return nil|string name The entry on line `l` if it stays visible after the toggle
+  local function survivor(l)
+    if l < 1 or l > line_count then
+      return nil
+    end
+    local entry = oil.get_entry_on_line(bufnr, l)
+    if not entry or entry.name == ".." then
+      return nil
+    end
+    local _, is_hidden = view.should_display(entry.name, bufnr)
+    if hiding and is_hidden then
+      return nil
+    end
+    return entry.name
+  end
+
+  -- The entry under the cursor, or if it is about to be hidden, the nearest one below, then above
+  local name = survivor(lnum)
+  for offset = 1, line_count do
+    name = name or survivor(lnum + offset) or survivor(lnum - offset)
+    if name then
+      break
+    end
+  end
+  if name then
+    -- oil's re-render moves the cursor to this entry
+    view.set_last_cursor(vim.api.nvim_buf_get_name(bufnr), name)
+  end
+  oil.toggle_hidden()
 end
 
 ---The preview target for the entry under a window's cursor

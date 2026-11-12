@@ -104,4 +104,21 @@ describe("preview.show", function()
     preview.show(win, { name = "new", url = "oil:///new", is_dir = false, unsaved = true })
     assert.equals("Not saved yet", h.win_lines(win)[1])
   end)
+
+  it("greys out hidden entries in directory listings", function()
+    local function list_dir(_, cb)
+      cb(nil, {
+        { name = ".git", type = "directory", is_dir = true, is_hidden = true },
+        { name = "sub", type = "directory", is_dir = true },
+        { name = ".dot", type = "file", is_dir = false, is_hidden = true },
+        { name = "a.txt", type = "file", is_dir = false },
+      })
+    end
+    preview.show(win, { name = "d", url = "oil:///d/", is_dir = true }, { list_dir = list_dir })
+    assert.same({
+      [".git/"] = "CoilDirHidden",
+      ["sub/"] = "CoilDir",
+      [".dot"] = "CoilFileHidden",
+    }, h.line_highlights(win))
+  end)
 end)

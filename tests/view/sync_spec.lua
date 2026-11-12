@@ -99,6 +99,14 @@ describe("pane sync", function()
     assert.is_false(pcall(vim.api.nvim_get_autocmds, { group = view.group }))
   end)
 
+  it("greys out a hidden current directory in the parent pane", function()
+    local view = h.open_view(root .. "/.hidden_dir")
+    h.wait_lines(view.panes.parent, { ".hidden_dir/", "proj/", "zdir/", "other.txt" })
+    local hl = h.line_highlights(view.panes.parent)
+    assert.equals("CoilDirHidden", hl[".hidden_dir/"])
+    assert.equals("CoilDir", hl["proj/"])
+  end)
+
   it("keeps side pane options after their buffers change", function()
     -- A config like the user's, with line numbers on everywhere
     vim.o.number = true
