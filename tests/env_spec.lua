@@ -1,0 +1,11 @@
+describe("dev environment", function()
+  it("runs Neovim 0.10 or newer", function()
+    assert.equals(1, vim.fn.has("nvim-0.10"))
+  end)
+
+  it("loads and sets up oil.nvim", function()
+    local oil = require("oil")
+    oil.setup({ default_file_explorer = false })
+    assert.is_function(oil.open)
+  end)
+end)

@@ -1,0 +1,45 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1794386569,
+        "narHash": "sha256-x9sADJvoVG0L6RejZB+/BB4YiGZFBZrfTlhF4uBq1tQ=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "d4f25a3e562008648d45bcf2d70bcc7422cad84e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "oil-nvim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791766835,
+        "narHash": "sha256-s9FqZ+hCbxBvKI7qn7mGUOFYRBOq1qInfbk4kupaZNQ=",
+        "owner": "stevearc",
+        "repo": "oil.nvim",
+        "rev": "d3733d933833a0e59b813ecec99341527adf0c28",
+        "type": "github"
+      },
+      "original": {
+        "owner": "stevearc",
+        "repo": "oil.nvim",
+        "rev": "d3733d933833a0e59b813ecec99341527adf0c28",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "oil-nvim": "oil-nvim"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
