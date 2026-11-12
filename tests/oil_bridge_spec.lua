@@ -132,4 +132,11 @@ describe("oil_bridge", function()
     end
     assert.same({ [".hidden"] = true, [".other"] = true, ["a.txt"] = false }, hidden)
   end)
+
+  it("formats local directory URLs as paths for titles", function()
+    local home = vim.fn.expand("~")
+    assert.equals("~/x/", bridge.display_path("oil://" .. home .. "/x/"))
+    assert.equals("/tmp/x/", bridge.display_path("oil:///tmp/x/"))
+    assert.equals("oil-ssh://host/x/", bridge.display_path("oil-ssh://host/x/"))
+  end)
 end)

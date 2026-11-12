@@ -28,6 +28,43 @@ local function middle_oil_buffer(view)
   return bridge.is_oil_dir(bufnr) and bufnr or nil
 end
 
+-- 'winbar' is a global-local option: a window's own value only lasts until its buffer changes,
+-- and setting the global value would title every window. So each pane's title is remembered
+-- here and re-applied whenever a buffer enters the pane (see the BufWinEnter autocmd).
+---@type table<integer, string> winid -> winbar
+local titles = {}
+
+---@param winid integer
+local function apply_title(winid)
+  if titles[winid] and vim.api.nvim_win_is_valid(winid) then
+    vim.api.nvim_set_option_value("winbar", titles[winid], { scope = "local", win = winid })
+  end
+end
+
+---Show `text` as the pane's title line
+---@param winid integer
+---@param text string
+local function set_winbar(winid, text)
+  if not config.get().winbar then
+    return
+  end
+  -- Keep a title line even when empty, so the three panes' rows stay aligned
+  local escaped = text:gsub("%%", "%%%%")
+  titles[winid] = " " .. escaped
+  apply_title(winid)
+end
+
+---Name the view's tab after the middle directory. Uses the tab variable `tabname`, which tab lines
+---such as lualine's `tabs` component show instead of the focused buffer's name (for an oil
+---directory that name would be empty, and the preview pane's buffer has none).
+---@param view coil.View
+---@param url string
+local function set_tab_title(view, url)
+  if config.get().tab_title and vim.api.nvim_tabpage_is_valid(view.tab) then
+    vim.t[view.tab].tabname = bridge.display_path(url)
+  end
+end
+
 ---List the middle directory's parent into the parent pane
 ---@param view coil.View
 M.parent = function(view)
@@ -39,11 +76,17 @@ M.parent = function(view)
   local bufnr = middle_oil_buffer(view)
   local parent_url, name
   if bufnr then
-    parent_url, name = bridge.parent_of(vim.api.nvim_buf_get_name(bufnr))
+    local url = vim.api.nvim_buf_get_name(bufnr)
+    set_tab_title(view, url)
+    set_winbar(view.panes.current, bridge.display_path(url))
+    parent_url, name = bridge.parent_of(url)
   end
+  set_winbar(winid, parent_url and bridge.display_path(parent_url) or "")
   if not parent_url then
     -- At the root, or the middle pane isn't showing a directory
-    return preview.clear(winid)
+    preview.clear(winid)
+    -- Swaps made from inside an autocmd don't fire BufWinEnter, so re-title explicitly
+    return apply_title(winid)
   end
 
   bridge.list_dir(parent_url, function(err, entries)
@@ -55,6 +98,7 @@ M.parent = function(view)
     else
       listing.show(winid, entries or {}, name)
     end
+    apply_title(winid)
     -- Always list the directory we're in, even if it is hidden, so it can be highlighted
   end, { bufnr = bufnr, always_show = name })
 end
@@ -72,10 +116,14 @@ M.preview = function(view, force)
   end
   st.preview_url = url
   if target then
+    set_winbar(winid, target.is_dir and (target.name .. "/") or target.name)
     preview.show(winid, target, { list_dir = bridge.list_dir })
   else
+    set_winbar(winid, "")
     preview.clear(winid)
   end
+  -- Covers synchronous placements; directory listings land later and are re-titled by BufWinEnter
+  apply_title(winid)
 end
 
 ---@param view coil.View
@@ -98,8 +146,9 @@ M.attach = function(view)
 
   vim.api.nvim_create_autocmd("BufWinEnter", {
     group = view.group,
-    desc = "Middle pane changed directory",
+    desc = "Re-title a pane after a buffer swap; sync when the middle pane changed directory",
     callback = function(args)
+      apply_title(vim.api.nvim_get_current_win())
       if not is_middle() then
         return
       end
@@ -151,6 +200,9 @@ M.attach = function(view)
   return function()
     cancel()
     sync_state[view.tab] = nil
+    for _, winid in pairs(view.panes) do
+      titles[winid] = nil
+    end
   end
 end
 

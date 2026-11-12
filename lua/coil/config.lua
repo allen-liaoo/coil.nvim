@@ -3,6 +3,8 @@ local M = {}
 ---@class (exact) coil.Config
 ---@field ratio integer[] Relative widths of the parent, current and preview panes
 ---@field debounce_ms integer Wait this long after the cursor stops before updating the preview
+---@field winbar boolean Show each pane's path in a title line (winbar)
+---@field tab_title boolean Name the column view's tab after the current directory (t:tabname)
 ---@field preview table Options for the preview module (see coil.PreviewOpts)
 ---@field keymaps table<string, string|false> Keys for coil actions in the middle pane (false disables)
 
@@ -10,6 +12,9 @@ local M = {}
 local defaults = {
   ratio = { 1, 4, 3 },
   debounce_ms = 30,
+  winbar = false,
+  -- Sets the tab variable `tabname`, which tab lines such as lualine's `tabs` component show
+  tab_title = true,
   preview = {},
   -- Active in the column view's middle pane only. Anywhere else these keys keep their usual
   -- meaning: oil's mapping if it has one, otherwise Vim's built-in key.
@@ -48,6 +53,12 @@ local function validate(new, opts)
   end
   if type(new.debounce_ms) ~= "number" or new.debounce_ms < 0 then
     fail("debounce_ms must be a non-negative number, got %s", vim.inspect(new.debounce_ms))
+  end
+  if type(new.winbar) ~= "boolean" then
+    fail("winbar must be true or false, got %s", vim.inspect(new.winbar))
+  end
+  if type(new.tab_title) ~= "boolean" then
+    fail("tab_title must be true or false, got %s", vim.inspect(new.tab_title))
   end
   if type(new.preview) ~= "table" then
     fail("preview must be a table, got %s", vim.inspect(new.preview))

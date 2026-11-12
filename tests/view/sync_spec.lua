@@ -107,7 +107,34 @@ describe("pane sync", function()
     assert.equals("CoilDir", hl["proj/"])
   end)
 
-  it("keeps side pane options after their buffers change", function()
+  ---@param winid integer
+  ---@return string
+  local function winbar(winid)
+    return vim.api.nvim_get_option_value("winbar", { scope = "local", win = winid })
+  end
+
+  it("titles each pane with its path when winbar is on", function()
+    coil.setup({ winbar = true })
+    local view = h.open_view(proj)
+    move_to(view, "a.txt")
+    h.wait_lines(view.panes.preview, { "hello" })
+    assert.equals(" " .. vim.fn.fnamemodify(proj .. "/", ":~"), winbar(view.panes.current))
+    assert.equals(" " .. vim.fn.fnamemodify(root .. "/", ":~"), winbar(view.panes.parent))
+    assert.equals(" a.txt", winbar(view.panes.preview))
+
+    move_to(view, "sub/")
+    h.wait_lines(view.panes.preview, { "inner.txt" })
+    assert.equals(" sub/", winbar(view.panes.preview))
+
+    -- At the root the parent title is blank but kept, so the panes' rows stay aligned
+    require("coil.oil_bridge").open_dir("oil:///")
+    h.wait_lines(view.panes.parent, { "" })
+    assert.equals(" ", winbar(view.panes.parent))
+    assert.equals(" /", winbar(view.panes.current))
+  end)
+
+  it("keeps side pane options and titles after their buffers change", function()
+    coil.setup({ winbar = true })
     -- A config like the user's, with line numbers on everywhere
     vim.o.number = true
     local view = h.open_view(proj)
@@ -124,5 +151,48 @@ describe("pane sync", function()
       assert.equals("no", vim.wo[winid].signcolumn)
       assert.is_true(vim.wo[winid].winfixbuf)
     end
+    assert.equals(" " .. vim.fn.fnamemodify(root .. "/", ":~"), winbar(view.panes.parent))
+    assert.equals(" sub/", winbar(view.panes.preview))
+  end)
+
+  it("escapes % in titles", function()
+    coil.setup({ winbar = true })
+    vim.fn.mkdir(root .. "/50%")
+    -- Through the API: on the :Coil command line, % expands to the current file (like :edit)
+    coil.open(root .. "/50%")
+    local view = assert(state.get())
+    assert.is_true(h.wait(function()
+      return winbar(view.panes.current):find("50%%", 1, true) ~= nil
+    end))
+  end)
+
+  it("shows no pane titles by default", function()
+    local view = h.open_view(proj)
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
+    for _, winid in pairs(view.panes) do
+      assert.equals("", winbar(winid))
+    end
+  end)
+
+  it("names the tab after the current directory", function()
+    local view = h.open_view(proj)
+    assert.equals(vim.fn.fnamemodify(proj .. "/", ":~"), vim.t[view.tab].tabname)
+    require("coil.oil_bridge").open_dir("oil://" .. proj .. "/sub/")
+    assert.is_true(h.wait(function()
+      return vim.t[view.tab].tabname == vim.fn.fnamemodify(proj .. "/sub/", ":~")
+    end))
+    -- Other tabs are left alone
+    for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+      if tab ~= view.tab then
+        assert.is_nil(vim.t[tab].tabname)
+      end
+    end
+  end)
+
+  it("leaves the tab name alone when tab_title is off", function()
+    coil.setup({ tab_title = false })
+    local view = h.open_view(proj)
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
+    assert.is_nil(vim.t[view.tab].tabname)
   end)
 end)

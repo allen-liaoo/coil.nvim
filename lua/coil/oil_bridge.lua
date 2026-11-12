@@ -264,6 +264,18 @@ M.toggle_hidden = function(winid)
   oil.toggle_hidden()
 end
 
+---How a directory URL should read in a title: ~/path for local directories, the URL otherwise
+---@param url string
+---@return string
+M.display_path = function(url)
+  local config = require("oil.config")
+  local scheme, path = require("oil.util").parse_url(url)
+  if scheme and path and config.adapters[scheme] == "files" then
+    return vim.fn.fnamemodify(require("oil.fs").posix_to_os_path(path), ":~")
+  end
+  return url
+end
+
 ---The preview target for the entry under a window's cursor
 ---@param winid integer A window showing an oil buffer
 ---@return nil|coil.PreviewTarget

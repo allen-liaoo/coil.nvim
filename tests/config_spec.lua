@@ -15,6 +15,8 @@ describe("config", function()
   it("uses the defaults without options", function()
     assert.same({ 1, 4, 3 }, config.get().ratio)
     assert.equals(30, config.get().debounce_ms)
+    assert.is_false(config.get().winbar)
+    assert.is_true(config.get().tab_title)
     assert.equals("L", config.get().keymaps.go_in)
   end)
 
@@ -31,6 +33,8 @@ describe("config", function()
       { opts = { ratio = { 1, 0, 1 } }, match = "ratio" },
       { opts = { debounce_ms = -1 }, match = "debounce_ms" },
       { opts = { debounce_ms = "fast" }, match = "debounce_ms" },
+      { opts = { winbar = "yes" }, match = "winbar" },
+      { opts = { tab_title = 1 }, match = "tab_title" },
       { opts = { preview = false }, match = "preview" },
       { opts = { keymaps = { go_in = 1 } }, match = "keymaps.go_in" },
       { opts = { keymaps = { go_in = "" } }, match = "keymaps.go_in" },
