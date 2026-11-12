@@ -74,7 +74,8 @@ end
 ---hidden-file settings and sorted like oil sorts. Does not touch oil's cache.
 ---@param url string Directory URL, e.g. "oil:///home/me/"
 ---@param cb fun(err?: string, entries?: coil.ListEntry[])
----@param opts? {bufnr?: integer} Buffer passed to oil's is_hidden_file callbacks
+---@param opts? {bufnr?: integer, always_show?: string} `bufnr` is passed to oil's is_hidden_file
+---callbacks; an entry named `always_show` is listed even if it is hidden
 M.list_dir = function(url, cb, opts)
   opts = opts or {}
   local adapter = require("oil.config").get_adapter_by_scheme(url)
@@ -92,7 +93,8 @@ M.list_dir = function(url, cb, opts)
     end
     local view = require("oil.view")
     local visible = vim.tbl_filter(function(entry)
-      return (view.should_display(entry[FIELD_NAME], opts.bufnr or 0))
+      local name = entry[FIELD_NAME]
+      return name == opts.always_show or (view.should_display(name, opts.bufnr or 0))
     end, raw)
     sort_entries(adapter, visible)
     ---@type coil.ListEntry[]

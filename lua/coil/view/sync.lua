@@ -54,7 +54,8 @@ M.parent = function(view)
     else
       listing.show(winid, entries or {}, name)
     end
-  end, { bufnr = bufnr })
+    -- Always list the directory we're in, even if it is hidden, so it can be highlighted
+  end, { bufnr = bufnr, always_show = name })
 end
 
 ---Preview the entry under the middle pane's cursor
