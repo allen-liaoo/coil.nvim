@@ -24,12 +24,15 @@ M.debounce = function(ms, fn)
   return debounced, cancel
 end
 
----Set window-local options (like :setlocal, so they don't leak into later splits)
+---Set options for a window whose buffer coil swaps (a pane). Like `:set` in that window rather
+---than `:setlocal`: a `:setlocal` value only holds for the buffer shown at the time, so it would be
+---lost at the next swap. Windows later split off this one inherit the values.
+---Global-local options (e.g. 'winbar') are the exception: they only hold until the next swap.
 ---@param winid integer
 ---@param options table<string, any>
 M.set_win_options = function(winid, options)
   for name, value in pairs(options) do
-    vim.api.nvim_set_option_value(name, value, { scope = "local", win = winid })
+    vim.api.nvim_set_option_value(name, value, { win = winid })
   end
 end
 

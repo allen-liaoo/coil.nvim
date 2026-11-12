@@ -98,4 +98,23 @@ describe("pane sync", function()
     -- The view's autocmd group (sync's autocmds included) is deleted outright
     assert.is_false(pcall(vim.api.nvim_get_autocmds, { group = view.group }))
   end)
+
+  it("keeps side pane options after their buffers change", function()
+    -- A config like the user's, with line numbers on everywhere
+    vim.o.number = true
+    local view = h.open_view(proj)
+    move_to(view, "a.txt")
+    h.wait_lines(view.panes.preview, { "hello" })
+    move_to(view, "sub/")
+    h.wait_lines(view.panes.preview, { "inner.txt" })
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
+    vim.o.number = false
+
+    for _, winid in ipairs({ view.panes.parent, view.panes.preview }) do
+      assert.is_false(vim.wo[winid].number)
+      assert.is_false(vim.wo[winid].wrap)
+      assert.equals("no", vim.wo[winid].signcolumn)
+      assert.is_true(vim.wo[winid].winfixbuf)
+    end
+  end)
 end)
