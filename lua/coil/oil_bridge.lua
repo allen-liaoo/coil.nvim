@@ -12,6 +12,13 @@ M.is_oil_buffer = function(bufnr)
   return vim.api.nvim_buf_is_valid(bufnr) and require("oil.util").is_oil_bufnr(bufnr) == true
 end
 
+---An oil directory listing (not a remote file, which also has an oil URL)
+---@param bufnr integer
+---@return boolean
+M.is_oil_dir = function(bufnr)
+  return M.is_oil_buffer(bufnr) and vim.endswith(vim.api.nvim_buf_get_name(bufnr), "/")
+end
+
 ---Run `cb` once an oil buffer has finished its first listing
 ---@param bufnr integer
 ---@param cb fun()
@@ -180,6 +187,29 @@ M.open_dir = function(url, focus_name)
     require("oil.view").set_last_cursor(url, focus_name)
   end
   require("oil").open(url)
+end
+
+---Open the parent directory in the current window. oil puts the cursor on the directory we left.
+M.open_parent = function()
+  require("oil").open()
+end
+
+---Select the entry under the cursor of the current (oil) window, handing the resulting buffer to
+---`cb` instead of letting oil open it. Reuses oil's URL normalization and its "save before entering
+---a new directory" guard.
+---@param cb fun(bufnr: integer, is_dir: boolean)
+M.select = function(cb)
+  require("oil").select({
+    handle_buffer_callback = function(bufnr)
+      -- oil names directory buffers with a trailing slash. (Remote files have an oil scheme too,
+      -- so the scheme alone doesn't tell.)
+      cb(bufnr, vim.endswith(vim.api.nvim_buf_get_name(bufnr), "/"))
+    end,
+  })
+end
+
+M.toggle_hidden = function()
+  require("oil").toggle_hidden()
 end
 
 ---The preview target for the entry under a window's cursor

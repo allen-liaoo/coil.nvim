@@ -3,12 +3,13 @@
 local bridge = require("coil.oil_bridge")
 local config = require("coil.config")
 local listing = require("coil.view.listing")
+local open = require("coil.view.open")
 local preview = require("coil.preview")
 local util = require("coil.util")
 local M = {}
 
 -- Per-view sync bookkeeping, keyed by the view's tab
----@type table<integer, {parent_gen: integer, preview_url?: string}>
+---@type table<integer, {parent_gen: integer, preview_url?: string, last_dir_buf?: integer}>
 local sync_state = {}
 
 ---@param view coil.View
@@ -18,13 +19,13 @@ local function state_of(view)
 end
 
 ---@param view coil.View
----@return nil|integer bufnr The middle pane's buffer, if it is an oil buffer
+---@return nil|integer bufnr The middle pane's buffer, if it is an oil directory
 local function middle_oil_buffer(view)
   if not vim.api.nvim_win_is_valid(view.panes.current) then
     return nil
   end
   local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
-  return bridge.is_oil_buffer(bufnr) and bufnr or nil
+  return bridge.is_oil_dir(bufnr) and bufnr or nil
 end
 
 ---List the middle directory's parent into the parent pane
@@ -98,17 +99,25 @@ M.attach = function(view)
   vim.api.nvim_create_autocmd("BufWinEnter", {
     group = view.group,
     desc = "Middle pane changed directory",
-    callback = function()
+    callback = function(args)
       if not is_middle() then
         return
       end
+      local st = state_of(view)
       local bufnr = middle_oil_buffer(view)
       if bufnr then
+        st.last_dir_buf = bufnr
         bridge.on_ready(bufnr, function()
           M.all(view)
         end)
-      else
-        M.all(view)
+      elseif vim.fn.isdirectory(vim.api.nvim_buf_get_name(args.buf)) == 0 then
+        -- A file (or anything else) landed in the middle pane: move it to the editing tab.
+        -- A plain directory path is left alone; oil is about to turn it into an oil buffer.
+        vim.schedule(function()
+          if vim.api.nvim_buf_is_valid(args.buf) then
+            open.redirect_from_middle(view, args.buf, st.last_dir_buf)
+          end
+        end)
       end
     end,
   })

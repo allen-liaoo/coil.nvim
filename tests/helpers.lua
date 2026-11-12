@@ -66,6 +66,50 @@ M.win_lines = function(winid)
   return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(winid), 0, -1, false)
 end
 
+---Wait until a window shows exactly `expected`, then assert it
+---@param winid integer
+---@param expected string[]
+M.wait_lines = function(winid, expected)
+  M.wait(function()
+    return vim.deep_equal(expected, M.win_lines(winid))
+  end)
+  assert.same(expected, M.win_lines(winid))
+end
+
+---Run :Coil on `dir` and wait for the middle pane's listing
+---@param dir string
+---@return coil.View
+M.open_view = function(dir)
+  vim.cmd("Coil " .. dir)
+  local view = assert(require("coil.view.state").get())
+  local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+  assert(M.wait(function()
+    return vim.b[bufnr].oil_ready == true
+  end))
+  return view
+end
+
+---Line numbers (1-based) carrying the parent pane's selection highlight
+---@param winid integer
+---@return integer[]
+M.selected_lines = function(winid)
+  local bufnr = vim.api.nvim_win_get_buf(winid)
+  local ns = vim.api.nvim_create_namespace("coil_listing")
+  local ret = {}
+  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })) do
+    if mark[4].line_hl_group == "CoilParentSelected" then
+      table.insert(ret, mark[2] + 1)
+    end
+  end
+  return ret
+end
+
+---Type keys as the user would, running mappings
+---@param keys string
+M.press = function(keys)
+  vim.api.nvim_feedkeys(vim.keycode(keys), "mx", false)
+end
+
 ---Start each test in a fresh tab with a single window
 M.reset_tab = function()
   vim.cmd.tabnew()
