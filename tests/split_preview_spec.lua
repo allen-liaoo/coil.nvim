@@ -1,0 +1,50 @@
+local h = require("tests.helpers")
+local split_preview = require("coil.split_preview")
+
+describe(":CoilPreview", function()
+  local dir
+
+  before_each(function()
+    h.reset_tab()
+    h.setup_oil()
+    dir = h.tmpdir()
+    h.write(dir .. "/a.txt", { "hello" })
+    h.write(dir .. "/sub/inner.txt", { "" })
+  end)
+
+  it("opens a split that follows the oil cursor", function()
+    h.open_oil(dir)
+    local src = vim.api.nvim_get_current_win()
+    vim.cmd("CoilPreview")
+    local wins = vim.api.nvim_tabpage_list_wins(0)
+    assert.equals(2, #wins)
+    local pwin = wins[1] == src and wins[2] or wins[1]
+    assert.equals(src, vim.api.nvim_get_current_win())
+
+    h.cursor_to(src, "a.txt")
+    split_preview.refresh(src)
+    assert.is_true(h.wait(function()
+      return vim.deep_equal({ "hello" }, h.win_lines(pwin))
+    end))
+
+    h.cursor_to(src, "sub/")
+    split_preview.refresh(src)
+    assert.is_true(h.wait(function()
+      return vim.deep_equal({ "inner.txt" }, h.win_lines(pwin))
+    end))
+  end)
+
+  it("closes the split when toggled again", function()
+    h.open_oil(dir)
+    vim.cmd("CoilPreview")
+    assert.equals(2, #vim.api.nvim_tabpage_list_wins(0))
+    vim.cmd("CoilPreview")
+    assert.equals(1, #vim.api.nvim_tabpage_list_wins(0))
+    assert.is_false(split_preview.is_open(vim.api.nvim_get_current_win()))
+  end)
+
+  it("refuses to open outside an oil buffer", function()
+    vim.cmd("CoilPreview")
+    assert.equals(1, #vim.api.nvim_tabpage_list_wins(0))
+  end)
+end)

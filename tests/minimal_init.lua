@@ -13,6 +13,8 @@ end
 vim.opt.runtimepath:prepend(".")
 vim.opt.runtimepath:append(require_env("COIL_OIL_PATH"))
 vim.opt.runtimepath:append(require_env("COIL_PLENARY_PATH"))
+-- Test files run with --noplugin, so load plugin scripts explicitly
 vim.cmd.runtime("plugin/plenary.vim")
+vim.cmd.runtime("plugin/coil.lua")
 
 vim.o.swapfile = false
