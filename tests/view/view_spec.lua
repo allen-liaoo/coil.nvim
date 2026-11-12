@@ -141,6 +141,20 @@ describe("column view", function()
     assert.equals(1, #vim.api.nvim_list_tabpages())
   end)
 
+  it(
+    "keeps focus in the middle pane when side panes update while the tab is in the background",
+    function()
+      local view = open_view(dir)
+      vim.cmd.tabprevious()
+      -- What a late preview or parent listing does while the user is in another tab
+      local buffer = require("coil.preview.buffer")
+      buffer.set_win_buf(view.panes.preview, buffer.scratch({ "late preview" }))
+      buffer.set_win_buf(view.panes.parent, buffer.scratch({ "late listing" }))
+      vim.api.nvim_set_current_tabpage(view.tab)
+      assert.equals(view.panes.current, vim.api.nvim_get_current_win())
+    end
+  )
+
   it("forgets the view when its tab is closed directly", function()
     local view = open_view(dir)
     vim.cmd.tabclose()
