@@ -148,6 +148,25 @@ M.entry_target = function(bufnr, entry)
   }
 end
 
+---The oil directory URL to open for `dir`, resolved from the current window's buffer
+---@param dir? string A path or oil URL; nil means the current buffer's directory
+---@return string url
+---@return nil|string basename The file the current buffer shows, if any
+M.url_for_path = function(dir)
+  -- use_oil_parent=false: from an oil buffer, stay in that directory rather than its parent
+  return require("oil").get_url_for_path(dir, false)
+end
+
+---Open an oil directory in the current window
+---@param url string
+---@param focus_name? string Entry to put the cursor on once the listing renders
+M.open_dir = function(url, focus_name)
+  if focus_name then
+    require("oil.view").set_last_cursor(url, focus_name)
+  end
+  require("oil").open(url)
+end
+
 ---The preview target for the entry under a window's cursor
 ---@param winid integer A window showing an oil buffer
 ---@return nil|coil.PreviewTarget
