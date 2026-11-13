@@ -10,6 +10,7 @@
   lib,
   callPackage,
   runCommandLocal,
+  writeShellScript,
   vimPlugins,
   neovim-unwrapped,
   wrapNeovimUnstable,
@@ -87,6 +88,35 @@ let
       require("coil.standalone").start()
     '';
   };
+  # bin/coil: takes coil's own arguments and passes everything else to Neovim
+  launcher = writeShellScript "coil" ''
+    args=()
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --cwd-file)
+          if [ $# -lt 2 ]; then
+            echo "coil: --cwd-file needs a path" >&2
+            exit 2
+          fi
+          export COIL_CWD_FILE="$2"
+          shift 2
+          ;;
+        --cwd-file=*)
+          export COIL_CWD_FILE="''${1#*=}"
+          shift
+          ;;
+        --)
+          args+=("$@")
+          break
+          ;;
+        *)
+          args+=("$1")
+          shift
+          ;;
+      esac
+    done
+    exec ${lib.getExe nvim} "''${args[@]}"
+  '';
 in
 # Only bin/coil: the wrapped Neovim's own bin/nvim and share/ would collide with the user's Neovim
 # when installed into the same profile
@@ -104,5 +134,5 @@ runCommandLocal "coil-${coil-nvim.version}"
   }
   ''
     mkdir -p $out/bin
-    ln -s ${lib.getExe nvim} $out/bin/coil
+    ln -s ${launcher} $out/bin/coil
   ''

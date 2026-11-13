@@ -318,6 +318,7 @@ coil                         # browse the current directory
 coil ~/Downloads             # browse a directory
 coil ~/Downloads ~/Pictures  # one tab per directory
 coil notes.md                # anything that isn't all directories opens as in Neovim
+coil --cwd-file /tmp/f       # on exit, write the last directory to /tmp/f
 ```
 
 ```nix
@@ -342,6 +343,8 @@ Things to know:
   terminals, image previews show the info card alone.
 - **It starts with only the column views,** one tab per directory. Opening a file edits it in a
   new tab, and the next files open next to it; the column views stay open in their tabs.
+- **Change your shell's directory on exit** with `--cwd-file` and a small shell function; see
+  [Shell integration](docs/shell-integration.md).
 - **`q` quits,** asking first if anything has unsaved changes. oil's close key (`<C-c>`) or
   `:CoilClose` closes just the current column view.
 

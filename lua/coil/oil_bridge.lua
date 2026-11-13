@@ -341,6 +341,18 @@ M.cursor_target = function(winid)
   return M.entry_target(bufnr, entry)
 end
 
+---The local filesystem path of an oil URL, or nil for other adapters (SSH, S3, trash, ...)
+---@param url string
+---@return nil|string
+M.local_path = function(url)
+  local config = require("oil.config")
+  local scheme, path = require("oil.util").parse_url(url)
+  if not scheme or config.adapters[scheme] ~= "files" then
+    return nil
+  end
+  return require("oil.fs").posix_to_os_path(path)
+end
+
 ---@class (exact) coil.OilKeymap
 ---@field lhs string
 ---@field action string oil's action name, without "actions." (e.g. "select")

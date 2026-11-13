@@ -90,6 +90,7 @@ describe("standalone startup", function()
 
   describe("the command line", function()
     before_each(function()
+      standalone.track_dir()
       for _ = 1, 5 do
         pcall(coil.close)
       end
@@ -112,6 +113,27 @@ describe("standalone startup", function()
       local dirs = { dir .. "/one", "oil://" .. dir .. "/two/" }
       assert.same(dirs, standalone.dirs_for(dirs))
       assert.is_nil(standalone.dirs_for({ dir .. "/one", dir .. "/file.txt" }))
+    end)
+
+    it("writes the column view's directory to the --cwd-file on exit", function()
+      local cwd_file = dir .. "/cwd"
+      standalone.write_cwd_on_exit(cwd_file)
+      h.open_view(dir .. "/one")
+      vim.api.nvim_exec_autocmds("VimLeavePre", {})
+      -- No trailing slash or newline
+      assert.equals(dir .. "/one", table.concat(vim.fn.readfile(cwd_file, "b"), "\n"))
+    end)
+
+    it("remembers the last directory after the views are closed", function()
+      local view = h.open_view(dir)
+      h.cursor_to(view.panes.current, "two/")
+      h.press("L")
+      assert.is_true(h.wait(function()
+        return vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.panes.current))
+          == "oil://" .. dir .. "/two/"
+      end))
+      coil.close()
+      assert.equals(dir .. "/two/", standalone.exit_dir())
     end)
 
     it("starts with only the column views", function()

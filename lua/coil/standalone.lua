@@ -152,6 +152,57 @@ M.open_args = function(args)
   end
 end
 
+-- The local directory last shown in a column view's middle pane
+---@type nil|string
+local last_dir = nil
+
+---Keep track of the directory each column view's middle pane shows
+M.track_dir = function()
+  vim.api.nvim_create_autocmd("BufWinEnter", {
+    group = vim.api.nvim_create_augroup("CoilStandaloneDir", {}),
+    pattern = "oil://*",
+    callback = function(args)
+      local _, role = require("coil.view.state").find(vim.api.nvim_get_current_win())
+      if role == "current" then
+        last_dir = require("coil.oil_bridge").local_path(args.match) or last_dir
+      end
+    end,
+  })
+end
+
+---The directory to cd to on exit: the current tab's view's, otherwise the one used last, otherwise
+---the last one any view showed
+---@return nil|string
+M.exit_dir = function()
+  local state = require("coil.view.state")
+  local view = state.get() or state.last()
+  if view then
+    local name = vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.panes.current))
+    local path = require("coil.oil_bridge").local_path(name)
+    if path then
+      return path
+    end
+  end
+  return last_dir
+end
+
+---With `--cwd-file <path>` (passed in as $COIL_CWD_FILE by bin/coil), write the directory to cd to
+---on exit to that file, for a shell function to cd there
+---@param cwd_file string
+M.write_cwd_on_exit = function(cwd_file)
+  M.track_dir()
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    callback = function()
+      local dir = M.exit_dir()
+      if dir then
+        -- Without the trailing slash (except for /) or newline, as yazi writes it
+        local path = dir:match("^(.-)/*$")
+        vim.fn.writefile({ path ~= "" and path or "/" }, cwd_file, "b")
+      end
+    end,
+  })
+end
+
 ---Everything the standalone build's init does
 M.start = function()
   local options = M.options(M.load_config(M.config_path()))
@@ -162,6 +213,10 @@ M.start = function()
   require("coil").setup(options.coil)
   if options.image then
     require("image").setup(options.image)
+  end
+  local cwd_file = vim.env.COIL_CWD_FILE
+  if cwd_file and cwd_file ~= "" then
+    M.write_cwd_on_exit(cwd_file)
   end
   vim.api.nvim_create_autocmd("VimEnter", {
     once = true,
