@@ -1,6 +1,7 @@
--- Standalone mode: Neovim started as a file manager (`nvim --cmd "let g:coil_standalone = 1"`).
--- Opens the column view for the command line's directories, and with $COIL_CWD_FILE writes the
--- last directory on exit. plugin/coil.lua calls init() in that mode.
+-- Internal. Startup in standalone mode, when Neovim was started as a file manager (bin/coil, or
+-- `nvim --cmd "let g:coil_standalone = 1"`): open the column view for the command line's
+-- directories, and with $COIL_CWD_FILE write the last directory on exit. plugin/coil.lua calls
+-- init() in that mode.
 local M = {}
 
 ---@param arg string

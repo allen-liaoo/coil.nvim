@@ -26,5 +26,5 @@ end, { desc = "Delete coil's cached image thumbnails" })
 
 -- Started as a file manager (`nvim --cmd "let g:coil_standalone = 1"`)
 if require("coil.config").standalone() then
-  require("coil.standalone").init()
+  require("coil.startup").init()
 end

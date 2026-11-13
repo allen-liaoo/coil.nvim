@@ -1,6 +1,6 @@
 local coil = require("coil")
 local h = require("tests.helpers")
-local standalone = require("coil.standalone")
+local startup = require("coil.startup")
 local state = require("coil.view.state")
 
 describe("standalone startup", function()
@@ -12,7 +12,7 @@ describe("standalone startup", function()
 
   describe("the command line", function()
     before_each(function()
-      standalone.track_dir()
+      startup.track_dir()
       for _ = 1, 5 do
         pcall(coil.close)
       end
@@ -31,15 +31,15 @@ describe("standalone startup", function()
     end)
 
     it("opens the current directory, all-directory arguments, or nothing", function()
-      assert.same({ vim.fn.getcwd() }, standalone.dirs_for({}))
+      assert.same({ vim.fn.getcwd() }, startup.dirs_for({}))
       local dirs = { dir .. "/one", "oil://" .. dir .. "/two/" }
-      assert.same(dirs, standalone.dirs_for(dirs))
-      assert.is_nil(standalone.dirs_for({ dir .. "/one", dir .. "/file.txt" }))
+      assert.same(dirs, startup.dirs_for(dirs))
+      assert.is_nil(startup.dirs_for({ dir .. "/one", dir .. "/file.txt" }))
     end)
 
     it("writes the column view's directory to the --cwd-file on exit", function()
       local cwd_file = dir .. "/cwd"
-      standalone.write_cwd_on_exit(cwd_file)
+      startup.write_cwd_on_exit(cwd_file)
       h.open_view(dir .. "/one")
       vim.api.nvim_exec_autocmds("VimLeavePre", {})
       -- No trailing slash or newline
@@ -55,12 +55,12 @@ describe("standalone startup", function()
           == "oil://" .. dir .. "/two/"
       end))
       coil.close()
-      assert.equals(dir .. "/two/", standalone.exit_dir())
+      assert.equals(dir .. "/two/", startup.exit_dir())
     end)
 
     it("starts with only the column views", function()
       local start_buf = vim.api.nvim_get_current_buf()
-      standalone.open_args({ dir .. "/one", dir .. "/two" })
+      startup.open_args({ dir .. "/one", dir .. "/two" })
       assert.equals(2, #vim.api.nvim_list_tabpages())
       for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
         assert.truthy(state.get(tab))
