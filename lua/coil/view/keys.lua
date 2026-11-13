@@ -275,7 +275,7 @@ M.attach = function(view)
   vim.on_key(function(key)
     if key == LEFT_MOUSE then
       vim.schedule(function()
-        if state.get() == view then
+        if state.is_open(view) then
           M.jump_to_click(view, vim.fn.getmousepos())
         end
       end)

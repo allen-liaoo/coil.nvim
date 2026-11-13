@@ -94,7 +94,7 @@ describe("pane sync", function()
   it("stops syncing once the view is closed", function()
     local view = h.open_view(proj)
     coil.close()
-    assert.is_nil(state.get())
+    assert.is_nil(state.last())
     -- The view's autocmd group (sync's autocmds included) is deleted outright
     assert.is_false(pcall(vim.api.nvim_get_autocmds, { group = view.group }))
   end)

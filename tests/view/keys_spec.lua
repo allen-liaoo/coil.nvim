@@ -28,7 +28,7 @@ describe("column view keys", function()
 
   ---@param view coil.View
   local function assert_view_intact(view)
-    assert.equals(view, state.get())
+    assert.is_true(state.is_open(view))
     assert.equals(3, #vim.api.nvim_tabpage_list_wins(view.tab))
   end
 
@@ -237,12 +237,12 @@ describe("column view keys", function()
   it("q closes the view from the middle or the preview pane", function()
     h.open_view(proj)
     h.press("q")
-    assert.is_nil(state.get())
+    assert.is_nil(state.last())
 
     h.open_view(proj)
     h.press("<C-p>")
     h.press("q")
-    assert.is_nil(state.get())
+    assert.is_nil(state.last())
   end)
 
   it("g. keeps the cursor on the same entry", function()
@@ -367,7 +367,7 @@ describe("oil's keymaps in the column view", function()
     h.open_view(proj)
     h.press("gq")
     assert.is_true(h.wait(function()
-      return state.get() == nil
+      return state.last() == nil
     end))
   end)
 end)

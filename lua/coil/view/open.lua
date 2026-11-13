@@ -1,20 +1,21 @@
 -- Opening things outside the column view: files go to the editing window (where :Coil was run).
 local bridge = require("coil.oil_bridge")
+local state = require("coil.view.state")
 local M = {}
 
 ---@alias coil.OpenHow nil|"vsplit"|"split"|"tab"
 
----The window to open files in: the origin window if it still exists outside the view, otherwise
----the current window of any other tab
+---The window to open files in: the origin window if it still exists outside every column view,
+---otherwise the current window of a tab that isn't a column view
 ---@param view coil.View
 ---@return nil|integer
 local function editing_window(view)
   local origin = view.origin.win
-  if vim.api.nvim_win_is_valid(origin) and vim.api.nvim_win_get_tabpage(origin) ~= view.tab then
+  if vim.api.nvim_win_is_valid(origin) and not state.get(vim.api.nvim_win_get_tabpage(origin)) then
     return origin
   end
   for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
-    if tab ~= view.tab then
+    if not state.get(tab) then
       return vim.api.nvim_tabpage_get_win(tab)
     end
   end

@@ -21,7 +21,8 @@
   between panes, and hiding and restoring when a file opens in the editing tab.~~
 - [x] Packaging: Make coil-nvim not depend on oil nvim in nix, but require user to have oil nvim. Remove coil-nvim oil flake dependency, and just use nixpkgs's oilnvim
 - [x] Refactor: make sure no coil config or logic duplicates oil's. For instance, keep keymaps (open in splits) config that oil has in oil. Coil should only change the behavior of it in coil's buffer.
-- [ ] **Several directories in tabs**, like yazi's tabs.
+- [x] **Several directories in tabs**, like yazi's tabs: `:Coil dir1 dir2 ...` and `coil dir1 dir2 ...`
+  open a column view per directory, one tab each.
 - [ ] **Delete to trash by default.** oil defaults to `delete_to_trash = false`, so deleting a line
 and saving removes files permanently. The standalone build should send them to the trash; oil's
 trash view (`g\`) can restore them.
@@ -32,6 +33,8 @@ trash view (`g\`) can restore them.
 These concern the `coil` command (`nix/coil.nix`). Most are standalone-mode behaviour, so they
 should be options set by the standalone build, not changes forced on people using coil as a plugin.
 
+- [ ] **Config file.** The build loads its own generated init and ignores user config. Load an
+optional `~/.config/coil/init.lua` for customising it.
 - [ ] **A fuller standalone build:** an icon provider (mini.icons or nvim-web-devicons), more
 Tree-sitter grammars, and ffmpeg and poppler for video and PDF previews (left out for now: with
 their dependencies they add about 300 MB and 150 MB). image.nvim and ImageMagick are included.
@@ -50,8 +53,6 @@ build (oil's default is the icon column only).
   sure the side panes refresh too; today they refresh on navigation, saving and returning to the tab.
 - [ ] **Picker mode.** A `--chooser-file <path>` argument that writes the picked path(s), including
   a visual selection, and exits, so other programs can use coil as a file picker.
-- [ ] **Config file.** The build loads its own generated init and ignores user config. Load an
-  optional `~/.config/coil/init.lua` for customising it.
 - [ ] **Other arguments:** `--hidden`, `--ratio`, `--help`, `--version`. Today `coil [dir]` opens the
   column view and anything else is passed to Neovim.
 

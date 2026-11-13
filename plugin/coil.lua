@@ -4,11 +4,11 @@ end
 vim.g.loaded_coil = true
 
 vim.api.nvim_create_user_command("Coil", function(args)
-  require("coil").open(args.args ~= "" and args.args or nil)
+  require("coil").open(#args.fargs > 0 and args.fargs or nil)
 end, {
-  nargs = "?",
+  nargs = "*",
   complete = "dir",
-  desc = "Open the column view on a directory (default: the current buffer's)",
+  desc = "Open the column view on directories, one tab each (default: the current buffer's)",
 })
 
 vim.api.nvim_create_user_command("CoilClose", function()

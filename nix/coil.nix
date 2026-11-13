@@ -41,20 +41,43 @@ let
       require("image").setup()
 
       -- No arguments: open the column view on the current directory.
-      -- One directory argument: open it on that directory. Files open as usual.
+      -- Directory arguments: open the column view on each, one tab per directory.
+      -- Either way the column views are the only tabs; files open in a new tab.
+      -- Anything else (a file among the arguments) opens as usual.
       vim.api.nvim_create_autocmd("VimEnter", {
         once = true,
         -- Let the autocmds coil and oil rely on (BufReadCmd, BufWinEnter, ...) fire from here
         nested = true,
         callback = function()
           local args = vim.fn.argv()
-          -- By now oil has turned a directory argument into an oil URL ("oil:///path/")
-          local is_dir = #args == 1
-            and (vim.fn.isdirectory(args[1]) == 1 or (args[1]:match("^[%w-]+://") and vim.endswith(args[1], "/")))
+          ---@param arg string
+          local function is_dir(arg)
+            -- By now oil may have turned a directory argument into an oil URL ("oil:///path/")
+            return vim.fn.isdirectory(arg) == 1 or (arg:match("^[%w-]+://") ~= nil and vim.endswith(arg, "/"))
+          end
+          local dirs
           if #args == 0 then
-            require("coil").open(vim.fn.getcwd())
-          elseif is_dir then
-            require("coil").open(args[1])
+            dirs = { vim.fn.getcwd() }
+          elseif vim.iter(args):all(is_dir) then
+            dirs = args
+          else
+            return
+          end
+
+          -- The tab Neovim started with: empty, or showing the first directory argument as an
+          -- oil buffer. The column views replace it.
+          local start_tab = vim.api.nvim_get_current_tabpage()
+          local start_bufs = vim.api.nvim_list_bufs()
+          require("coil").open(dirs)
+          if vim.api.nvim_tabpage_is_valid(start_tab) and #vim.api.nvim_list_tabpages() > 1 then
+            vim.cmd.tabclose(vim.api.nvim_tabpage_get_number(start_tab))
+          end
+          vim.cmd("silent! %argdelete")
+          -- The start buffers no window shows any more (the views open their own)
+          for _, bufnr in ipairs(start_bufs) do
+            if vim.api.nvim_buf_is_valid(bufnr) and #vim.fn.win_findbuf(bufnr) == 0 then
+              pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
+            end
           end
         end,
       })

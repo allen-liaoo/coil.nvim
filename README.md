@@ -126,8 +126,8 @@ nixvim, with its own oil module:
 
 | Command | Does |
 |---|---|
-| `:Coil [dir]` | Open the column view on `dir`, or on the current buffer's directory (with the cursor on the file you were editing). If the view is already open, switch to it. |
-| `:CoilClose` | Close the column view and return to the window you came from. |
+| `:Coil [dir...]` | Open the column view on `dir`, or on the current buffer's directory (with the cursor on the file you were editing). In a column view's tab, that view moves to `dir`; elsewhere, coil switches to the view you used last. With several directories, each further one opens in a column view of its own tab, like yazi's tabs; focus stays on the first. |
+| `:CoilClose` | Close the current tab's column view (elsewhere, the one used last) and return to the window you came from. |
 | `:CoilPreview` | In any ordinary oil window: toggle a preview split that follows the cursor. |
 | `:CoilClearCache` | Delete the cached image thumbnails (see [Images](#images)). |
 
@@ -170,6 +170,9 @@ How the column view behaves:
 - **Closing any pane,** or the tab, closes the whole view.
 - **The tab is named after the current directory** (see `tab_title`), which tab lines like
   lualine's `tabs` component display.
+- **Several column views can be open,** one per tab (`:Coil dir1 dir2`). Switch between them
+  with your usual tab keys (`gt`, `gT`). Each has its own directory, and files from any of them
+  open in your editing tab, never in another view's tab.
 
 ### Previews
 
@@ -295,6 +298,7 @@ Hidden files, sorting and other listing behaviour follow your oil.nvim settings
 
 ```lua
 require("coil").open(dir)  -- like :Coil; dir is a path or an oil URL, nil for the current buffer's
+require("coil").open({ dir1, dir2 }) -- like :Coil dir1 dir2: one tab per directory
 require("coil").close()    -- like :CoilClose
 ```
 
@@ -306,9 +310,10 @@ image.nvim (plus ImageMagick), which opens the column view as soon as it starts.
 ```sh
 nix profile install github:allen-liaoo/coil.nvim   # or add it to home.packages / environment.systemPackages
 
-coil              # browse the current directory
-coil ~/Downloads  # browse a directory
-coil notes.md     # anything that isn't a single directory opens as in Neovim
+coil                         # browse the current directory
+coil ~/Downloads             # browse a directory
+coil ~/Downloads ~/Pictures  # one tab per directory
+coil notes.md                # anything that isn't all directories opens as in Neovim
 ```
 
 ```nix
@@ -323,8 +328,9 @@ Things to know:
   (`NVIM_APPNAME=coil-nvim`), so its history and state are kept apart from yours too.
 - **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). In other
   terminals, image previews show the info card alone.
-- **Opening a file edits it in coil's first tab.** The column view stays open in its own tab.
-  `q` or `:CoilClose` closes the column view and leaves you in the editor; `:qa` quits.
+- **It starts with only the column views,** one tab per directory. Opening a file edits it in a
+  new tab, and the next files open next to it; the column views stay open in their tabs. `q` or
+  `:CoilClose` closes a column view; `:qa` quits.
 
 Without Nix, you can get close with your own Neovim and a shell function:
 
