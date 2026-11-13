@@ -137,7 +137,7 @@ M.open = function(dir)
   attach_autocmds(view)
   -- Attached before oil opens, so the first BufWinEnter in the middle pane fills the side panes
   table.insert(view.cleanup, sync.attach(view))
-  keys.attach(view)
+  table.insert(view.cleanup, keys.attach(view))
 
   bridge.open_dir(url, focus_name)
   layout.reflow(panes, config.get().ratio)

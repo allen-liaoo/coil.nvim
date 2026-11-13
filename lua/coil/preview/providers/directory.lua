@@ -69,13 +69,15 @@ M.fill = function(bufnr, entries)
 end
 
 ---@param entries coil.ListEntry[]
+---@param url? string The listed directory, recorded as b:coil_dir_url so clicks can find it
 ---@return integer bufnr
-M.render = function(entries)
+M.render = function(entries, url)
   if vim.tbl_isempty(entries) then
     return buffer.message({ "(empty directory)" })
   end
   local bufnr = buffer.scratch({})
   M.fill(bufnr, entries)
+  vim.b[bufnr].coil_dir_url = url
   return bufnr
 end
 

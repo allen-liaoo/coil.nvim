@@ -133,8 +133,73 @@ local function map_preview_buffer(view, bufnr)
   end
 end
 
+local LEFT_MOUSE = vim.keycode("<LeftMouse>")
+local click_ns = vim.api.nvim_create_namespace("coil_click")
+
+---The listing entry at a mouse position, if it is in the parent pane or a directory preview
 ---@param view coil.View
+---@param mouse {winid: integer, winrow: integer, line: integer} As from getmousepos()
+---@return nil|string dir_url The listed directory
+---@return nil|string name The clicked entry
+M.clicked_entry = function(view, mouse)
+  local winid = mouse.winid
+  if winid ~= view.panes.parent and winid ~= view.panes.preview then
+    return nil
+  end
+  if not vim.api.nvim_win_is_valid(winid) or mouse.line < 1 then
+    return nil
+  end
+  local bufnr = vim.api.nvim_win_get_buf(winid)
+  -- Only listings record the directory they list; text previews and messages don't
+  local dir_url = vim.b[bufnr].coil_dir_url
+  if not dir_url then
+    return nil
+  end
+  -- Only accept a click on a row that shows `line` (not the empty rows below the text)
+  local top = vim.api.nvim_win_call(winid, function()
+    return vim.fn.line("w0")
+  end)
+  local winbar = vim.api.nvim_get_option_value("winbar", { win = winid }) ~= "" and 1 or 0
+  if mouse.line ~= top + mouse.winrow - 1 - winbar then
+    return nil
+  end
+  local line = vim.api.nvim_buf_get_lines(bufnr, mouse.line - 1, mouse.line, false)[1]
+  if not line or line == "" then
+    return nil
+  end
+  -- Directories are listed as "name/"
+  return dir_url, (line:gsub("/$", ""))
+end
+
+---Move the middle pane to the clicked entry's directory, with the cursor on the entry
+---@param view coil.View
+---@param mouse {winid: integer, winrow: integer, line: integer} As from getmousepos()
+---@return boolean jumped
+M.jump_to_click = function(view, mouse)
+  local dir_url, name = M.clicked_entry(view, mouse)
+  if not dir_url then
+    return false
+  end
+  vim.api.nvim_set_current_win(view.panes.current)
+  bridge.open_dir(dir_url, name)
+  return true
+end
+
+---@param view coil.View
+---@return fun() detach
 M.attach = function(view)
+  -- Mouse mappings are looked up in the buffer focused *before* the click, so a mapping in the
+  -- parent pane's buffer would never run. Watch for clicks instead and act on where they landed.
+  vim.on_key(function(key)
+    if key == LEFT_MOUSE then
+      vim.schedule(function()
+        if state.get() == view then
+          M.jump_to_click(view, vim.fn.getmousepos())
+        end
+      end)
+    end
+  end, click_ns)
+
   vim.api.nvim_create_autocmd("BufWinEnter", {
     group = view.group,
     desc = "Wrap coil keys in buffers shown in the middle and preview panes",
@@ -194,6 +259,10 @@ M.attach = function(view)
       end)
     end,
   })
+
+  return function()
+    vim.on_key(nil, click_ns)
+  end
 end
 
 return M

@@ -13,7 +13,8 @@ end
 ---@param winid integer
 ---@param entries coil.ListEntry[]
 ---@param selected? string
-M.show = function(winid, entries, selected)
+---@param dir_url? string The listed directory, recorded as b:coil_dir_url so clicks can find it
+M.show = function(winid, entries, selected, dir_url)
   if vim.tbl_isempty(entries) then
     buffer.set_win_buf(winid, buffer.message({ "(empty directory)" }))
     return
@@ -21,6 +22,7 @@ M.show = function(winid, entries, selected)
   M.set_highlights()
   local bufnr = buffer.scratch({})
   directory.fill(bufnr, entries)
+  vim.b[bufnr].coil_dir_url = dir_url
 
   local lnum
   for i, entry in ipairs(entries) do

@@ -150,6 +150,8 @@ How the column view behaves:
 - **Editing works like oil.** `:w` in any oil buffer saves the changes in all of them, and the
   side panes refresh afterwards.
 - **The parent pane is display-only.** Moving into it puts you back in the middle pane.
+- **Click an entry to jump to it.** Clicking an entry in the parent pane, or in a directory
+  preview, moves the middle pane to that entry's directory with the cursor on it.
 - **The preview pane is read-only,** but you can move into it to scroll or copy text.
 - **Closing any pane,** or the tab, closes the whole view.
 - **The tab is named after the current directory** (see `tab_title`), which tab lines like

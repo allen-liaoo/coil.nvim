@@ -36,8 +36,8 @@ should be options set by the standalone build, not changes forced on people usin
 - [x] **Side panes follow a sort change.** coil notices when oil re-renders the middle buffer with
   different listing settings (`gs`, hidden files, `oil.set_sort()`) and refreshes the side panes,
   fetching what a size or time sort needs.
-- [ ] **Click to jump.** Clicking an entry in the parent pane, instead of the focus bounce, or in a
-  directory preview should move the middle pane there.
+- [x] **Click to jump.** Clicking an entry in the parent pane or in a directory preview moves the
+  middle pane to that entry's directory, with the cursor on the entry.
 - [ ] **Several directories in tabs**, like yazi's tabs.
 - [ ] **Video and PDF thumbnails.** Generate a thumbnail (ffmpeg or ffmpegthumbnailer for video,
   pdftoppm for PDF) into a cache directory and embed it in the metadata card. Add the tools to the

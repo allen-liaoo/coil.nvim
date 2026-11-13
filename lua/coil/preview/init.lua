@@ -92,7 +92,7 @@ local function show_directory(winid, gen, target, opts)
     if err then
       place(winid, gen, buffer.message({ "Cannot list directory: " .. err }))
     else
-      place(winid, gen, directory.render(entries or {}))
+      place(winid, gen, directory.render(entries or {}, target.url))
     end
   end)
 end

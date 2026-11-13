@@ -137,7 +137,7 @@ M.parent = function(view)
     if err then
       preview.clear(winid, { "Cannot list " .. parent_url, err })
     else
-      listing.show(winid, entries or {}, name)
+      listing.show(winid, entries or {}, name, parent_url)
     end
     apply_title(winid)
     -- Always list the directory we're in, even if it is hidden, so it can be highlighted
