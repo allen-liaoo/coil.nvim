@@ -8,20 +8,27 @@ local M = {}
 ---@field size integer[] Largest thumbnail, {width, height} in pixels; smaller images keep their size
 ---@field dir string Where thumbnails are kept
 ---@field max_jobs integer Thumbnails made at the same time
+---@field max_bytes integer|false Size limit of the cache; the least recently used files go first
 
 ---@type coil.ThumbnailConfig
 local defaults = {
   size = { 600, 900 },
   dir = vim.fn.stdpath("cache") .. "/coil/thumbnails",
   max_jobs = 2,
+  max_bytes = 200 * 1024 * 1024,
 }
 
 ---@type coil.ThumbnailConfig
 local config = vim.deepcopy(defaults)
 
+-- Bytes in the cache, as far as this Neovim knows (nil until the folder has been listed)
+---@type nil|integer
+local total = nil
+
 ---@param opts? table See coil.ThumbnailConfig
 M.setup = function(opts)
   config = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts or {})
+  total = nil
 end
 
 ---@return string
@@ -98,6 +105,117 @@ local function finish(job, thumb, err)
   start_next()
 end
 
+-- The cache's size limit. Each thumbnail's modification time records when it was last used
+-- (access times are unreliable: many systems mount disks with noatime or relatime), and the least
+-- recently used ones are deleted first.
+
+-- Temporary files older than this are left over from a job that was killed
+local STALE_TMP_SECONDS = 3600
+
+---Mark a cached file as just used
+---@param path string
+local function touch(path)
+  local now = os.time()
+  uv.fs_utime(path, now, now)
+end
+
+---@class (exact) coil.CachedFile
+---@field path string
+---@field size integer
+---@field mtime integer
+---@field tmp boolean
+
+---Every file in the cache folder
+---@return coil.CachedFile[]
+local function list_cache()
+  local files = {}
+  local handle = uv.fs_scandir(config.dir)
+  while handle do
+    local name, type = uv.fs_scandir_next(handle)
+    if not name then
+      break
+    end
+    local path = config.dir .. "/" .. name
+    local stat = type == "file" and uv.fs_stat(path)
+    if stat then
+      table.insert(files, {
+        path = path,
+        size = stat.size,
+        mtime = stat.mtime.sec,
+        tmp = vim.endswith(name, ".tmp"),
+      })
+    end
+  end
+  return files
+end
+
+---Delete the least recently used thumbnails until the cache is at 80% of its limit, so this
+---doesn't run again for every new thumbnail. Lists the folder again first, which also corrects
+---the total when several Neovims share the cache.
+local function evict()
+  local files = list_cache()
+  local now = os.time()
+  total = 0
+  local thumbs = {}
+  for _, file in ipairs(files) do
+    if file.tmp and now - file.mtime > STALE_TMP_SECONDS then
+      uv.fs_unlink(file.path)
+    else
+      total = total + file.size
+      if not file.tmp then
+        table.insert(thumbs, file)
+      end
+    end
+  end
+  table.sort(thumbs, function(a, b)
+    return a.mtime < b.mtime
+  end)
+  local target = config.max_bytes * 0.8
+  for _, file in ipairs(thumbs) do
+    if total <= target then
+      break
+    end
+    if uv.fs_unlink(file.path) then
+      total = total - file.size
+    end
+  end
+end
+
+---Count a file just written into the cache, and make room if the cache is over its limit
+---@param path string
+local function account(path)
+  if not config.max_bytes then
+    return
+  end
+  if not total then
+    total = 0
+    for _, file in ipairs(list_cache()) do
+      total = total + file.size
+    end
+  else
+    local stat = uv.fs_stat(path)
+    total = total + (stat and stat.size or 0)
+  end
+  if total > config.max_bytes then
+    evict()
+  end
+end
+
+---Delete every thumbnail. Files that jobs are still writing are left alone.
+---@return integer count Files deleted
+---@return integer bytes Their total size
+M.clear_cache = function()
+  local count, bytes = 0, 0
+  local now = os.time()
+  for _, file in ipairs(list_cache()) do
+    if (not file.tmp or now - file.mtime > STALE_TMP_SECONDS) and uv.fs_unlink(file.path) then
+      count, bytes = count + 1, bytes + file.size
+    end
+  end
+  total = nil
+  return count, bytes
+end
+
 ---@param job coil.ThumbnailJob
 local function run(job)
   local cmd = magick()
@@ -137,6 +255,7 @@ local function run(job)
   }, { text = true }, function(result)
     vim.schedule(function()
       if result.code == 0 and uv.fs_rename(tmp, job.out) then
+        account(job.out)
         finish(job, job.out)
       else
         uv.fs_unlink(tmp)
@@ -208,6 +327,7 @@ fit_thumb = function(thumb, fit, cb)
   end
   local out = string.format("%s-%dx%d.png", (thumb:gsub("%.png$", "")), width, height)
   if exists(out) then
+    touch(out)
     return cb(out)
   elseif scaling[out] then
     return table.insert(scaling[out], cb)
@@ -237,7 +357,11 @@ fit_thumb = function(thumb, fit, cb)
     "png:" .. tmp,
   }, {}, function(result)
     vim.schedule(function()
-      done(result.code == 0 and uv.fs_rename(tmp, out) == true)
+      local ok = result.code == 0 and uv.fs_rename(tmp, out) == true
+      if ok then
+        account(out)
+      end
+      done(ok)
     end)
   end)
   if not ok then
@@ -277,6 +401,7 @@ M.get = function(path, stat, cb, fit)
   end
   local out = M.path_for(path, stat)
   if exists(out) then
+    touch(out)
     return cb(out)
   end
   local job = jobs[out]

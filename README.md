@@ -132,6 +132,7 @@ in
 | `:Coil [dir]` | Open the column view on `dir`, or on the current buffer's directory (with the cursor on the file you were editing). If the view is already open, switch to it. |
 | `:CoilClose` | Close the column view and return to the window you came from. |
 | `:CoilPreview` | In any ordinary oil window: toggle a preview split that follows the cursor. |
+| `:CoilClearCache` | Delete the cached image thumbnails (see [Images](#images)). |
 
 Keys in the column view's **middle pane**:
 
@@ -203,6 +204,8 @@ its README for other backends and options.
   scrolling past images doesn't start a thumbnail for each.
 - In the column view, thumbnails are also made for the images up to `preview.prefetch` entries
   above and below the cursor (2 by default), so they're ready when you get there.
+- The cache is kept under `preview.thumbnail_cache_mb` (200 MiB by default) by deleting the
+  thumbnails used longest ago. `:CoilClearCache` empties it.
 - The image is redrawn when the pane is resized or scrolled and when you come back to the tab,
   and removed when the preview changes.
 - Without ImageMagick's command-line tools (if image.nvim uses its `magick_rock` processor),
@@ -255,6 +258,8 @@ require("coil").setup({
     thumbnail_size = { 600, 900 },
     -- In the column view, also make thumbnails for images this many entries from the cursor
     prefetch = 2,
+    -- Size limit of the thumbnail cache, in MiB; the least recently used go first (false: none)
+    thumbnail_cache_mb = 200,
   },
 })
 ```

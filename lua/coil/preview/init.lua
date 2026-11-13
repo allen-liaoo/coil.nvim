@@ -29,6 +29,7 @@ local M = {}
 ---@field image_delay_ms integer Wait this long after an image card is shown before working on the image
 ---@field thumbnail_size integer[] Images are drawn from thumbnails at most {width, height} pixels (setup only)
 ---@field prefetch integer prefetch() prepares images up to this many entries from the cursor (0 for none)
+---@field thumbnail_cache_mb number|false Size limit of the thumbnail cache in MiB (setup only; false for none)
 ---@field list_dir? coil.ListDir Lists directories for directory previews
 
 ---@type coil.PreviewOpts
@@ -42,6 +43,7 @@ local defaults = {
   image_delay_ms = 100,
   thumbnail_size = { 600, 900 },
   prefetch = 2,
+  thumbnail_cache_mb = 200,
   list_dir = nil,
 }
 
@@ -51,7 +53,10 @@ local config = vim.deepcopy(defaults)
 ---@param opts? table
 M.setup = function(opts)
   config = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts or {})
-  thumbnail.setup({ size = config.thumbnail_size })
+  thumbnail.setup({
+    size = config.thumbnail_size,
+    max_bytes = config.thumbnail_cache_mb and config.thumbnail_cache_mb * 1024 * 1024,
+  })
 end
 
 -- Bumped on every show/clear. Async work compares its generation before touching the window,

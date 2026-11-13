@@ -18,3 +18,8 @@ end, { desc = "Close the column view" })
 vim.api.nvim_create_user_command("CoilPreview", function()
   require("coil.split_preview").toggle()
 end, { desc = "Toggle a preview split that follows the oil cursor" })
+
+vim.api.nvim_create_user_command("CoilClearCache", function()
+  local count, bytes = require("coil.preview.thumbnail").clear_cache()
+  vim.notify(string.format("[coil] Deleted %d thumbnails (%.1f MiB)", count, bytes / 1024 / 1024))
+end, { desc = "Delete coil's cached image thumbnails" })
