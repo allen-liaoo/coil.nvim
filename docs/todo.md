@@ -33,8 +33,9 @@ should be options set by the standalone build, not changes forced on people usin
 
 ## General
 
-- [ ] **Side panes follow a sort change.** oil's `gs` re-sorts the middle pane, but the parent pane
-  keeps the old order until you navigate. Refresh the side panes after it, as `g.` does.
+- [x] **Side panes follow a sort change.** coil notices when oil re-renders the middle buffer with
+  different listing settings (`gs`, hidden files, `oil.set_sort()`) and refreshes the side panes,
+  fetching what a size or time sort needs.
 - [ ] **Click to jump.** Clicking an entry in the parent pane, instead of the focus bounce, or in a
   directory preview should move the middle pane there.
 - [ ] **Several directories in tabs**, like yazi's tabs.

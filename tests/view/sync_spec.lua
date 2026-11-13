@@ -99,6 +99,34 @@ describe("pane sync", function()
     assert.is_false(pcall(vim.api.nvim_get_autocmds, { group = view.group }))
   end)
 
+  it("re-sorts the side panes when oil's sort changes", function()
+    local view = h.open_view(proj)
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
+    require("oil").set_sort({ { "type", "asc" }, { "name", "desc" } })
+    h.wait_lines(view.panes.parent, { "zdir/", "proj/", "other.txt" })
+    assert.same({ 2 }, h.selected_lines(view.panes.parent))
+  end)
+
+  it("sorts the side panes by size like oil, fetching what the sort needs", function()
+    h.write(root .. "/a_small.txt", { "x" })
+    h.write(root .. "/z_big.txt", { string.rep("x", 5000) })
+    local view = h.open_view(proj)
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "a_small.txt", "other.txt", "z_big.txt" })
+    require("oil").set_sort({ { "type", "asc" }, { "size", "desc" } })
+    -- Name order would put a_small.txt first; size order puts the biggest file first
+    assert.is_true(h.wait(function()
+      local lines = h.win_lines(view.panes.parent)
+      local function index(name)
+        for i, l in ipairs(lines) do
+          if l == name then
+            return i
+          end
+        end
+      end
+      return index("z_big.txt") ~= nil and index("z_big.txt") < index("a_small.txt")
+    end))
+  end)
+
   it("greys out a hidden current directory in the parent pane", function()
     local view = h.open_view(root .. "/.hidden_dir")
     h.wait_lines(view.panes.parent, { ".hidden_dir/", "proj/", "zdir/", "other.txt" })

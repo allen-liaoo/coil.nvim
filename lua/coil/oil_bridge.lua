@@ -42,19 +42,55 @@ local function is_dir_entry(entry)
     and meta.link_stat.type == "directory"
 end
 
+---oil's sort config, with oil's fallback when it is empty
+---@return oil.SortSpec[]
+local function sort_config()
+  local sort = require("oil.config").view_options.sort
+  if vim.tbl_isempty(sort) then
+    return { { "type", "asc" }, { "name", "asc" } }
+  end
+  return sort
+end
+
+---The adapter's columns the sort uses (e.g. "size", "mtime"). Listing with these makes the
+---adapter fetch what they need, as oil does for its own buffers: the files adapter only stats
+---entries when a requested column requires it.
+---@param adapter oil.Adapter
+---@return string[]
+local function sort_columns(adapter)
+  local cols = {}
+  for _, pair in ipairs(sort_config()) do
+    if adapter.get_column and adapter.get_column(pair[1]) then
+      table.insert(cols, pair[1])
+    end
+  end
+  return cols
+end
+
+---A string that changes whenever oil's settings for what a listing shows, or in which order, change
+---(sort, hidden-file rules, case and number handling). Compare two to detect `gs`, `g.`,
+---`oil.set_sort()`, `oil.set_is_hidden_file()` and the like.
+---@return string
+M.listing_signature = function()
+  local vo = require("oil.config").view_options
+  return table.concat({
+    vim.inspect(vo.sort),
+    tostring(vo.show_hidden),
+    tostring(vo.is_hidden_file),
+    tostring(vo.is_always_hidden),
+    tostring(vo.case_insensitive),
+    tostring(vo.natural_order),
+  }, "|")
+end
+
 ---Sort entries exactly like oil does, by rebuilding its comparator from the sort config and
 ---oil's column sort functions (oil's own sort function is private to its view module).
 ---@param adapter oil.Adapter
 ---@param entries oil.InternalEntry[]
 local function sort_entries(adapter, entries)
   local columns = require("oil.columns")
-  local config = require("oil.config")
-  local sort_config = config.view_options.sort
-  if vim.tbl_isempty(sort_config) then
-    sort_config = { { "type", "asc" }, { "name", "asc" } }
-  end
   local keys = {}
-  for _, pair in ipairs(sort_config) do
+  for _, pair in ipairs(sort_config()) do
     local col = columns.get_column(adapter, pair[1])
     local get_value = col
       and (
@@ -123,7 +159,7 @@ M.list_dir = function(url, cb, opts)
     cb(nil, entries)
   end)
 
-  adapter.list(url, {}, function(err, batch, fetch_more)
+  adapter.list(url, sort_columns(adapter), function(err, batch, fetch_more)
     if finished then
       return
     end

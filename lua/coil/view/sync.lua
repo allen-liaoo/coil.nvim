@@ -8,13 +8,20 @@ local preview = require("coil.preview")
 local util = require("coil.util")
 local M = {}
 
+---@class (exact) coil.SyncState
+---@field parent_gen integer Bumped per parent listing; older listings are dropped
+---@field preview_url? string What the preview pane shows
+---@field last_dir_buf? integer The last oil directory in the middle pane
+---@field signature? string oil's listing settings at the last parent refresh
+---@field watched table<integer, boolean> Middle buffers whose changes are watched
+
 -- Per-view sync bookkeeping, keyed by the view's tab
----@type table<integer, {parent_gen: integer, preview_url?: string, last_dir_buf?: integer}>
+---@type table<integer, coil.SyncState>
 local sync_state = {}
 
 ---@param view coil.View
 local function state_of(view)
-  sync_state[view.tab] = sync_state[view.tab] or { parent_gen = 0 }
+  sync_state[view.tab] = sync_state[view.tab] or { parent_gen = 0, watched = {} }
   return sync_state[view.tab]
 end
 
@@ -65,6 +72,38 @@ local function set_tab_title(view, url)
   end
 end
 
+---Refresh the side panes when oil's listing settings change (`gs`, `g.`, `oil.set_sort()`, ...).
+---oil applies those by re-rendering its buffers and fires no event, so watch the middle buffer's
+---lines and compare oil's settings with the ones the side panes were drawn with.
+---@param view coil.View
+---@param bufnr integer
+local function watch_listing_settings(view, bufnr)
+  local st = state_of(view)
+  if st.watched[bufnr] then
+    return
+  end
+  st.watched[bufnr] = true
+  vim.api.nvim_buf_attach(bufnr, false, {
+    on_lines = function()
+      if sync_state[view.tab] ~= st then
+        -- The view is gone: stop watching
+        return true
+      end
+      if st.signature and bridge.listing_signature() ~= st.signature then
+        st.signature = bridge.listing_signature()
+        vim.schedule(function()
+          if sync_state[view.tab] == st then
+            M.all(view)
+          end
+        end)
+      end
+    end,
+    on_detach = function()
+      st.watched[bufnr] = nil
+    end,
+  })
+end
+
 ---List the middle directory's parent into the parent pane
 ---@param view coil.View
 M.parent = function(view)
@@ -72,10 +111,12 @@ M.parent = function(view)
   st.parent_gen = st.parent_gen + 1
   local gen = st.parent_gen
   local winid = view.panes.parent
+  st.signature = bridge.listing_signature()
 
   local bufnr = middle_oil_buffer(view)
   local parent_url, name
   if bufnr then
+    watch_listing_settings(view, bufnr)
     local url = vim.api.nvim_buf_get_name(bufnr)
     set_tab_title(view, url)
     set_winbar(view.panes.current, bridge.display_path(url))
