@@ -1,5 +1,7 @@
 local h = require("tests.helpers")
 local preview = require("coil.preview")
+local thumbnail = require("coil.preview.thumbnail")
+local uv = vim.uv or vim.loop
 
 -- A stand-in for image.nvim that records what coil asks of it. Headless Neovim has no terminal
 -- to draw in, so the real plugin can't be checked here beyond loading (see the last test).
@@ -25,21 +27,39 @@ local function fake_image_nvim()
 end
 
 describe("image previews", function()
-  local dir, win
+  local dir, cache, win
+
+  ---@param name string
+  local function make_image(name)
+    vim.fn.system({ "magick", "-size", "40x30", "xc:red", dir .. "/" .. name })
+    assert.equals(0, vim.v.shell_error)
+  end
+
+  ---@param name string
+  ---@return nil|string
+  local function thumb_of(name)
+    local path = dir .. "/" .. name
+    return thumbnail.cached(path, assert(uv.fs_stat(path)))
+  end
 
   before_each(function()
     h.reset_tab()
     preview.setup({ image_delay_ms = 0 })
+    cache = h.tmpdir()
+    thumbnail.setup({ dir = cache })
     package.loaded["image"] = fake_image_nvim()
     -- image.nvim defines :ImageReport in its setup()
     vim.api.nvim_create_user_command("ImageReport", "", {})
     dir = h.tmpdir()
     win = vim.api.nvim_get_current_win()
-    h.write(dir .. "/pic.png", { "x" })
+    make_image("pic.png")
     h.write(dir .. "/a.txt", { "a" })
   end)
 
   after_each(function()
+    h.wait(function()
+      return thumbnail.pending() == 0
+    end)
     package.loaded["image"] = nil
     pcall(vim.api.nvim_del_user_command, "ImageReport")
   end)
@@ -63,7 +83,9 @@ describe("image previews", function()
     local img = wait_drawn(1)
     local bufnr = vim.api.nvim_win_get_buf(win)
     local lines = h.win_lines(win)
-    assert.equals(dir .. "/pic.png", img.path)
+    -- image.nvim gets the thumbnail, not the original
+    assert.equals(thumb_of("pic.png"), img.path)
+    assert.equals(cache, vim.fs.dirname(img.path))
     assert.equals(win, img.opts.window)
     assert.equals(bufnr, img.opts.buffer)
     -- No markdown embed, or a markdown image plugin would draw it a second time
@@ -86,13 +108,13 @@ describe("image previews", function()
   end)
 
   it("only draws the image the cursor rests on", function()
-    h.write(dir .. "/other.png", { "x" })
+    make_image("other.png")
     preview.show(win, target("pic.png"), { image_delay_ms = 50 })
     preview.show(win, target("other.png"), { image_delay_ms = 50 })
     local img = wait_drawn(1)
     vim.wait(100)
     assert.equals(1, #fake.created)
-    assert.equals(dir .. "/other.png", img.path)
+    assert.equals(thumb_of("other.png"), img.path)
   end)
 
   it("redraws at the new size when the window is resized", function()
@@ -105,6 +127,45 @@ describe("image previews", function()
     assert.is_true(h.wait(function()
       return img.renders[#img.renders].width == 20
     end))
+  end)
+
+  ---The dimmed note on an image card ("Loading image...")
+  ---@return nil|string
+  local function status()
+    local ns = vim.api.nvim_get_namespaces()["coil_card_status"]
+    local marks =
+      vim.api.nvim_buf_get_extmarks(vim.api.nvim_win_get_buf(win), ns, 0, -1, { details = true })
+    return marks[1] and marks[1][4].virt_text[1][1]
+  end
+
+  it("says the image is loading until its thumbnail is ready", function()
+    preview.show(win, target("pic.png"))
+    assert.equals("Loading image...", status())
+    wait_drawn(1)
+    assert.is_nil(status())
+    -- Once the thumbnail is cached there's nothing to wait for
+    preview.show(win, target("a.txt"))
+    preview.show(win, target("pic.png"))
+    assert.is_nil(status())
+    wait_drawn(2)
+  end)
+
+  it("notes images that can't be read", function()
+    h.write(dir .. "/broken.png", { "not an image" })
+    preview.show(win, target("broken.png"))
+    assert.is_true(h.wait(function()
+      return (status() or ""):find("^No image preview: ") ~= nil
+    end, 10000))
+    assert.equals(0, #fake.created)
+  end)
+
+  it("gives image.nvim the original without ImageMagick", function()
+    local path = vim.env.PATH
+    vim.env.PATH = ""
+    preview.show(win, target("pic.png"))
+    local img = wait_drawn(1)
+    vim.env.PATH = path
+    assert.equals(dir .. "/pic.png", img.path)
   end)
 
   it("embeds the image in the card when images are off", function()

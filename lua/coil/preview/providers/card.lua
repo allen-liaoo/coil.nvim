@@ -129,6 +129,22 @@ M.render = function(target, kind, info, opts, draws_image)
   return bufnr
 end
 
+local status_ns = vim.api.nvim_create_namespace("coil_card_status")
+
+---Show a dimmed note on line `row` ("Loading image..."), replacing any earlier one; nil removes it
+---@param bufnr integer
+---@param row integer 0-based
+---@param msg? string
+M.set_status = function(bufnr, row, msg)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+  vim.api.nvim_buf_clear_namespace(bufnr, status_ns, 0, -1)
+  if msg then
+    vim.api.nvim_buf_set_extmark(bufnr, status_ns, row, 0, { virt_text = { { msg, "Comment" } } })
+  end
+end
+
 ---The 0-based line of an image card where the drawn image starts
 ---@param bufnr integer
 ---@return integer

@@ -192,10 +192,18 @@ image.nvim needs ImageMagick (`magick` or `convert` on `PATH`) and a terminal it
 its default backend, one that speaks the kitty graphics protocol (kitty, Ghostty, WezTerm). See
 its README for other backends and options.
 
-- The image is drawn once the cursor has rested on the file for `preview.image_delay_ms`, because
-  image.nvim converts and resizes images while Neovim waits.
-- It's redrawn when the pane is resized or scrolled and when you come back to the tab, and removed
-  when the preview changes.
+- **Images are drawn from thumbnails.** coil shrinks each image to fit `preview.thumbnail_size`
+  (600×900 by default) with ImageMagick, in the background, and keeps the thumbnail in
+  `stdpath("cache")/coil/thumbnails`, so Neovim keeps responding and an image you've seen comes
+  back at once. The card says "Loading image..." until the thumbnail is ready. (Left to itself,
+  image.nvim converts the full-size image while Neovim waits, which takes seconds for a large
+  photo.)
+- Work on an image starts once the cursor has rested on it for `preview.image_delay_ms`, so
+  scrolling past images doesn't start a thumbnail for each.
+- The image is redrawn when the pane is resized or scrolled and when you come back to the tab,
+  and removed when the preview changes.
+- Without ImageMagick's command-line tools (if image.nvim uses its `magick_rock` processor),
+  image.nvim gets the original file.
 - Set `preview.images = false` to get the `![](path)` card instead.
 
 ## Options
@@ -238,8 +246,10 @@ require("coil").setup({
     loading_delay_ms = 100,
     -- Draw images with image.nvim when it is installed and set up
     images = true,
-    -- Wait this long (ms) after the cursor stops on an image before drawing it
+    -- Wait this long (ms) after the cursor stops on an image before working on it
     image_delay_ms = 100,
+    -- Images are drawn from thumbnails that fit {width, height} pixels (only read by setup())
+    thumbnail_size = { 600, 900 },
   },
 })
 ```

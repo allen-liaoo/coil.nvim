@@ -39,7 +39,8 @@ should be options set by the standalone build, not changes forced on people usin
   middle pane to that entry's directory, with the cursor on the entry.
 - [ ] **Several directories in tabs**, like yazi's tabs.
 - [x] **Image previews.** With image.nvim installed and set up, the preview draws images below the
-  metadata card. The standalone build includes image.nvim and ImageMagick.
+  metadata card, from thumbnails made in the background and cached on disk. The standalone build
+  includes image.nvim and ImageMagick.
 - [ ] **Video and PDF thumbnails.** Generate a thumbnail (ffmpeg or ffmpegthumbnailer for video,
   pdftoppm for PDF) into a cache directory and embed it in the metadata card. Add the tools to the
   dev shell, and fall back to the plain card when a tool is missing.

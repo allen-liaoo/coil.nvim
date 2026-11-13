@@ -6,6 +6,7 @@ local classify = require("coil.preview.classify")
 local directory = require("coil.preview.providers.directory")
 local image = require("coil.preview.image")
 local text = require("coil.preview.providers.text")
+local thumbnail = require("coil.preview.thumbnail")
 local M = {}
 
 ---@class (exact) coil.PreviewTarget
@@ -24,7 +25,8 @@ local M = {}
 ---@field card_filetype? string Filetype for metadata cards (nil to skip)
 ---@field loading_delay_ms integer Wait this long before showing "Loading..."
 ---@field images boolean Draw images with image.nvim when it is installed and set up
----@field image_delay_ms integer Wait this long before drawing an image (drawing blocks Neovim)
+---@field image_delay_ms integer Wait this long after an image card is shown before working on the image
+---@field thumbnail_size integer[] Images are drawn from thumbnails at most {width, height} pixels (setup only)
 ---@field list_dir? coil.ListDir Lists directories for directory previews
 
 ---@type coil.PreviewOpts
@@ -36,6 +38,7 @@ local defaults = {
   loading_delay_ms = 100,
   images = true,
   image_delay_ms = 100,
+  thumbnail_size = { 600, 900 },
   list_dir = nil,
 }
 
@@ -45,6 +48,7 @@ local config = vim.deepcopy(defaults)
 ---@param opts? table
 M.setup = function(opts)
   config = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts or {})
+  thumbnail.setup({ size = config.thumbnail_size })
 end
 
 -- Bumped on every show/clear. Async work compares its generation before touching the window,
@@ -103,20 +107,48 @@ local function show_directory(winid, gen, target, opts)
   end)
 end
 
----Show an image card, then draw the image once the cursor has rested on it. image.nvim converts
----and resizes images synchronously, so drawing every image passed on the way would stall Neovim.
+---Show an image card, then draw the image once the cursor has rested on it. The image drawn is a
+---thumbnail made in the background (see thumbnail.lua): image.nvim converts and resizes the
+---original synchronously, which stalls Neovim for seconds on a large photo. Without ImageMagick,
+---image.nvim gets the original.
 ---@param winid integer
 ---@param gen integer
 ---@param target coil.PreviewTarget
 ---@param info coil.ClassifyInfo
 ---@param opts coil.PreviewOpts
 local function show_image(winid, gen, target, info, opts)
+  local path, stat = assert(target.path), assert(info.stat)
   local bufnr = card.render(target, "image", info, opts, true)
+  local row = card.image_row(bufnr)
+  local use_thumbnail = thumbnail.available()
+  if use_thumbnail and not thumbnail.cached(path, stat) then
+    card.set_status(bufnr, row, "Loading image...")
+  end
   place(winid, gen, bufnr)
-  vim.defer_fn(function()
-    if is_latest(winid, gen) and vim.api.nvim_win_get_buf(winid) == bufnr then
-      image.draw(winid, bufnr, card.image_row(bufnr), assert(target.path))
+
+  local function current()
+    return is_latest(winid, gen) and vim.api.nvim_win_get_buf(winid) == bufnr
+  end
+  ---@param file string
+  local function draw(file)
+    if current() then
+      card.set_status(bufnr, row, nil)
+      image.draw(winid, bufnr, row, file)
     end
+  end
+  vim.defer_fn(function()
+    if not current() then
+      return
+    elseif not use_thumbnail then
+      return draw(path)
+    end
+    thumbnail.get(path, stat, function(thumb, err)
+      if thumb then
+        draw(thumb)
+      elseif current() then
+        card.set_status(bufnr, row, "No image preview: " .. (err or "unknown error"))
+      end
+    end)
   end, opts.image_delay_ms)
 end
 
