@@ -189,8 +189,8 @@ require("image").setup() -- with lazy.nvim, `opts = {}` in image.nvim's spec doe
 ```
 
 image.nvim needs ImageMagick (`magick` or `convert` on `PATH`) and a terminal it can draw in: for
-its default backend, one that speaks the kitty graphics protocol (kitty, Ghostty, WezTerm), and
-inside tmux, `set -g allow-passthrough on`. See its README for other backends and options.
+its default backend, one that speaks the kitty graphics protocol (kitty, Ghostty, WezTerm). See
+its README for other backends and options.
 
 - The image is drawn once the cursor has rested on the file for `preview.image_delay_ms`, because
   image.nvim converts and resizes images while Neovim waits.
@@ -289,9 +289,8 @@ Things to know:
 - **It installs only `bin/coil`,** so it sits next to your own Neovim without clashing.
 - **It doesn't read your Neovim config.** It runs as its own Neovim app
   (`NVIM_APPNAME=coil-nvim`), so its history and state are kept apart from yours too.
-- **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). Inside tmux
-  this needs `set -g allow-passthrough on`. In other terminals, image previews show the metadata
-  card alone.
+- **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). In other
+  terminals, image previews show the metadata card alone.
 - **Opening a file edits it in coil's first tab.** The column view stays open in its own tab.
   `q` or `:CoilClose` closes the column view and leaves you in the editor; `:qa` quits.
 
