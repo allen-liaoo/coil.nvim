@@ -1,3 +1,4 @@
+local build = require("coil.standalone.build")
 local coil = require("coil")
 local h = require("tests.helpers")
 local standalone = require("coil.standalone")
@@ -25,7 +26,7 @@ describe("standalone startup", function()
   local function load(lines)
     local path = dir .. "/init.lua"
     h.write(path, lines)
-    local result = standalone.load_config(path)
+    local result = build.load_config(path)
     -- Warnings are scheduled
     vim.wait(20)
     return result
@@ -33,11 +34,11 @@ describe("standalone startup", function()
 
   describe("the config file", function()
     it("is optional", function()
-      assert.same({}, standalone.load_config(dir .. "/missing.lua"))
+      assert.same({}, build.load_config(dir .. "/missing.lua"))
     end)
 
     it("runs as Lua and may return setup options", function()
-      local options = standalone.options(load({
+      local options = build.options(load({
         "vim.g.coil_test_config_ran = true",
         "return { oil = { delete_to_trash = false }, coil = { ratio = { 1, 2, 3 } } }",
       }))
@@ -45,38 +46,44 @@ describe("standalone startup", function()
       assert.is_false(options.oil.delete_to_trash)
       assert.same({ 1, 2, 3 }, options.coil.ratio)
       -- Not mentioned: the build's defaults
-      assert.same(standalone.defaults.image, options.image)
+      assert.same(build.defaults.image, options.image)
     end)
 
     it("merges into the build's defaults", function()
-      local defaults = standalone.defaults
-      standalone.defaults = { oil = { a = 1, nested = { b = 2 } }, coil = {}, image = {} }
-      local options = standalone.options(load({ "return { oil = { nested = { c = 3 } } }" }))
-      standalone.defaults = defaults
+      local defaults = build.defaults
+      build.defaults = { oil = { a = 1, nested = { b = 2 } }, coil = {}, image = {} }
+      local options = build.options(load({ "return { oil = { nested = { c = 3 } } }" }))
+      build.defaults = defaults
       assert.same({ a = 1, nested = { b = 2, c = 3 } }, options.oil)
     end)
 
     it("deletes to the trash unless told otherwise", function()
-      assert.is_true(standalone.options({}).oil.delete_to_trash)
-      assert.is_false(standalone.options({ oil = { delete_to_trash = false } }).oil.delete_to_trash)
+      assert.is_true(build.options({}).oil.delete_to_trash)
+      assert.is_false(build.options({ oil = { delete_to_trash = false } }).oil.delete_to_trash)
     end)
 
-    it("quits with q instead of closing one view", function()
-      assert.same({ close = false, quit = "q" }, standalone.options({}).coil.keymaps)
+    it("quits with q instead of closing one view, from coil's standalone defaults", function()
+      vim.g.coil_standalone = 1
+      coil.setup(build.options({}).coil)
+      local keymaps = require("coil.config").get().keymaps
+      vim.g.coil_standalone = nil
+      coil.setup()
+      assert.is_false(keymaps.close)
+      assert.equals("q", keymaps.quit)
     end)
 
     it("shows entry details, and lists in the config file replace the defaults'", function()
-      assert.same({ "icon", "permissions", "size", "mtime" }, standalone.options({}).oil.columns)
-      assert.same({ "icon" }, standalone.options({ oil = { columns = { "icon" } } }).oil.columns)
+      assert.same({ "icon", "permissions", "size", "mtime" }, build.options({}).oil.columns)
+      assert.same({ "icon" }, build.options({ oil = { columns = { "icon" } } }).oil.columns)
     end)
 
     it("can turn image.nvim off", function()
-      assert.is_false(standalone.options(load({ "return { image = false }" })).image)
+      assert.is_false(build.options(load({ "return { image = false }" })).image)
     end)
 
     it("can turn mini.icons off", function()
-      assert.same({}, standalone.options({}).icons)
-      assert.is_false(standalone.options({ icons = false }).icons)
+      assert.same({}, build.options({}).icons)
+      assert.is_false(build.options({ icons = false }).icons)
     end)
 
     it("reports errors and falls back to the defaults", function()
@@ -145,5 +152,52 @@ describe("standalone startup", function()
       end
       assert.is_false(vim.api.nvim_buf_is_valid(start_buf))
     end)
+  end)
+end)
+
+describe("standalone mode", function()
+  local dir
+
+  before_each(function()
+    dir = h.tmpdir()
+    vim.fn.mkdir(dir .. "/one")
+    vim.fn.mkdir(dir .. "/two")
+  end)
+
+  ---Start a Neovim with coil and oil set up, as from a shell, and report what it showed
+  ---@param flags string[] Neovim's options
+  ---@param args string[] File arguments
+  ---@return table report, string cwd_file
+  local function run(flags, args)
+    local out = dir .. "/report.json"
+    local cwd_file = dir .. "/cwd"
+    local cmd = { vim.v.progpath, "--headless", "--clean" }
+    vim.list_extend(cmd, flags)
+    vim.list_extend(cmd, { "-u", "tests/fixtures/standalone_init.lua", "--" })
+    vim.list_extend(cmd, args)
+    local result =
+      vim.system(cmd, { env = { COIL_TEST_OUT = out, COIL_CWD_FILE = cwd_file } }):wait(20000)
+    assert.equals(0, result.code, result.stderr)
+    return vim.json.decode(table.concat(vim.fn.readfile(out), "\n")), cwd_file
+  end
+
+  it("starts as a file manager with g:coil_standalone", function()
+    local report, cwd_file = run(
+      { "--cmd", "let g:coil_standalone = 1" },
+      { dir .. "/one", dir .. "/two" }
+    )
+    -- Only the column views, one per directory
+    assert.same({ "oil://" .. dir .. "/one/", "oil://" .. dir .. "/two/" }, report.tabs)
+    assert.equals("q", report.quit)
+    -- Read and cleared, so Neovims started from this one don't inherit it
+    assert.equals(vim.NIL, report.cwd_file_env)
+    assert.equals(dir .. "/one", table.concat(vim.fn.readfile(cwd_file, "b"), "\n"))
+  end)
+
+  it("leaves a plain Neovim alone", function()
+    local report, cwd_file = run({}, { dir .. "/one" })
+    assert.same({ vim.NIL }, report.tabs)
+    assert.is_false(report.quit)
+    assert.equals(0, vim.fn.filereadable(cwd_file))
   end)
 end)

@@ -46,10 +46,10 @@ let
         poppler-utils
       ]}"
     ];
-    # Defaults, the optional ~/.config/coil/init.lua, and opening the column view for the command
-    # line: see lua/coil/standalone.lua
+    # The build's defaults and the optional ~/.config/coil/init.lua (lua/coil/standalone/build.lua).
+    # It turns on coil's standalone mode, which opens the column view for the command line
     luaRcContent = ''
-      require("coil.standalone").start()
+      require("coil.standalone.build").start()
     '';
   };
   # bin/coil: takes coil's own arguments and passes everything else to Neovim

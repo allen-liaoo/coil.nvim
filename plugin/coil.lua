@@ -23,3 +23,8 @@ vim.api.nvim_create_user_command("CoilClearCache", function()
   local count, bytes = require("coil.preview.thumbnail").clear_cache()
   vim.notify(string.format("[coil] Deleted %d thumbnails (%.1f MiB)", count, bytes / 1024 / 1024))
 end, { desc = "Delete coil's cached image thumbnails" })
+
+-- Started as a file manager (`nvim --cmd "let g:coil_standalone = 1"`)
+if require("coil.config").standalone() then
+  require("coil.standalone").init()
+end
