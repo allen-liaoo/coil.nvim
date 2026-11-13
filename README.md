@@ -339,6 +339,9 @@ Things to know:
   trash rather than being removed; oil's trash view (`g\`) shows it and can restore it. Set
   `oil = { delete_to_trash = false }` in the [config file](#configuring-the-standalone-command)
   to delete for good.
+- **It uses Neovim's bundled `habamax` colour scheme,** which colours more of a highlighted
+  preview than Neovim's default. Run `vim.cmd.colorscheme("...")` in the
+  [config file](#configuring-the-standalone-command) for another.
 - **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). In other
   terminals, image previews show the info card alone.
 - **It starts with only the column views,** one tab per directory. Opening a file edits it in a

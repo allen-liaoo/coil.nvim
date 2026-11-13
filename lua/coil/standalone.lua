@@ -203,8 +203,14 @@ M.write_cwd_on_exit = function(cwd_file)
   })
 end
 
+---The build's colour scheme, one bundled with Neovim. The default one draws keywords, types and
+---numbers in the normal text colour, so syntax-highlighted previews look almost plain.
+M.colorscheme = "habamax"
+
 ---Everything the standalone build's init does
 M.start = function()
+  -- Before the config file, so a colorscheme it sets wins
+  vim.cmd.colorscheme(M.colorscheme)
   local options = M.options(M.load_config(M.config_path()))
   if options.icons then
     require("mini.icons").setup(options.icons)
