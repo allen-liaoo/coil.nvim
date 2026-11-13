@@ -16,7 +16,7 @@ A yazi-style column view and file preview for [oil.nvim](https://github.com/stev
 oil does still works there: rename a file by editing its name, delete a line, paste a line from
 another directory, then `:w`. The **parent pane** shows the directory above, with the one you're
 in highlighted. The **preview pane** follows your cursor: text files, directory listings, and a
-metadata card for everything else.
+info card for everything else.
 
 Outside the column view, oil behaves exactly as before.
 
@@ -170,8 +170,11 @@ How the column view behaves:
 |---|---|
 | Directory | Its entries, sorted and filtered like oil (hidden entries greyed out when shown) |
 | Text file | The first lines, syntax-highlighted |
-| Image | A metadata card with the image drawn below it by [image.nvim](https://github.com/3rd/image.nvim) (see [Images](#images)). Without image.nvim, the card embeds the image as `![name](/path)` for another markdown image plugin, such as [snacks.nvim](https://github.com/folke/snacks.nvim), to draw. |
-| Anything else (binary, video, PDF, archive, very large files) | A markdown card: kind, size, modified time, permissions, location |
+| Image | An info card with the image drawn below it by [image.nvim](https://github.com/3rd/image.nvim) (see [Images](#images)). Without image.nvim, the card alone. |
+| Anything else (binary, video, PDF, archive, very large files) | An info card: kind, size, modified time, permissions, location |
+
+Info cards are laid out and highlighted by coil (filetype `coil_card`), so markdown plugins leave
+them alone, and they look the same whether or not the preview has focus.
 
 Files on remote oil adapters (SSH, S3) show a card for now; remote directories are listed
 normally.
@@ -179,7 +182,7 @@ normally.
 ### Images
 
 With [image.nvim](https://github.com/3rd/image.nvim) installed and set up, coil draws images in the
-preview, filling the space below the metadata card. coil calls image.nvim directly, so image.nvim's
+preview, filling the space below the info card. coil calls image.nvim directly, so image.nvim's
 markdown integration isn't needed.
 
 **coil doesn't set image.nvim up for you.** Call its `setup()` yourself, before or after coil's;
@@ -210,7 +213,7 @@ its README for other backends and options.
   and removed when the preview changes.
 - Without ImageMagick's command-line tools (if image.nvim uses its `magick_rock` processor),
   image.nvim gets the original file.
-- Set `preview.images = false` to get the `![](path)` card instead.
+- Set `preview.images = false` to show the card without the image.
 
 ## Options
 
@@ -240,14 +243,12 @@ require("coil").setup({
     close = "q", -- Close the column view
   },
   preview = {
-    -- Text files larger than this get a metadata card instead
+    -- Text files larger than this get a info card instead
     max_bytes = 2 * 1024 * 1024,
     -- Read at most this many lines of a text file
     max_lines = 1000,
     -- Bytes read to tell binary from text
     sniff_bytes = 8192,
-    -- Filetype of metadata cards (markdown, so image plugins can draw embedded images)
-    card_filetype = "markdown",
     -- Wait this long (ms) before showing "Loading..." for a slow directory
     loading_delay_ms = 100,
     -- Draw images with image.nvim when it is installed and set up
@@ -278,6 +279,10 @@ Hidden files, sorting and other listing behaviour follow your oil.nvim settings
 | `CoilDir` | `OilDir` (or `Directory`) | Directories in the side panes |
 | `CoilLink` | `OilLink` (or `Constant`) | Symlinks in the side panes |
 | `CoilDirHidden`, `CoilFileHidden`, `CoilLinkHidden` | `OilDirHidden`, `OilFileHidden`, `OilLinkHidden` (or `Comment`) | Hidden entries in the side panes |
+| `CoilCardTitle` | `Title` | An info card's file name |
+| `CoilCardRule` | `WinSeparator` | The line under it |
+| `CoilCardLabel`, `CoilCardValue` | `Identifier`, `Normal` | Its rows (`Size`, `3.3M`, ...) |
+| `CoilCardNote` | `Comment` | Its notes, and "Loading image..." |
 
 ### Lua API
 
@@ -310,7 +315,7 @@ Things to know:
 - **It doesn't read your Neovim config.** It runs as its own Neovim app
   (`NVIM_APPNAME=coil-nvim`), so its history and state are kept apart from yours too.
 - **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). In other
-  terminals, image previews show the metadata card alone.
+  terminals, image previews show the info card alone.
 - **Opening a file edits it in coil's first tab.** The column view stays open in its own tab.
   `q` or `:CoilClose` closes the column view and leaves you in the editor; `:qa` quits.
 

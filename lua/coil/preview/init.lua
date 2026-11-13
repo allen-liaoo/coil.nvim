@@ -23,7 +23,6 @@ local M = {}
 ---@field max_bytes integer Files larger than this get a card instead of text
 ---@field max_lines integer Read at most this many lines of a text file
 ---@field sniff_bytes integer Bytes read to detect binary content
----@field card_filetype? string Filetype for metadata cards (nil to skip)
 ---@field loading_delay_ms integer Wait this long before showing "Loading..."
 ---@field images boolean Draw images with image.nvim when it is installed and set up
 ---@field image_delay_ms integer Wait this long after an image card is shown before working on the image
@@ -37,7 +36,6 @@ local defaults = {
   max_bytes = 2 * 1024 * 1024,
   max_lines = 1000,
   sniff_bytes = 8192,
-  card_filetype = "markdown",
   loading_delay_ms = 100,
   images = true,
   image_delay_ms = 100,

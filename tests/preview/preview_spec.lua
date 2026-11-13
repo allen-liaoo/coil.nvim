@@ -34,26 +34,40 @@ describe("preview.show", function()
     assert.same({ "1", "2" }, h.win_lines(win))
   end)
 
-  it("shows a markdown card for binary files", function()
+  it("shows a card for binary files: name, rule, aligned rows and a note", function()
     h.write_bytes(dir .. "/blob.dat", "ab\0cd")
     preview.show(win, target("blob.dat"))
     local lines = h.win_lines(win)
-    assert.equals("# blob.dat", lines[1])
-    assert.truthy(vim.tbl_contains(lines, "- **Kind:** Binary file"))
-    assert.truthy(vim.tbl_contains(lines, "- **Size:** 5 (5 bytes)"))
-    assert.equals("markdown", vim.bo[vim.api.nvim_win_get_buf(win)].filetype)
+    assert.equals("blob.dat", lines[1])
+    -- A rule as wide as the widest row, up to 60 columns
+    assert.equals(string.rep("─", math.min(vim.fn.strdisplaywidth(lines[7]), 60)), lines[2])
+    assert.equals("Kind         Binary file", lines[3])
+    assert.equals("Size         5 (5 bytes)", lines[4])
+    assert.truthy(lines[5]:match("^Modified     %d%d%d%d%-%d%d%-%d%d %d%d:%d%d$"))
+    assert.truthy(lines[6]:match("^Permissions  [rwx-]+$"))
+    assert.equals("Location     " .. vim.fn.fnamemodify(dir .. "/blob.dat", ":~"), lines[7])
+    assert.equals("", lines[8])
+    assert.equals("No text preview for binary files.", lines[9])
+    -- Its own filetype, so markdown plugins leave it alone
+    assert.equals("coil_card", vim.bo[vim.api.nvim_win_get_buf(win)].filetype)
   end)
 
-  it("embeds images by absolute path", function()
-    h.write(dir .. "/pic.png", { "x" })
-    h.write(dir .. "/my pic.png", { "x" })
-    preview.show(win, target("pic.png"))
-    assert.equals(string.format("![pic.png](%s/pic.png)", dir), h.win_lines(win)[#h.win_lines(win)])
-    preview.show(win, target("my pic.png"))
-    assert.equals(
-      string.format("![my pic.png](<%s/my pic.png>)", dir),
-      h.win_lines(win)[#h.win_lines(win)]
-    )
+  it("highlights the card itself", function()
+    h.write_bytes(dir .. "/blob.dat", "ab\0cd")
+    preview.show(win, target("blob.dat"))
+    local bufnr = vim.api.nvim_win_get_buf(win)
+    local ns = vim.api.nvim_get_namespaces()["coil_card"]
+    local found = {}
+    for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })) do
+      local row, col, details = mark[2], mark[3], mark[4]
+      local text = vim.api.nvim_buf_get_text(bufnr, row, col, row, details.end_col, {})[1]
+      found[details.hl_group .. ":" .. text] = true
+    end
+    assert.is_true(found["CoilCardTitle:blob.dat"])
+    assert.is_true(found["CoilCardLabel:Kind"])
+    assert.is_true(found["CoilCardValue:Binary file"])
+    assert.is_true(found["CoilCardNote:No text preview for binary files."])
+    assert.equals(1, vim.fn.hlexists("CoilCardRule"))
   end)
 
   it("wipes the previous preview buffer", function()

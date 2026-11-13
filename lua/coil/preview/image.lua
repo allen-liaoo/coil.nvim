@@ -1,5 +1,5 @@
 -- Draws images into preview windows with image.nvim (https://github.com/3rd/image.nvim). Optional:
--- without image.nvim, image cards embed `![](path)` for whatever markdown renderer is installed.
+-- without image.nvim, image cards show the file's details only.
 local M = {}
 
 ---@class (exact) coil.DrawnImage

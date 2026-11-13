@@ -1,6 +1,7 @@
--- Metadata "cards" for anything without a text preview. The card is a markdown buffer. Image cards
--- either leave room at the bottom for coil to draw the image (with image.nvim), or embed
--- `![](path)` for whatever markdown image renderer is installed.
+-- Metadata cards for anything without a text preview: the name, a rule, then aligned rows (kind,
+-- size, ...) and notes. coil highlights them itself and gives them their own filetype
+-- (coil_card), so a card looks the same whatever markdown or other plugins are installed, and
+-- whether or not its window has focus. Image cards end with room for the image (see image.lua).
 local buffer = require("coil.preview.buffer")
 local M = {}
 
@@ -43,16 +44,6 @@ M.format_permissions = function(mode)
   return table.concat(out)
 end
 
----@param path string
----@return string
-local function markdown_destination(path)
-  -- CommonMark allows <...> around destinations that contain spaces or parentheses
-  if path:find("[%s()]") then
-    return "<" .. path .. ">"
-  end
-  return path
-end
-
 ---@param kind coil.PreviewKind
 ---@param info coil.ClassifyInfo
 ---@param opts coil.PreviewOpts
@@ -76,6 +67,120 @@ local function note_for(kind, info, opts)
   end
 end
 
+local ns = vim.api.nvim_create_namespace("coil_card")
+local status_ns = vim.api.nvim_create_namespace("coil_card_status")
+
+-- `default` keeps any colours the user set
+M.set_highlights = function()
+  for name, target in pairs({
+    CoilCardTitle = "Title",
+    CoilCardRule = "WinSeparator",
+    CoilCardLabel = "Identifier",
+    CoilCardValue = "Normal",
+    CoilCardNote = "Comment",
+  }) do
+    vim.api.nvim_set_hl(0, name, { link = target, default = true })
+  end
+end
+
+---@class (exact) coil.CardRow
+---@field label string
+---@field value string
+
+---@param target coil.PreviewTarget
+---@param kind coil.PreviewKind
+---@param info coil.ClassifyInfo
+---@return coil.CardRow[]
+local function rows_for(target, kind, info)
+  local rows = { { label = "Kind", value = kind_labels[kind] or kind } }
+  local stat = info.stat
+  if stat then
+    vim.list_extend(rows, {
+      {
+        label = "Size",
+        value = string.format("%s (%d bytes)", M.format_size(stat.size), stat.size),
+      },
+      {
+        label = "Modified",
+        value = os.date("%Y-%m-%d %H:%M", stat.mtime.sec) --[[@as string]],
+      },
+      { label = "Permissions", value = M.format_permissions(stat.mode) },
+    })
+  end
+  local location = target.path and vim.fn.fnamemodify(target.path, ":~") or target.url
+  table.insert(rows, { label = "Location", value = location })
+  return rows
+end
+
+---@class (exact) coil.CardMark
+---@field row integer 0-based
+---@field col integer
+---@field end_col integer
+---@field hl string
+
+---The card's lines and where each highlight goes:
+---
+---  name
+---  ──────────
+---  Kind         Image
+---  Size         3.3M (3318385 bytes)
+---  ...
+---
+---  A note, for some kinds
+---@param target coil.PreviewTarget
+---@param kind coil.PreviewKind
+---@param info coil.ClassifyInfo
+---@param opts coil.PreviewOpts
+---@param draws_image? boolean coil draws the image below the card
+---@return string[] lines
+---@return coil.CardMark[] marks
+local function build(target, kind, info, opts, draws_image)
+  local rows = rows_for(target, kind, info)
+  local label_width = 0
+  for _, row in ipairs(rows) do
+    label_width = math.max(label_width, #row.label)
+  end
+
+  local lines, marks = {}, {}
+  local function add(line, hl, col, end_col)
+    table.insert(lines, line)
+    if hl then
+      table.insert(marks, { row = #lines - 1, col = col or 0, end_col = end_col or #line, hl = hl })
+    end
+  end
+
+  add(target.name, "CoilCardTitle")
+  -- As wide as the widest row, filled in below
+  add("", nil)
+  local rule_row = #lines
+  local width = vim.fn.strdisplaywidth(target.name)
+  for _, row in ipairs(rows) do
+    local label = row.label .. string.rep(" ", label_width - #row.label + 2)
+    local line = label .. row.value
+    add(line, "CoilCardLabel", 0, #row.label)
+    table.insert(marks, { row = #lines - 1, col = #label, end_col = #line, hl = "CoilCardValue" })
+    width = math.max(width, vim.fn.strdisplaywidth(line))
+  end
+  lines[rule_row] = string.rep("─", math.min(width, 60))
+  table.insert(
+    marks,
+    { row = rule_row - 1, col = 0, end_col = #lines[rule_row], hl = "CoilCardRule" }
+  )
+
+  local note = note_for(kind, info, opts)
+  if note then
+    add("", nil)
+    add(note, "CoilCardNote")
+  end
+  if draws_image then
+    -- A blank line, then the line the image starts on (see M.image_row)
+    add("", nil)
+    add("", nil)
+  end
+  return lines, marks
+end
+
+---The card's lines, without highlights
 ---@param target coil.PreviewTarget
 ---@param kind coil.PreviewKind
 ---@param info coil.ClassifyInfo
@@ -83,36 +188,7 @@ end
 ---@param draws_image? boolean coil draws the image below the card
 ---@return string[]
 M.lines = function(target, kind, info, opts, draws_image)
-  local lines = { "# " .. target.name, "" }
-  table.insert(lines, string.format("- **Kind:** %s", kind_labels[kind] or kind))
-  local stat = info.stat
-  if stat then
-    table.insert(
-      lines,
-      string.format("- **Size:** %s (%d bytes)", M.format_size(stat.size), stat.size)
-    )
-    table.insert(
-      lines,
-      string.format("- **Modified:** %s", os.date("%Y-%m-%d %H:%M", stat.mtime.sec))
-    )
-    table.insert(lines, string.format("- **Permissions:** %s", M.format_permissions(stat.mode)))
-  end
-  table.insert(lines, string.format("- **Location:** `%s`", target.path or target.url))
-
-  local note = note_for(kind, info, opts)
-  if note then
-    vim.list_extend(lines, { "", note })
-  end
-  if draws_image then
-    -- A blank line, then the line the image starts on (see M.image_row)
-    vim.list_extend(lines, { "", "" })
-  elseif kind == "image" and target.path then
-    vim.list_extend(lines, {
-      "",
-      string.format("![%s](%s)", target.name, markdown_destination(target.path)),
-    })
-  end
-  return lines
+  return (build(target, kind, info, opts, draws_image))
 end
 
 ---@param target coil.PreviewTarget
@@ -122,14 +198,23 @@ end
 ---@param draws_image? boolean coil draws the image below the card
 ---@return integer bufnr
 M.render = function(target, kind, info, opts, draws_image)
-  local bufnr = buffer.scratch(M.lines(target, kind, info, opts, draws_image))
-  if opts.card_filetype then
-    vim.bo[bufnr].filetype = opts.card_filetype
+  M.set_highlights()
+  local lines, marks = build(target, kind, info, opts, draws_image)
+  local bufnr = buffer.scratch(lines)
+  for _, mark in ipairs(marks) do
+    vim.api.nvim_buf_set_extmark(
+      bufnr,
+      ns,
+      mark.row,
+      mark.col,
+      { end_col = mark.end_col, hl_group = mark.hl }
+    )
   end
+  -- Its own filetype, so markdown and other filetype plugins leave it alone; hook FileType
+  -- coil_card to change it
+  vim.bo[bufnr].filetype = "coil_card"
   return bufnr
 end
-
-local status_ns = vim.api.nvim_create_namespace("coil_card_status")
 
 ---Show a dimmed note on line `row` ("Loading image..."), replacing any earlier one; nil removes it
 ---@param bufnr integer
@@ -141,7 +226,13 @@ M.set_status = function(bufnr, row, msg)
   end
   vim.api.nvim_buf_clear_namespace(bufnr, status_ns, 0, -1)
   if msg then
-    vim.api.nvim_buf_set_extmark(bufnr, status_ns, row, 0, { virt_text = { { msg, "Comment" } } })
+    vim.api.nvim_buf_set_extmark(
+      bufnr,
+      status_ns,
+      row,
+      0,
+      { virt_text = { { msg, "CoilCardNote" } } }
+    )
   end
 end
 

@@ -88,10 +88,6 @@ describe("image previews", function()
     assert.equals(cache, vim.fs.dirname(img.path))
     assert.equals(win, img.opts.window)
     assert.equals(bufnr, img.opts.buffer)
-    -- No markdown embed, or a markdown image plugin would draw it a second time
-    for _, line in ipairs(lines) do
-      assert.is_nil(line:find("![", 1, true))
-    end
     local geom = img.renders[1]
     assert.equals(#lines - 1, geom.y)
     assert.equals(0, geom.x)
@@ -196,19 +192,23 @@ describe("image previews", function()
     assert.equals(dir .. "/pic.png", img.path)
   end)
 
-  it("embeds the image in the card when images are off", function()
+  it("shows the card alone when images are off", function()
     preview.show(win, target("pic.png"), { images = false })
     local lines = h.win_lines(win)
-    assert.equals(string.format("![pic.png](%s/pic.png)", dir), lines[#lines])
+    assert.equals("Kind         Image", lines[3])
+    -- No room left for an image
+    assert.truthy(lines[#lines]:match("^Location"))
     vim.wait(20)
     assert.equals(0, #fake.created)
   end)
 
-  it("embeds the image in the card when image.nvim isn't set up", function()
+  it("shows the card alone when image.nvim isn't set up", function()
     vim.api.nvim_del_user_command("ImageReport")
     preview.show(win, target("pic.png"))
     local lines = h.win_lines(win)
-    assert.equals(string.format("![pic.png](%s/pic.png)", dir), lines[#lines])
+    assert.truthy(lines[#lines]:match("^Location"))
+    vim.wait(20)
+    assert.equals(0, #fake.created)
   end)
 
   it("works with the real image.nvim", function()

@@ -62,7 +62,7 @@ describe("thumbnail prefetch", function()
   ---@param text string
   local function move_to(view, text)
     assert.is_true(h.wait(function()
-      return h.win_lines(view.panes.preview)[1] == "# a.png"
+      return h.win_lines(view.panes.preview)[1] == "a.png"
     end))
     -- The prefetch for a.png's neighbours starts after a zero-delay timer
     vim.wait(50)

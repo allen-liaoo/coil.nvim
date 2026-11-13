@@ -39,10 +39,10 @@ should be options set by the standalone build, not changes forced on people usin
   middle pane to that entry's directory, with the cursor on the entry.
 - [ ] **Several directories in tabs**, like yazi's tabs.
 - [x] **Image previews.** With image.nvim installed and set up, the preview draws images below the
-  metadata card, from thumbnails made in the background and cached on disk. The standalone build
+  info card, from thumbnails made in the background and cached on disk. The standalone build
   includes image.nvim and ImageMagick.
 - [ ] **Video and PDF thumbnails.** Generate a thumbnail (ffmpeg or ffmpegthumbnailer for video,
-  pdftoppm for PDF) into a cache directory and embed it in the metadata card. Add the tools to the
+  pdftoppm for PDF) into a cache directory and draw it below the info card. Add the tools to the
   dev shell, and fall back to the plain card when a tool is missing.
 - [ ] **Remote file previews** (SSH, S3). These show a "not supported yet" card. They need an
   asynchronous download (scp, `aws s3 cp`) to a temporary file with a size limit, then the normal
@@ -51,6 +51,8 @@ should be options set by the standalone build, not changes forced on people usin
   knows the panes are splits. A floating version needs geometry on resize, its own keys to move
   between panes, and hiding and restoring when a file opens in the editing tab.
 - [ ] **`:help coil` docs**, a vimdoc version of the README.
+- [ ] Make coil-nvim not depend on oil nvim in nix, but require user to have oil nvim.
+- [ ] Remove coil-nvim oil flake dependency, and just use nixpkgs's oilnvim
 
 ## Known gaps
 
