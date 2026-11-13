@@ -63,8 +63,12 @@ packages:
           }
           (lib.mkIf cfg.images.enable {
             plugins.image.enable = lib.mkDefault true;
-            # In tmux, show images only in the active window (needs tmux's visual-activity off)
-            plugins.image.settings.tmux_show_only_in_active_window = lib.mkDefault true;
+            # For tmux (the README has these too): kitty's default, cursor-based method lands images
+            # at the cursor there, and images show only in the active tmux window
+            plugins.image.settings = {
+              kitty_method = lib.mkDefault "unicode-placeholders";
+              tmux_show_only_in_active_window = lib.mkDefault true;
+            };
             # image.nvim and coil's thumbnails use ImageMagick; nixvim's image module only adds it
             # for the sixel backend
             dependencies.imagemagick.enable = lib.mkDefault true;

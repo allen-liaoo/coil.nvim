@@ -25,6 +25,24 @@ Without flakes enabled, add `--extra-experimental-features 'nix-command flakes'`
   also need [ffmpeg](https://ffmpeg.org), and PDFs [poppler](https://poppler.freedesktop.org)'s
   `pdftoppm`.
 
+In tmux, images need these in image.nvim's setup and in tmux's config (the Nix `coil` and the
+nixvim module set image.nvim's for you):
+
+```lua
+require("image").setup({
+  -- The default, cursor-based kitty method puts images at the cursor in tmux
+  kitty_method = "unicode-placeholders",
+  -- Show images only in the active tmux window
+  tmux_show_only_in_active_window = true,
+})
+```
+
+```tmux
+set -gq allow-passthrough on
+set -g visual-activity off
+set -g focus-events on
+```
+
 ## Installation
 
 Set up oil.nvim as usual, then coil. `require("coil").setup()` is optional; call it to change
