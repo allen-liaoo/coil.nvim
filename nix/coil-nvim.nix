@@ -2,13 +2,11 @@
 #
 #   pkgs.callPackage ./nix/coil-nvim.nix { }
 #
-# Brings oil.nvim along as a dependency. The flake passes the oil.nvim commit coil is tested
-# against; standalone, nixpkgs' oil.nvim is used.
+# oil.nvim is not a dependency: add it yourself, as you would without coil (Home Manager, nixvim
+# and others have their own oil.nvim modules), so there is only one oil.nvim to configure.
 {
   lib,
   vimUtils,
-  vimPlugins,
-  oil-nvim ? vimPlugins.oil-nvim,
   version ? "0-unstable",
 }:
 vimUtils.buildVimPlugin {
@@ -22,7 +20,6 @@ vimUtils.buildVimPlugin {
       ../LICENSE
     ];
   };
-  dependencies = [ oil-nvim ];
   meta = {
     description = "Yazi-style column view and file preview for oil.nvim";
     homepage = "https://github.com/allen-liaoo/coil.nvim";

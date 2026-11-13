@@ -3,10 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    oil-nvim = {
-      url = "github:stevearc/oil.nvim/d3733d933833a0e59b813ecec99341527adf0c28";
-      flake = false;
-    };
     nvimx = {
       url = "github:allen-liaoo/nvimx";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -17,7 +13,6 @@
     {
       self,
       nixpkgs,
-      oil-nvim,
       nvimx,
       ...
     }:
@@ -51,7 +46,7 @@
             # Neovim is exposed through COIL_NVIM instead of PATH so the shell does not
             # shadow your own configured `nvim`. Tests run this clean, unconfigured build.
             COIL_NVIM = "${pkgs.neovim-unwrapped}/bin/nvim";
-            COIL_OIL_PATH = "${oil-nvim}";
+            COIL_OIL_PATH = "${pkgs.vimPlugins.oil-nvim}";
             COIL_PLENARY_PATH = "${pkgs.vimPlugins.plenary-nvim}";
             # Optional dependency, for drawing images in previews
             COIL_IMAGE_PATH = "${pkgs.vimPlugins.image-nvim}";
@@ -62,27 +57,16 @@
       packages = forAllSystems (
         system: pkgs:
         let
-          # The oil.nvim commit coil is tested against
-          oil = pkgs.vimUtils.buildVimPlugin {
-            pname = "oil.nvim";
-            version = "0-unstable-${builtins.substring 0 7 oil-nvim.rev}";
-            src = oil-nvim;
-          };
-          # The plugin, for adding to your own Neovim (pulls in the pinned oil.nvim)
+          # The plugin, for adding to your own Neovim next to oil.nvim
           coil-nvim = pkgs.callPackage ./nix/coil-nvim.nix {
-            oil-nvim = oil;
             version = "0-unstable-${self.shortRev or self.dirtyShortRev or "dirty"}";
           };
-          # The standalone file manager: `coil [dir]`
-          coil = pkgs.callPackage ./nix/coil.nix {
-            oil-nvim = oil;
-            inherit coil-nvim;
-          };
+          # The standalone file manager: `coil [dir]`, with nixpkgs' oil.nvim
+          coil = pkgs.callPackage ./nix/coil.nix { inherit coil-nvim; };
         in
         {
           default = coil;
           inherit coil coil-nvim;
-          oil-nvim = oil;
         }
       );
 

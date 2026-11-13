@@ -47,8 +47,8 @@ enabled, add `--extra-experimental-features 'nix-command flakes'` after `nix`.
   images in the preview, plus [ffmpeg](https://ffmpeg.org) for video frames and
   [poppler](https://poppler.freedesktop.org)'s `pdftoppm` for PDF pages (see [Images](#images))
 - [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals and is
-  tested against commit [`d3733d9`](https://github.com/stevearc/oil.nvim/tree/d3733d933833a0e59b813ecec99341527adf0c28);
-  much newer or older versions of oil may need changes.
+  tested against [v2.16.0](https://github.com/stevearc/oil.nvim/releases/tag/v2.16.0) (the version
+  in nixpkgs) and later commits; much newer or older versions of oil may need changes.
 
 ## Installation (as Neovim Plugin)
 
@@ -83,11 +83,11 @@ require("coil").setup()
 ### Nix
 
 The flake exposes the plugin as `packages.<system>.coil-nvim` (the default package is the
-standalone `coil` command). The plugin brings the oil.nvim commit it's tested against as a
-dependency, so don't add a second oil plugin.
+standalone `coil` command). The plugin doesn't bring oil.nvim along: add oil.nvim the way you
+normally would (nixpkgs' `vimPlugins.oil-nvim`, or your Neovim setup's oil module).
 
-Without flakes, both are plain `callPackage` files, using nixpkgs' oil.nvim by default:
-`nix/coil-nvim.nix` (the plugin) and `nix/coil.nix` (the standalone command).
+Without flakes, both are plain `callPackage` files: `nix/coil-nvim.nix` (the plugin) and
+`nix/coil.nix` (the standalone command, with nixpkgs' oil.nvim).
 
 ```nix
 # flake.nix
@@ -99,29 +99,25 @@ Home Manager:
 ```nix
 programs.neovim.plugins = [
   {
+    plugin = pkgs.vimPlugins.oil-nvim;
+    type = "lua";
+    config = ''require("oil").setup()'';
+  }
+  {
     plugin = inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system}.coil-nvim;
     type = "lua";
-    config = ''
-      require("oil").setup()
-      require("coil").setup()
-    '';
+    config = ''require("coil").setup()'';
   }
 ];
 ```
 
-nixvim, using coil's oil.nvim for nixvim's oil module:
+nixvim, with its own oil module:
 
 ```nix
 { pkgs, inputs, ... }:
-let
-  coil = inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system};
-in
 {
-  plugins.oil = {
-    enable = true;
-    package = coil.oil-nvim;
-  };
-  extraPlugins = [ coil.coil-nvim ];
+  plugins.oil.enable = true;
+  extraPlugins = [ inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system}.coil-nvim ];
   extraConfigLua = ''require("coil").setup()'';
 }
 ```

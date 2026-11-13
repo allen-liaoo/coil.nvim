@@ -19,7 +19,7 @@
 ~~- [ ] **Floating-window version of the column view.** `view/layout.lua` is the only module that
   knows the panes are splits. A floating version needs geometry on resize, its own keys to move
   between panes, and hiding and restoring when a file opens in the editing tab.~~
-- [ ] Packaging: Make coil-nvim not depend on oil nvim in nix, but require user to have oil nvim. Remove coil-nvim oil flake dependency, and just use nixpkgs's oilnvim
+- [x] Packaging: Make coil-nvim not depend on oil nvim in nix, but require user to have oil nvim. Remove coil-nvim oil flake dependency, and just use nixpkgs's oilnvim
 - [ ] Refactor: make sure no coil config or logic duplicates oil's. For instance, keep keymaps (open in splits) config that oil has in oil. Coil should only change the behavior of it in coil's buffer.
 - [ ] **Several directories in tabs**, like yazi's tabs.
 - [ ] **Delete to trash by default.** oil defaults to `delete_to_trash = false`, so deleting a line
@@ -32,6 +32,9 @@ trash view (`g\`) can restore them.
 These concern the `coil` command (`nix/coil.nix`). Most are standalone-mode behaviour, so they
 should be options set by the standalone build, not changes forced on people using coil as a plugin.
 
+- [ ] **A fuller standalone build:** an icon provider (mini.icons or nvim-web-devicons), more
+Tree-sitter grammars, and ffmpeg and poppler for video and PDF previews (left out for now: with
+their dependencies they add about 300 MB and 150 MB). image.nvim and ImageMagick are included.
 - [ ] **Entry details.** Turn on oil's `permissions`, `size` and `mtime` columns in the standalone
 build (oil's default is the icon column only).
 - [ ] **`q` quits.** `q`/`:CoilClose` closes the column view and leaves an empty editor open. In
@@ -43,9 +46,6 @@ build (oil's default is the icon column only).
   uses `vim.ui.open` (xdg-open / open / explorer). Text files keep opening in the editor. Limits:
   `open_external` only works for local files (`oil.get_current_dir()` is nil for SSH and S3), and it
   needs the system opener installed. Later: configurable opener rules by extension or MIME type.
-- [ ] **A fuller standalone build:** an icon provider (mini.icons or nvim-web-devicons), more
-  Tree-sitter grammars, and ffmpeg and poppler for video and PDF previews (left out for now: with
-  their dependencies they add about 300 MB and 150 MB). image.nvim and ImageMagick are included.
 - [ ] **Notice outside changes.** Turn on oil's `watch_for_changes` in the standalone build, and make
   sure the side panes refresh too; today they refresh on navigation, saving and returning to the tab.
 - [ ] **Picker mode.** A `--chooser-file <path>` argument that writes the picked path(s), including

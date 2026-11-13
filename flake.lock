@@ -83,28 +83,10 @@
         "type": "github"
       }
     },
-    "oil-nvim": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1791766835,
-        "narHash": "sha256-s9FqZ+hCbxBvKI7qn7mGUOFYRBOq1qInfbk4kupaZNQ=",
-        "owner": "stevearc",
-        "repo": "oil.nvim",
-        "rev": "d3733d933833a0e59b813ecec99341527adf0c28",
-        "type": "github"
-      },
-      "original": {
-        "owner": "stevearc",
-        "repo": "oil.nvim",
-        "rev": "d3733d933833a0e59b813ecec99341527adf0c28",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs",
-        "nvimx": "nvimx",
-        "oil-nvim": "oil-nvim"
+        "nvimx": "nvimx"
       }
     },
     "systems": {

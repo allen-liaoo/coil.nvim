@@ -4,8 +4,7 @@
 #
 #   pkgs.callPackage ./nix/coil.nix { }
 #
-# The flake passes the oil.nvim commit coil is tested against; standalone, nixpkgs' oil.nvim is
-# used.
+# Uses nixpkgs' oil.nvim unless `oil-nvim` is given.
 {
   lib,
   callPackage,
@@ -15,7 +14,7 @@
   wrapNeovimUnstable,
   imagemagick,
   oil-nvim ? vimPlugins.oil-nvim,
-  coil-nvim ? callPackage ./coil-nvim.nix { inherit oil-nvim; },
+  coil-nvim ? callPackage ./coil-nvim.nix { },
 }:
 let
   nvim = wrapNeovimUnstable neovim-unwrapped {
