@@ -308,8 +308,8 @@ require("coil").close()    -- like :CoilClose
 
 The flake's default package is a `coil` command: a Neovim with coil, oil.nvim, image.nvim,
 mini.icons (icons in oil's listing), and ImageMagick, ffmpeg and poppler for image, video and PDF
-previews. Text previews are highlighted by Neovim's built-in syntax files. It opens the column view as
-soon as it starts.
+previews. Text previews are highlighted by Neovim's built-in syntax files. It opens the column
+view as soon as it starts.
 
 ```sh
 nix profile install github:allen-liaoo/coil.nvim   # or add it to home.packages / environment.systemPackages
