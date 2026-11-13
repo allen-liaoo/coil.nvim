@@ -182,7 +182,8 @@ local function xdg_editor()
   end
 end
 
----$VISUAL, otherwise $EDITOR. A shell command, which may have arguments ("code --wait").
+---$VISUAL, otherwise $EDITOR. A shell command, which may have arguments ("code --wait"); it runs
+---through sh with the path as its last argument, as git runs it.
 ---@return nil|coil.Editor
 local function env_editor()
   for _, name in ipairs({ "VISUAL", "EDITOR" }) do
@@ -192,7 +193,7 @@ local function env_editor()
         name = "$" .. name,
         terminal = true,
         argv = function(path)
-          return { vim.o.shell, vim.o.shellcmdflag, cmd .. " " .. vim.fn.shellescape(path) }
+          return { "sh", "-c", cmd .. ' "$@"', "sh", path }
         end,
       }
     end
@@ -205,31 +206,61 @@ M.find = function()
   return xdg_editor() or env_editor()
 end
 
----Environment changes for editors coil starts. The Nix `coil` runs with its own NVIM_APPNAME and
----sets g:coil_editor_env to give editors back the user's (a Neovim editor would otherwise load
----the build's config).
----@return nil|table<string, string>
-local function env()
-  local value = vim.g.coil_editor_env
-  return type(value) == "table" and not vim.tbl_isempty(value) and value or nil
+-- Neovim's own state, which it exports to every process it starts: $NVIM (this Neovim's server,
+-- which nested Neovims and plugins react to), its log file, runtime files and init file. An editor
+-- gets none of it, so a Neovim editor starts as it would from a shell.
+local NEOVIM_ENV = { "NVIM", "NVIM_LOG_FILE", "MYVIMRC", "VIM", "VIMRUNTIME" }
+
+---`argv` run with the environment an editor gets: without Neovim's own state (through `env -u`,
+---since Neovim adds $NVIM to every job's environment), and with g:coil_editor_env, which the Nix
+---`coil` sets to give editors back the user's NVIM_APPNAME
+---@param argv string[]
+---@return string[]
+M.clean_env = function(argv)
+  local ret = { "env" }
+  for _, name in ipairs(NEOVIM_ENV) do
+    vim.list_extend(ret, { "-u", name })
+  end
+  local extra = vim.g.coil_editor_env
+  if type(extra) == "table" then
+    local names = vim.tbl_keys(extra)
+    table.sort(names)
+    for _, name in ipairs(names) do
+      table.insert(ret, name .. "=" .. tostring(extra[name]))
+    end
+  end
+  return vim.list_extend(ret, argv)
 end
 
----Open `path` with `editor`: in a terminal in a new tab, closed when the editor exits, or for a
----GUI editor, in the background
----@param editor coil.Editor
----@param path string
----@return boolean ok
-M.open = function(editor, path)
-  local argv = editor.argv(path)
-  if not editor.terminal then
-    local ok, job = pcall(vim.fn.jobstart, argv, { detach = true, env = env() })
-    return ok and job > 0
+---`argv` in a new terminal window: with xdg-terminal-exec (the XDG way to start one), otherwise
+---$TERMINAL -e. Nil when there's neither.
+---@param argv string[]
+---@return nil|string[]
+local function in_terminal_window(argv)
+  if vim.fn.executable("xdg-terminal-exec") == 1 then
+    return vim.list_extend({ "xdg-terminal-exec" }, argv)
   end
+  local terminal = vim.env.TERMINAL
+  if terminal and terminal ~= "" and vim.fn.executable(terminal) == 1 then
+    return vim.list_extend({ terminal, "-e" }, argv)
+  end
+end
 
+---@param argv string[]
+---@return boolean ok
+local function start_detached(argv)
+  local ok, job = pcall(vim.fn.jobstart, argv, { detach = true })
+  return ok and job > 0
+end
+
+---Run `argv` in a terminal in a new tab of this Neovim, closed when it exits. Only when there's no
+---way to open a terminal window: keys pass through this Neovim's terminal mappings first.
+---@param argv string[]
+---@return boolean ok
+local function in_tab(argv)
   vim.cmd.tabnew()
   local bufnr = vim.api.nvim_get_current_buf()
   local opts = {
-    env = env(),
     on_exit = function()
       vim.schedule(function()
         if vim.api.nvim_buf_is_valid(bufnr) then
@@ -251,6 +282,24 @@ M.open = function(editor, path)
   end
   vim.cmd.startinsert()
   return true
+end
+
+---Open `path` with `editor`, as its own program: a GUI editor in the background, a terminal editor
+---in a new terminal window (or, without a way to open one, in a terminal tab here)
+---@param editor coil.Editor
+---@param path string
+---@return boolean ok
+M.open = function(editor, path)
+  local argv = editor.argv(path)
+  if not editor.terminal then
+    return start_detached(M.clean_env(argv))
+  end
+  local window = in_terminal_window(argv)
+  if window then
+    -- The terminal emulator gets the clean environment too, and passes it on
+    return start_detached(M.clean_env(window))
+  end
+  return in_tab(M.clean_env(argv))
 end
 
 return M

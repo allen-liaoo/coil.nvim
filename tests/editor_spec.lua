@@ -28,13 +28,13 @@ describe("the system's text editor", function()
     h.write(dir .. "/share/applications/" .. name, lines)
   end
 
-  ---An editor that writes its arguments and $NVIM_APPNAME to `out`
+  ---An editor that writes its arguments, $NVIM_APPNAME and $NVIM to `out`
   ---@return string path, string out
   local function recorder()
     local out = dir .. "/editor-out"
     return script("record", {
       string.format('printf "%%s\\n" "$@" > "%s"', out),
-      string.format('echo "appname=${NVIM_APPNAME-unset}" >> "%s"', out),
+      string.format('echo "appname=${NVIM_APPNAME-unset} nvim=${NVIM-unset}" >> "%s"', out),
     }),
       out
   end
@@ -57,8 +57,15 @@ describe("the system's text editor", function()
       XDG_DATA_DIRS = vim.env.XDG_DATA_DIRS,
       VISUAL = vim.env.VISUAL,
       EDITOR = vim.env.EDITOR,
+      TERMINAL = vim.env.TERMINAL,
     }
-    vim.env.PATH = dir .. "/bin:" .. vim.env.PATH
+    -- Only the stubs and the basics: no real xdg-terminal-exec or terminal emulator
+    vim.env.PATH = table.concat({
+      dir .. "/bin",
+      vim.fs.dirname(vim.fn.exepath("env")),
+      vim.fs.dirname(vim.fn.exepath("sh")),
+    }, ":")
+    vim.env.TERMINAL = nil
     vim.env.XDG_DATA_HOME = dir .. "/share"
     vim.env.XDG_DATA_DIRS = dir .. "/none"
     vim.env.VISUAL = nil
@@ -117,7 +124,28 @@ describe("the system's text editor", function()
       local found = assert(editor.find())
       assert.equals("$VISUAL", found.name)
       assert.is_true(found.terminal)
+      -- Through sh, with the path as an argument rather than in the command
+      assert.same({ "sh", "-c", 'hx "$@"', "sh", "/x" }, found.argv("/x"))
     end)
+  end)
+
+  it("starts editors without Neovim's own environment, plus g:coil_editor_env", function()
+    vim.g.coil_editor_env = { NVIM_APPNAME = "" }
+    assert.same({
+      "env",
+      "-u",
+      "NVIM",
+      "-u",
+      "NVIM_LOG_FILE",
+      "-u",
+      "MYVIMRC",
+      "-u",
+      "VIM",
+      "-u",
+      "VIMRUNTIME",
+      "NVIM_APPNAME=",
+      "ed",
+    }, editor.clean_env({ "ed" }))
   end)
 
   describe("from the column view, with edit_here = false", function()
@@ -146,17 +174,38 @@ describe("the system's text editor", function()
       return view
     end
 
-    it("runs a terminal editor in a new tab, closed when it exits", function()
+    it("opens a terminal editor in a new terminal window, with xdg-terminal-exec", function()
+      local cmd, out = recorder()
+      script("xdg-terminal-exec", { 'exec "$@"' })
+      vim.env.EDITOR = cmd
+      local view = select_notes()
+      assert.same({ proj .. "/notes.txt", "appname=unset nvim=unset" }, wait_output(out))
+      -- Not in this Neovim: still the view and the editing tab
+      assert.equals(view.tab, vim.api.nvim_get_current_tabpage())
+      assert.equals(2, #vim.api.nvim_list_tabpages())
+      assert.equals(-1, vim.fn.bufnr(proj .. "/notes.txt"))
+    end)
+
+    it("uses $TERMINAL -e without xdg-terminal-exec", function()
+      local cmd, out = recorder()
+      vim.env.TERMINAL = script("term", { '[ "$1" = -e ] && shift', 'exec "$@"' })
+      xdg_default("tui.desktop")
+      desktop_file("tui.desktop", { "[Desktop Entry]", "Exec=" .. cmd .. " %F", "Terminal=true" })
+      select_notes()
+      assert.same({ proj .. "/notes.txt", "appname=unset nvim=unset" }, wait_output(out))
+      assert.equals(2, #vim.api.nvim_list_tabpages())
+    end)
+
+    it("runs it in a tab here, closed when it exits, with no way to open a window", function()
       local cmd, out = recorder()
       vim.env.EDITOR = cmd
       local view = select_notes()
-      assert.same({ proj .. "/notes.txt", "appname=unset" }, wait_output(out))
+      assert.same({ proj .. "/notes.txt", "appname=unset nvim=unset" }, wait_output(out))
       assert.is_true(h.wait(function()
         return #vim.api.nvim_list_tabpages() == 2
       end))
       assert.is_true(vim.tbl_contains(vim.api.nvim_list_tabpages(), view.tab))
       assert.is_true(vim.tbl_contains(vim.api.nvim_list_tabpages(), origin_tab))
-      assert.equals(-1, vim.fn.bufnr(proj .. "/notes.txt"))
     end)
 
     it("starts a GUI editor in the background", function()
@@ -164,7 +213,7 @@ describe("the system's text editor", function()
       xdg_default("gui.desktop")
       desktop_file("gui.desktop", { "[Desktop Entry]", "Exec=" .. cmd .. " %F" })
       local view = select_notes()
-      assert.same({ proj .. "/notes.txt", "appname=unset" }, wait_output(out))
+      assert.same({ proj .. "/notes.txt", "appname=unset nvim=unset" }, wait_output(out))
       assert.equals(view.tab, vim.api.nvim_get_current_tabpage())
       -- No terminal tab: still the view and the editing tab
       assert.equals(2, #vim.api.nvim_list_tabpages())
@@ -175,7 +224,7 @@ describe("the system's text editor", function()
       vim.env.EDITOR = cmd
       vim.g.coil_editor_env = { NVIM_APPNAME = "mine" }
       select_notes()
-      assert.same({ proj .. "/notes.txt", "appname=mine" }, wait_output(out))
+      assert.same({ proj .. "/notes.txt", "appname=mine nvim=unset" }, wait_output(out))
     end)
 
     it("opens text files here when there's no system editor", function()

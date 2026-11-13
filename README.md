@@ -124,8 +124,8 @@ require("coil").setup({
   open_external = false,
   -- With L or <CR>, open text files in this Neovim. When false, they open in the system's text
   -- editor: XDG's default for text/plain, otherwise $VISUAL or $EDITOR, otherwise here. Editors
-  -- that need a terminal run in a new tab. Local files only; the split and tab keys still open
-  -- them here.
+  -- that need a terminal open in a new terminal window (xdg-terminal-exec or $TERMINAL). Local
+  -- files only; the split and tab keys still open them here.
   edit_here = true,
   -- Show each pane's path in a title line (winbar) above it
   winbar = false,

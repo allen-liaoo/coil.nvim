@@ -23,9 +23,9 @@ local defaults = {
   -- only; the split and tab keys still open them in the editor.
   open_external = false,
   -- With L or <CR>, open text files in this Neovim. When false, they open in the system's text
-  -- editor: XDG's default for text/plain, otherwise $VISUAL or $EDITOR, otherwise here.
-  -- Editors that need a terminal run in a new tab. Local files only; the split and tab keys
-  -- still open them here.
+  -- editor: XDG's default for text/plain, otherwise $VISUAL or $EDITOR, otherwise here. Editors
+  -- that need a terminal open in a new terminal window (xdg-terminal-exec or $TERMINAL). Local
+  -- files only; the split and tab keys still open them here.
   edit_here = true,
   preview = {},
   -- coil's own keys, in the column view's middle pane only. Anywhere else these keys keep their
