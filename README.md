@@ -118,6 +118,10 @@ require("coil").setup({
   -- Name the column view's tab after the current directory. Sets the tab variable `tabname`,
   -- which tab lines such as lualine's `tabs` component show.
   tab_title = true,
+  -- With L or <CR>, open files that aren't text (images, videos, audio, PDFs, archives, other
+  -- binary files) in the system's default program instead of the editor. Local files only; the
+  -- split and tab keys still open them in the editor.
+  open_external = false,
   -- Show each pane's path in a title line (winbar) above it
   winbar = false,
   -- coil's own keys in the middle pane; set one to false to disable it. oil's keys are set in
@@ -152,6 +156,7 @@ require("coil").setup({
   -- itself. These defaults give way to the options you set; your own `standalone` options win
   -- over everything.
   standalone = {
+    open_external = true,
     keymaps = { close = false, quit = "q" },
   },
 })
@@ -183,8 +188,8 @@ require("coil").standalone()         -- whether Neovim was started as a file man
 ## As a file manager
 
 `coil [dir...]` starts Neovim as a file manager: only the column views, one tab per directory,
-and `q` quits. Your shell can also `cd` to the last directory on exit (see
-[Shell integration](docs/shell-integration.md)).
+files that aren't text open in your system's default program, and `q` quits. Your shell can
+also `cd` to the last directory on exit (see [Shell integration](docs/shell-integration.md)).
 
 ### With your own Neovim
 

@@ -168,6 +168,13 @@ local function show_picture(winid, gen, target, kind, info, opts)
   end, opts.image_delay_ms)
 end
 
+---The kind of preview `target` gets (text, image, binary, ...)
+---@param target coil.PreviewTarget
+---@return coil.PreviewKind
+M.kind = function(target)
+  return (classify.classify(target, config))
+end
+
 ---Show a preview of `target` in `winid`
 ---@param winid integer
 ---@param target coil.PreviewTarget

@@ -17,6 +17,9 @@ local function select_entry(view, how)
     if is_dir and how == nil then
       -- Directories open in place; the middle pane's BufWinEnter re-syncs the side panes
       vim.api.nvim_win_set_buf(view.panes.current, bufnr)
+    elseif how == nil and open.externally(bufnr) then
+      -- Opened in another program. (Split and tab keys always open in the editor.)
+      return
     else
       open.in_editing_tab(view, bufnr, how)
     end
