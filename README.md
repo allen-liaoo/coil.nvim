@@ -15,7 +15,7 @@ A yazi-style column view and file preview for [oil.nvim](https://github.com/stev
 `:Coil` opens a tab with three panes. The **middle pane is a normal oil buffer**, so everything
 oil does still works there: rename a file by editing its name, delete a line, paste a line from
 another directory, then `:w`. The **parent pane** shows the directory above, with the one you're
-in highlighted. The **preview pane** follows your cursor: text files, directory listings, and a
+in highlighted. The **preview pane** follows your cursor: text files, directory listings, and an
 info card for everything else.
 
 Outside the column view, oil behaves exactly as before.
@@ -170,7 +170,7 @@ How the column view behaves:
 |---|---|
 | Directory | Its entries, sorted and filtered like oil (hidden entries greyed out when shown) |
 | Text file | The first lines, syntax-highlighted |
-| Image | An info card with the image drawn below it by [image.nvim](https://github.com/3rd/image.nvim) (see [Images](#images)). Without image.nvim, the card alone. |
+| Image | An info card (with the image's dimensions) and the image drawn below it by [image.nvim](https://github.com/3rd/image.nvim) (see [Images](#images)). Without image.nvim, the card alone. |
 | Anything else (binary, video, PDF, archive, very large files) | An info card: kind, size, modified time, permissions, location |
 
 Info cards are laid out and highlighted by coil (filetype `coil_card`), so markdown plugins leave
@@ -243,7 +243,7 @@ require("coil").setup({
     close = "q", -- Close the column view
   },
   preview = {
-    -- Text files larger than this get a info card instead
+    -- Text files larger than this get an info card instead
     max_bytes = 2 * 1024 * 1024,
     -- Read at most this many lines of a text file
     max_lines = 1000,

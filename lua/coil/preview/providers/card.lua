@@ -3,6 +3,7 @@
 -- (coil_card), so a card looks the same whatever markdown or other plugins are installed, and
 -- whether or not its window has focus. Image cards end with room for the image (see image.lua).
 local buffer = require("coil.preview.buffer")
+local dimensions = require("coil.preview.dimensions")
 local M = {}
 
 local kind_labels = {
@@ -93,6 +94,12 @@ end
 ---@return coil.CardRow[]
 local function rows_for(target, kind, info)
   local rows = { { label = "Kind", value = kind_labels[kind] or kind } }
+  if kind == "image" and target.path then
+    local width, height = dimensions.read(target.path)
+    if width then
+      table.insert(rows, { label = "Dimensions", value = string.format("%d × %d", width, height) })
+    end
+  end
   local stat = info.stat
   if stat then
     vim.list_extend(rows, {
