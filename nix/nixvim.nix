@@ -31,27 +31,8 @@ packages:
         description = "The coil.nvim package to use.";
       };
 
-      # The common options. Everything else in coil's setup() (keymaps, preview, standalone, ...)
-      # goes in `settings` as well; see coil's README.
-      settingsOptions = with lib.nixvim.defaultNullOpts; {
-        ratio = mkListOf lib.types.ints.positive [
-          1
-          4
-          3
-        ] "Relative widths of the parent, current and preview panes.";
-        debounce_ms = mkUnsignedInt 30 "Wait this long (ms) after the cursor stops before updating the preview.";
-        tab_title = mkBool true "Name the column view's tab after the current directory (`t:tabname`).";
-        winbar = mkBool false "Show each pane's path in a title line (winbar) above it.";
-        open_external = mkBool false ''
-          With `L` or `<CR>`, open files that aren't text (images, videos, audio, PDFs, archives,
-          other binary files) in the system's default program instead of Neovim.
-        '';
-        edit_here = mkBool true ''
-          With `L` or `<CR>`, open text files in this Neovim. When false, they open in the system's
-          text editor: XDG's default for text/plain, otherwise `$VISUAL` or `$EDITOR`.
-        '';
-      };
-
+      # `settings` is passed to require("coil").setup() as it is, without options of its own here:
+      # coil's README documents them, so there's no second copy to keep up to date
       settingsExample = {
         ratio = [
           1
