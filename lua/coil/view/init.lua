@@ -85,6 +85,20 @@ local function attach_autocmds(view)
   })
 end
 
+---Fill the side panes and wrap keys once the middle buffer is ready. Normally autocmds (the middle
+---pane's BufWinEnter, TabEnter) do this, but they don't fire when :Coil runs inside another,
+---non-nested autocmd, e.g. `autocmd VimEnter * Coil`.
+---@param view coil.View
+local function sync_when_ready(view)
+  local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+  bridge.on_ready(bufnr, function()
+    if state.get() == view and vim.api.nvim_win_get_buf(view.panes.current) == bufnr then
+      sync.all(view)
+      keys.wrap_buffer(bufnr)
+    end
+  end)
+end
+
 ---Open the column view on `dir`, or switch to it if it is already open
 ---@param dir? string A path or oil URL; nil means the current buffer's directory
 M.open = function(dir)
@@ -95,6 +109,7 @@ M.open = function(dir)
     if dir then
       bridge.open_dir((bridge.url_for_path(dir)))
     end
+    sync_when_ready(view)
     return
   end
 
@@ -126,6 +141,7 @@ M.open = function(dir)
 
   bridge.open_dir(url, focus_name)
   layout.reflow(panes, config.get().ratio)
+  sync_when_ready(view)
 end
 
 ---@return boolean

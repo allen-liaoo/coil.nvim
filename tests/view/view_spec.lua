@@ -155,6 +155,35 @@ describe("column view", function()
     end
   )
 
+  it("opens fully when called from inside another autocmd", function()
+    -- Like `autocmd VimEnter * Coil`: other autocmds don't fire inside a non-nested autocmd
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "CoilTestOpen",
+      once = true,
+      callback = function()
+        coil.open(dir)
+      end,
+    })
+    vim.api.nvim_exec_autocmds("User", { pattern = "CoilTestOpen" })
+    local view = assert(state.get())
+    local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+
+    assert.is_true(h.wait(function()
+      return vim.b[bufnr].oil_ready == true
+    end))
+    -- Parent pane listed with the current directory highlighted, preview filled, keys wrapped
+    assert.is_true(h.wait(function()
+      return #h.selected_lines(view.panes.parent) == 1
+    end))
+    assert.is_true(h.wait(function()
+      return h.win_lines(view.panes.preview)[1] ~= ""
+    end))
+    local map = vim.api.nvim_buf_call(bufnr, function()
+      return vim.fn.maparg("L", "n", false, true)
+    end)
+    assert.truthy((map.desc or ""):match("^coil: "))
+  end)
+
   it("forgets the view when its tab is closed directly", function()
     local view = open_view(dir)
     vim.cmd.tabclose()

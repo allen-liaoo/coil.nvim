@@ -36,6 +36,8 @@ let
       -- One directory argument: open it on that directory. Files open as usual.
       vim.api.nvim_create_autocmd("VimEnter", {
         once = true,
+        -- Let the autocmds coil and oil rely on (BufReadCmd, BufWinEnter, ...) fire from here
+        nested = true,
         callback = function()
           local args = vim.fn.argv()
           -- By now oil has turned a directory argument into an oil URL ("oil:///path/")

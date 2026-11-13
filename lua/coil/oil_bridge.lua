@@ -9,7 +9,9 @@ local FIELD_META = 4
 ---@param bufnr integer
 ---@return boolean
 M.is_oil_buffer = function(bufnr)
-  return vim.api.nvim_buf_is_valid(bufnr) and require("oil.util").is_oil_bufnr(bufnr) == true
+  -- is_oil_bufnr returns true for loaded oil buffers, but the adapter name (e.g. "files") for
+  -- ones oil hasn't loaded yet
+  return vim.api.nvim_buf_is_valid(bufnr) and not not require("oil.util").is_oil_bufnr(bufnr)
 end
 
 ---An oil directory listing (not a remote file, which also has an oil URL)
@@ -192,6 +194,17 @@ M.open_dir = function(url, focus_name)
     require("oil.view").set_last_cursor(url, focus_name)
   end
   require("oil").open(url)
+  -- oil loads directories from its BufReadCmd autocmd, which doesn't fire when this runs inside
+  -- another, non-nested autocmd (e.g. `autocmd VimEnter * Coil`). Load the buffer ourselves then,
+  -- as oil does for its own preview window.
+  local bufnr = vim.api.nvim_get_current_buf()
+  if
+    M.is_oil_buffer(bufnr)
+    and not vim.b[bufnr].oil_ready
+    and not require("oil.loading").is_loading(bufnr)
+  then
+    require("oil").load_oil_buffer(bufnr)
+  end
 end
 
 ---Open the parent directory in the current window. oil puts the cursor on the directory we left.
