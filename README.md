@@ -1,57 +1,31 @@
 # coil.nvim
 
-A yazi-style column view and file preview for [oil.nvim](https://github.com/stevearc/oil.nvim).
-
-```
-┌──────────┬────────────────────────┬───────────────────┐
-│ parent   │ current                │ preview           │
-│  home/   │   Documents/           │ # notes.md        │
-│ >me/     │ > notes.md             │                   │
-│  srv/    │   todo.txt             │ Some text from    │
-│          │                        │ the file...       │
-└──────────┴────────────────────────┴───────────────────┘
-```
-
-`:Coil` opens a tab with three panes. The **middle pane is a normal oil buffer**, so everything
-oil does still works there: rename a file by editing its name, delete a line, paste a line from
-another directory, then `:w`. The **parent pane** shows the directory above, with the one you're
-in highlighted. The **preview pane** follows your cursor: text files, directory listings, and an
-info card for everything else.
-
-Outside the column view, oil behaves exactly as before.
-
-You can use coil in two ways:
-
-- **As a plugin** in your own Neovim: add it next to oil.nvim and run `:Coil` (see
-  [Installation](#installation)).
-- **As a standalone terminal file manager**, like yazi or ranger: the `coil` command opens the
-  column view straight away, and files you open are edited in the same program (see
-  [Standalone file manager](#standalone-file-manager)). It comes ready-made with Nix, or runs
-  [your own Neovim](#your-own-neovim-as-a-file-manager) with your config.
+A column view with file previews for [oil.nvim](https://github.com/stevearc/oil.nvim), in your
+Neovim or as a terminal file manager.
 
 ## Try it
 
 With [Nix](https://nixos.org/download) (flakes enabled):
 
 ```sh
-nix run github:allen-liaoo/coil.nvim               # column view on the current directory
-nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # ...or on a given directory
+nix run github:allen-liaoo/coil.nvim               # the current directory
+nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 ```
 
-This runs the standalone `coil` file manager without installing anything. Without flakes
-enabled, add `--extra-experimental-features 'nix-command flakes'` after `nix`.
+Without flakes enabled, add `--extra-experimental-features 'nix-command flakes'` after `nix`.
 
 ## Requirements
 
 - Neovim 0.10 or newer (developed and tested on 0.12)
-- Optional: [image.nvim](https://github.com/3rd/image.nvim), set up with its `setup()`, to draw
-  images in the preview, plus [ffmpeg](https://ffmpeg.org) for video frames and
-  [poppler](https://poppler.freedesktop.org)'s `pdftoppm` for PDF pages (see [Images](#images))
 - [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals and is
   tested against [v2.16.0](https://github.com/stevearc/oil.nvim/releases/tag/v2.16.0) (the version
-  in nixpkgs) and later commits; much newer or older versions of oil may need changes.
+  in nixpkgs) and later commits.
+- Optional, for images in the preview: [image.nvim](https://github.com/3rd/image.nvim), set up
+  with its own `setup()` (coil doesn't set it up for you), and a terminal it can draw in. Videos
+  also need [ffmpeg](https://ffmpeg.org), and PDFs [poppler](https://poppler.freedesktop.org)'s
+  `pdftoppm`.
 
-## Installation (as Neovim Plugin)
+## Installation
 
 Set up oil.nvim as usual, then coil. `require("coil").setup()` is optional; call it to change
 the defaults.
@@ -63,7 +37,7 @@ the defaults.
   "allen-liaoo/coil.nvim",
   dependencies = {
     "stevearc/oil.nvim",
-    -- Optional, to draw images in the preview. `opts = {}` runs its setup(), which coil needs
+    -- Optional, for images. `opts = {}` runs its setup()
     { "3rd/image.nvim", opts = {} },
   },
   opts = {}, -- see Options
@@ -83,21 +57,11 @@ require("coil").setup()
 
 ### Nix
 
-The flake exposes the plugin as `packages.<system>.coil-nvim` (the default package is the
-standalone `coil` command). The plugin doesn't bring oil.nvim along: add oil.nvim the way you
-normally would (nixpkgs' `vimPlugins.oil-nvim`, or your Neovim setup's oil module).
-
-Without flakes, both are plain `callPackage` files: `nix/coil-nvim.nix` (the plugin) and
-`nix/coil.nix` (the standalone command, with nixpkgs' oil.nvim).
+The flake has the plugin as `packages.<system>.coil-nvim` (`nix/coil-nvim.nix` without flakes).
+It doesn't bring oil.nvim along: add oil.nvim the way you normally would.
 
 ```nix
-# flake.nix
-inputs.coil-nvim.url = "github:allen-liaoo/coil.nvim";
-```
-
-Home Manager:
-
-```nix
+# Home Manager
 programs.neovim.plugins = [
   {
     plugin = pkgs.vimPlugins.oil-nvim;
@@ -112,9 +76,8 @@ programs.neovim.plugins = [
 ];
 ```
 
-nixvim, with its own oil module:
-
 ```nix
+# nixvim, with its own oil module
 { pkgs, inputs, ... }:
 {
   plugins.oil.enable = true;
@@ -123,114 +86,24 @@ nixvim, with its own oil module:
 }
 ```
 
-## Quick start
+## Usage
 
 | Command | Does |
 |---|---|
-| `:Coil [dir...]` | Open the column view on `dir`, or on the current buffer's directory (with the cursor on the file you were editing). In a column view's tab, that view moves to `dir`; elsewhere, coil switches to the view you used last. With several directories, each further one opens in a column view of its own tab, like yazi's tabs; focus stays on the first. |
-| `:CoilClose` | Close the current tab's column view (elsewhere, the one used last) and return to the window you came from. |
-| `:CoilPreview` | In any ordinary oil window: toggle a preview split that follows the cursor. |
-| `:CoilClearCache` | Delete the cached image thumbnails (see [Images](#images)). |
+| `:Coil [dir...]` | Open the column view on each directory, one tab each (default: the current buffer's directory) |
+| `:CoilClose` | Close the column view |
+| `:CoilPreview` | In a plain oil window, toggle a preview split that follows the cursor |
+| `:CoilClearCache` | Delete the cached image thumbnails |
 
-Keys in the column view's **middle pane**:
-
-coil's own keys (set with the `keymaps` option):
+The middle pane is an oil buffer, and oil's keys work there as usual. coil adds its own, set
+with the `keymaps` option:
 
 | Key | Does |
 |---|---|
-| `L` | Enter a directory. On a file, open it in your editing tab. |
-| `H` | Go to the parent directory. |
-| `q` | Close the column view (also works in the preview pane). |
-| (none) | `quit`: quit Neovim, asking about unsaved changes (also in the preview pane). The standalone `coil` maps it to `q`. |
-
-oil's keys, which coil changes in the middle pane. They are whatever you map these oil actions to
-in oil's `keymaps`; oil's defaults are shown:
-
-| oil action | Default | In the middle pane |
-|---|---|---|
-| `actions.select` | `<CR>` | Like `L`. Also works on a visual selection. |
-| `actions.select` with `vertical` / `horizontal` / `tab` | `<C-s>` / `<C-h>` / `<C-t>` | Open in a vertical split / horizontal split / new tab in your editing tab. Also works on a visual selection. |
-| `actions.preview` | `<C-p>` | Jump into the preview pane. Press it there to come back. |
-| `actions.toggle_hidden` | `g.` | Toggle hidden files in every pane, keeping the cursor on the same entry. |
-| `actions.close` | `<C-c>` | Close the column view (also in the preview pane). |
-
-All of oil's other keys work as usual in the middle pane, for example `-` for the parent
-directory and `<C-l>` to refresh. In any other window, coil's keys keep their normal meaning:
-oil's mapping in oil buffers, otherwise Vim's own key.
-
-How the column view behaves:
-
-- **Files open in your editing tab:** the window you ran `:Coil` from, then wherever the last
-  file opened. The column view stays open in its tab, so you can switch back with `:Coil` or
-  your usual tab keys.
-- **Editing works like oil.** `:w` in any oil buffer saves the changes in all of them, and the
-  side panes refresh afterwards.
-- **The parent pane is display-only.** Moving into it puts you back in the middle pane.
-- **Click an entry to jump to it.** Clicking an entry in the parent pane, or in a directory
-  preview, moves the middle pane to that entry's directory with the cursor on it.
-- **The preview pane is read-only,** but you can move into it to scroll or copy text.
-- **Closing any pane,** or the tab, closes the whole view.
-- **The tab is named after the current directory** (see `tab_title`), which tab lines like
-  lualine's `tabs` component display.
-- **Several column views can be open,** one per tab (`:Coil dir1 dir2`). Switch between them
-  with your usual tab keys (`gt`, `gT`). Each has its own directory, and files from any of them
-  open in your editing tab, never in another view's tab.
-
-### Previews
-
-| Entry | Preview |
-|---|---|
-| Directory | Its entries, sorted and filtered like oil (hidden entries greyed out when shown) |
-| Text file | The first lines, syntax-highlighted |
-| Image | An info card (with the image's dimensions) and the image drawn below it by [image.nvim](https://github.com/3rd/image.nvim) (see [Images](#images)). Without image.nvim, the card alone. |
-| Video | An info card and a frame from 10% into the video, drawn below it (needs image.nvim and ffmpeg) |
-| PDF | An info card and the first page, drawn below it (needs image.nvim and poppler's `pdftoppm`) |
-| Anything else (binary, audio, archive, very large files) | An info card: kind, size, modified time, permissions, location |
-
-Info cards are laid out and highlighted by coil (filetype `coil_card`), so markdown plugins leave
-them alone, and they look the same whether or not the preview has focus.
-
-Files on remote oil adapters (SSH, S3) show a card for now; remote directories are listed
-normally.
-
-### Images
-
-With [image.nvim](https://github.com/3rd/image.nvim) installed and set up, coil draws images in the
-preview, filling the space below the info card. It does the same for videos (a frame 10% of the
-way in, made with `ffmpeg`) and PDFs (the first page, made with `pdftoppm`) when those tools are
-installed; otherwise their cards say what to install. coil calls image.nvim directly, so image.nvim's
-markdown integration isn't needed.
-
-**coil doesn't set image.nvim up for you.** Call its `setup()` yourself, before or after coil's;
-until it has run, coil shows image cards without the image:
-
-```lua
-require("image").setup() -- with lazy.nvim, `opts = {}` in image.nvim's spec does this
-```
-
-image.nvim needs ImageMagick (`magick` or `convert` on `PATH`) and a terminal it can draw in: for
-its default backend, one that speaks the kitty graphics protocol (kitty, Ghostty, WezTerm). See
-its README for other backends and options.
-
-- **Images are drawn from thumbnails.** coil shrinks each image to fit `preview.thumbnail_size`
-  (600×900 by default) with ImageMagick, in the background, and keeps the thumbnail in
-  `stdpath("cache")/coil/thumbnails`, so Neovim keeps responding and an image you've seen comes
-  back at once. The card says "Loading image..." until the thumbnail is ready. coil also makes a
-  copy at the exact size image.nvim will draw it at, so image.nvim doesn't have to resize it.
-  (Left to itself, image.nvim converts and resizes the full-size image while Neovim waits, which
-  takes seconds for a large photo.)
-- Work on an image starts once the cursor has rested on it for `preview.image_delay_ms`, so
-  scrolling past images doesn't start a thumbnail for each.
-- In the column view, thumbnails are also made for the images up to `preview.prefetch` entries
-  above and below the cursor (2 by default), so they're ready when you get there.
-- The cache is kept under `preview.thumbnail_cache_mb` (200 MiB by default) by deleting the
-  thumbnails used longest ago. `:CoilClearCache` empties it.
-- The image is redrawn when the pane is resized or scrolled and when you come back to the tab,
-  and removed when the preview changes.
-- Without ImageMagick's command-line tools (if image.nvim uses its `magick_rock` processor),
-  image.nvim gets the original file.
-- Videos and PDFs go through the same thumbnails, cache and prefetching as images.
-- Set `preview.images = false` to show cards without pictures.
+| `L` | Enter a directory, or open a file in your editing tab |
+| `H` | Go to the parent directory |
+| `q` | Close the column view |
+| (none) | Quit Neovim, asking about unsaved changes (`keymaps.quit`) |
 
 ## Options
 
@@ -247,8 +120,8 @@ require("coil").setup({
   tab_title = true,
   -- Show each pane's path in a title line (winbar) above it
   winbar = false,
-  -- coil's own keys in the middle pane; set one to false to disable it. oil's keys (select,
-  -- preview, toggle hidden, close) are set in oil's `keymaps`; see Quick start
+  -- coil's own keys in the middle pane; set one to false to disable it. oil's keys are set in
+  -- oil's `keymaps`.
   keymaps = {
     go_in = "L", -- Enter a directory; files open in the editing tab
     go_out = "H", -- Go to the parent directory
@@ -275,143 +148,102 @@ require("coil").setup({
     -- Size limit of the thumbnail cache, in MiB; the least recently used go first (false: none)
     thumbnail_cache_mb = 200,
   },
-  -- Options for when Neovim is started as a file manager
-  -- (`nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself. These defaults
-  -- give way to the options you set; your own `standalone` options win over everything.
+  -- Options for when Neovim is started as a file manager (see below). Takes any option except
+  -- itself. These defaults give way to the options you set; your own `standalone` options win
+  -- over everything.
   standalone = {
     keymaps = { close = false, quit = "q" },
   },
 })
 ```
 
-Options with the wrong type raise an error naming the option. Unknown options only produce a
-warning.
-
-Hidden files, sorting and other listing behaviour follow your oil.nvim settings
-(`view_options`).
+Options with the wrong type raise an error naming the option; unknown options only warn. Hidden
+files and sorting follow oil's `view_options`.
 
 ### Highlights
 
 | Group | Default link | Used for |
 |---|---|---|
 | `CoilParentSelected` | `Visual` | The current directory in the parent pane |
-| `CoilDir` | `OilDir` (or `Directory`) | Directories in the side panes |
-| `CoilLink` | `OilLink` (or `Constant`) | Symlinks in the side panes |
-| `CoilDirHidden`, `CoilFileHidden`, `CoilLinkHidden` | `OilDirHidden`, `OilFileHidden`, `OilLinkHidden` (or `Comment`) | Hidden entries in the side panes |
-| `CoilCardTitle` | `Title` | An info card's file name |
-| `CoilCardRule` | `WinSeparator` | The line under it |
-| `CoilCardLabel`, `CoilCardValue` | `Identifier`, `Normal` | Its rows (`Size`, `3.3M`, ...) |
-| `CoilCardNote` | `Comment` | Its notes, and "Loading image..." |
+| `CoilDir`, `CoilLink` | `OilDir`, `OilLink` | Directories and symlinks in the side panes |
+| `CoilDirHidden`, `CoilFileHidden`, `CoilLinkHidden` | `OilDirHidden`, `OilFileHidden`, `OilLinkHidden` | Hidden entries in the side panes |
+| `CoilCardTitle`, `CoilCardRule` | `Title`, `WinSeparator` | An info card's file name, and the line under it |
+| `CoilCardLabel`, `CoilCardValue` | `Identifier`, `Normal` | Its rows |
+| `CoilCardNote` | `Comment` | Its notes |
 
 ### Lua API
 
 ```lua
-require("coil").open(dir)  -- like :Coil; dir is a path or an oil URL, nil for the current buffer's
-require("coil").open({ dir1, dir2 }) -- like :Coil dir1 dir2: one tab per directory
-require("coil").close()    -- like :CoilClose
-require("coil").standalone() -- whether Neovim was started as a file manager (g:coil_standalone)
+require("coil").open(dir)            -- like :Coil; a path or oil URL, nil for the current buffer's
+require("coil").open({ dir1, dir2 }) -- like :Coil dir1 dir2
+require("coil").close()              -- like :CoilClose
+require("coil").standalone()         -- whether Neovim was started as a file manager
 ```
 
-## Standalone file manager
+## As a file manager
 
-The flake's default package is a `coil` command: a Neovim with coil, oil.nvim, image.nvim,
-mini.icons (icons in oil's listing), and ImageMagick, ffmpeg and poppler for image, video and PDF
-previews. Text previews are highlighted by Neovim's built-in syntax files. It opens the column
-view as soon as it starts.
+`coil [dir...]` starts Neovim as a file manager: only the column views, one tab per directory,
+and `q` quits. With `--cwd-file`, your shell can `cd` to the last directory on exit (see
+[Shell integration](docs/shell-integration.md)).
 
-```sh
-nix profile install github:allen-liaoo/coil.nvim   # or add it to home.packages / environment.systemPackages
+### With your own Neovim
 
-coil                         # browse the current directory
-coil ~/Downloads             # browse a directory
-coil ~/Downloads ~/Pictures  # one tab per directory
-coil notes.md                # anything that isn't all directories opens as in Neovim
-coil --cwd-file /tmp/f       # on exit, write the last directory to /tmp/f
-```
-
-```nix
-# Home Manager
-home.packages = [ inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system}.default ];
-```
-
-Things to know:
-
-- **It installs only `bin/coil`,** so it sits next to your own Neovim without clashing.
-- **It doesn't read your Neovim config.** It runs as its own Neovim app (`NVIM_APPNAME=coil`),
-  so its history and state are kept apart from yours too. It has a config file of its own; see
-  [Configuring the standalone command](#configuring-the-standalone-command).
-- **The middle pane shows each entry's permissions, size and modification time** (oil's
-  `permissions`, `size` and `mtime` columns). Set `columns = { "icon" }` in oil's setup in the
-  [config file](#configuring-the-standalone-command) for names only.
-- **Deleting files moves them to the trash.** Delete a line and save, and the file goes to the
-  trash rather than being removed; oil's trash view (`g\`) shows it and can restore it. Set
-  `delete_to_trash = false` in oil's setup in the [config file](#configuring-the-standalone-command)
-  to delete for good.
-- **It uses Neovim's bundled `habamax` colour scheme,** which colours more of a highlighted
-  preview than Neovim's default. Run `vim.cmd.colorscheme("...")` in the
-  [config file](#configuring-the-standalone-command) for another.
-- **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). In other
-  terminals, image previews show the info card alone.
-- **It starts with only the column views,** one tab per directory. Opening a file edits it in a
-  new tab, and the next files open next to it; the column views stay open in their tabs.
-- **Change your shell's directory on exit** with `--cwd-file` and a small shell function; see
-  [Shell integration](docs/shell-integration.md).
-- **`q` quits,** asking first if anything has unsaved changes. oil's close key (`<C-c>`) or
-  `:CoilClose` closes just the current column view.
-
-### Configuring the standalone command
-
-`coil`'s config is `~/.config/coil/init.lua` (`$XDG_CONFIG_HOME/coil/init.lua`), an ordinary
-Neovim config. After it runs, `coil` sets up whichever bundled plugin it didn't: oil.nvim (with
-the trash and details columns above), image.nvim, mini.icons, and the `habamax` colour scheme.
-Set one up yourself and your options are used as they are:
-
-```lua
--- ~/.config/coil/init.lua
-vim.o.number = true
-require("oil").setup({ view_options = { show_hidden = true } })
-require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
-vim.cmd.colorscheme("retrobox")
-```
-
-### Your own Neovim as a file manager
-
-Your own Neovim, with your config, plugins and colour scheme, can work as a file manager too.
-Start it in coil's standalone mode:
-
-```sh
-nvim --cmd "let g:coil_standalone = 1"           # the current directory
-nvim --cmd "let g:coil_standalone = 1" ~/a ~/b   # one tab per directory
-```
-
-In standalone mode, coil opens the column view for the directory arguments (only the views: the
-tab Neovim starts with is closed), `q` quits, and coil's `standalone` options apply (see
-[Options](#options)). Plain `nvim` and `:Coil` work as always.
-
-The plugin comes with a launcher, `bin/coil`, which does this and also takes `--cwd-file` (see
-[Shell integration](docs/shell-integration.md)). Put it on your PATH, for example from where
-lazy.nvim installs coil:
+The plugin comes with the `coil` command as `bin/coil`. Put it on your PATH, for example from
+where lazy.nvim installs coil:
 
 ```sh
 ln -s ~/.local/share/nvim/lazy/coil.nvim/bin/coil ~/.local/bin/coil
 ```
 
-It runs the `nvim` on your PATH (set `$COIL_NVIM_PROGRAM` for another). If you also install the
-Nix `coil`, give one of them another name.
+It starts the `nvim` on your PATH (`$COIL_NVIM_PROGRAM` for another) with your config,
+plugins and colour scheme, plus `--cmd "let g:coil_standalone = 1"`. That variable turns on
+coil's `standalone` options. Your config can check it with `require("coil").standalone()`,
+even while it loads:
 
-In your config:
+```lua
+require("oil").setup({ delete_to_trash = require("coil").standalone() })
+```
 
-- **`require("coil").standalone()` says which mode Neovim is in,** already while your config
-  loads, so you can set things up differently:
+- **Don't lazy-load coil then:** it opens the column view during startup. With lazy.nvim,
+  `lazy = not vim.g.coil_standalone`.
+- **Start screens and session restore run at startup too.** Turn them off the same way, for
+  example `enabled = not vim.g.coil_standalone`.
+- **For a separate config,** history and state, run it as another Neovim app:
+  `NVIM_APPNAME=coil coil` reads `~/.config/coil/init.lua`.
 
-  ```lua
-  require("oil").setup({ delete_to_trash = require("coil").standalone() })
-  ```
+### Without Neovim
 
-- **Don't lazy-load coil in standalone mode;** it has to load during startup to open the column
-  view. With lazy.nvim: `lazy = not vim.g.coil_standalone`.
-- **Start screens and session restore run at startup too.** Turn them off in standalone mode the
-  same way, for example `enabled = not vim.g.coil_standalone` in their lazy.nvim spec.
+The flake's default package is a ready-made `coil`: Neovim with coil, oil.nvim, image.nvim and
+mini.icons, plus ImageMagick, ffmpeg and poppler for previews. It installs only `bin/coil`, so it
+doesn't clash with a Neovim of your own.
+
+```sh
+nix profile install github:allen-liaoo/coil.nvim
+```
+
+```nix
+# Home Manager (nix/coil.nix without flakes)
+home.packages = [ inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+```
+
+It runs as its own Neovim app (`NVIM_APPNAME=coil`), so its config is `~/.config/coil/init.lua`,
+an ordinary Neovim config. After that runs, `coil` sets up any bundled plugin it didn't:
+
+- **oil.nvim** with `delete_to_trash = true` (oil's trash view, `g\`, restores files) and the
+  permissions, size and modification time columns
+- **image.nvim** and **mini.icons** with their defaults
+- **the `habamax` colour scheme**, if none is set
+
+Set one up yourself and your options are used as they are:
+
+```lua
+-- ~/.config/coil/init.lua
+require("oil").setup({ view_options = { show_hidden = true } })
+require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
+vim.cmd.colorscheme("retrobox")
+```
+
+Images need a terminal that speaks the kitty graphics protocol (kitty, Ghostty, WezTerm).
 
 ## Development
 
