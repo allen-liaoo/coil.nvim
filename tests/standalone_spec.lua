@@ -65,6 +65,11 @@ describe("standalone startup", function()
       assert.is_false(standalone.options(load({ "return { image = false }" })).image)
     end)
 
+    it("can turn mini.icons off", function()
+      assert.same({}, standalone.options({}).icons)
+      assert.is_false(standalone.options({ icons = false }).icons)
+    end)
+
     it("reports errors and falls back to the defaults", function()
       assert.same({}, load({ "error('oops')" }))
       assert.equals(1, #notifications)

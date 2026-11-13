@@ -14,6 +14,8 @@ M.defaults = {
   },
   coil = {},
   image = {},
+  -- mini.icons, for oil's icon column
+  icons = {},
 }
 
 ---The config file: init.lua in the build's config directory (~/.config/coil with the build's
@@ -31,8 +33,9 @@ local function warn(msg)
 end
 
 ---Run the config file, if there is one. It is plain Lua (options, keymaps, ...) and may return
----a table of setup options: `{ oil = {...}, coil = {...}, image = {...} }`, where `image = false`
----leaves image.nvim off. Errors are reported, and the defaults are used instead.
+---a table of setup options: `{ oil = {...}, coil = {...}, image = {...}, icons = {...} }`, where
+---`image = false` leaves image.nvim off and `icons = false` mini.icons. Errors are reported, and
+---the defaults are used instead.
 ---@param path string
 ---@return table options
 M.load_config = function(path)
@@ -53,8 +56,8 @@ M.load_config = function(path)
   return result
 end
 
----Each plugin's setup() options: the defaults with the config file's on top. false (for image)
----means not set up at all.
+---Each plugin's setup() options: the defaults with the config file's on top. false (image,
+---icons) means not set up at all.
 ---@param user table What the config file returned
 ---@return table<string, table|false>
 M.options = function(user)
@@ -118,6 +121,9 @@ end
 ---Everything the standalone build's init does
 M.start = function()
   local options = M.options(M.load_config(M.config_path()))
+  if options.icons then
+    require("mini.icons").setup(options.icons)
+  end
   require("oil").setup(options.oil)
   require("coil").setup(options.coil)
   if options.image then

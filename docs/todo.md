@@ -35,7 +35,7 @@ should be options set by the standalone build, not changes forced on people usin
 
 - [x] **Config file.** The build loads its own generated init and ignores user config. Load an
 optional `~/.config/coil/init.lua` for customising it.
-- [ ] **A fuller standalone build:** an icon provider (mini.icons or nvim-web-devicons), more
+- [x] **A fuller standalone build:** an icon provider (mini.icons or nvim-web-devicons), more
 Tree-sitter grammars, and ffmpeg and poppler for video and PDF previews (left out for now: with
 their dependencies they add about 300 MB and 150 MB). image.nvim and ImageMagick are included.
 - [ ] **Entry details.** Turn on oil's `permissions`, `size` and `mtime` columns in the standalone
