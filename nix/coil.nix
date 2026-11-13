@@ -1,5 +1,5 @@
-# `coil`: a standalone file manager in the terminal. It is a bare Neovim with coil.nvim and
-# oil.nvim that opens the column view on startup, installed as `bin/coil` only, so it never
+# `coil`: a standalone file manager in the terminal. It is a bare Neovim with coil.nvim, oil.nvim
+# and image.nvim that opens the column view on startup, installed as `bin/coil` only, so it never
 # clashes with your own Neovim. For adding coil to your own Neovim, use ./coil-nvim.nix instead.
 #
 #   pkgs.callPackage ./nix/coil.nix { }
@@ -13,6 +13,7 @@
   vimPlugins,
   neovim-unwrapped,
   wrapNeovimUnstable,
+  imagemagick,
   oil-nvim ? vimPlugins.oil-nvim,
   coil-nvim ? callPackage ./coil-nvim.nix { inherit oil-nvim; },
 }:
@@ -21,16 +22,24 @@ let
     plugins = [
       coil-nvim
       oil-nvim
+      vimPlugins.image-nvim
     ];
-    # Keep away from the user's own Neovim config, state and shada
     wrapperArgs = [
+      # Keep away from the user's own Neovim config, state and shada
       "--set-default"
       "NVIM_APPNAME"
       "coil-nvim"
+      # image.nvim converts and resizes images with ImageMagick. Appended, so an ImageMagick
+      # already on PATH is used first
+      "--suffix"
+      "PATH"
+      ":"
+      "${lib.makeBinPath [ imagemagick ]}"
     ];
     luaRcContent = ''
       require("oil").setup()
       require("coil").setup()
+      require("image").setup()
 
       -- No arguments: open the column view on the current directory.
       -- One directory argument: open it on that directory. Files open as usual.

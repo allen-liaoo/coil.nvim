@@ -43,6 +43,8 @@ enabled, add `--extra-experimental-features 'nix-command flakes'` after `nix`.
 ## Requirements
 
 - Neovim 0.10 or newer (developed and tested on 0.12)
+- Optional: [image.nvim](https://github.com/3rd/image.nvim), set up with its `setup()`, to draw
+  images in the preview (see [Images](#images))
 - [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals and is
   tested against commit [`d3733d9`](https://github.com/stevearc/oil.nvim/tree/d3733d933833a0e59b813ecec99341527adf0c28);
   much newer or older versions of oil may need changes.
@@ -57,7 +59,11 @@ the defaults.
 ```lua
 {
   "allen-liaoo/coil.nvim",
-  dependencies = { "stevearc/oil.nvim" },
+  dependencies = {
+    "stevearc/oil.nvim",
+    -- Optional, to draw images in the preview. `opts = {}` runs its setup(), which coil needs
+    { "3rd/image.nvim", opts = {} },
+  },
   opts = {}, -- see Options
 }
 ```
@@ -163,11 +169,34 @@ How the column view behaves:
 |---|---|
 | Directory | Its entries, sorted and filtered like oil (hidden entries greyed out when shown) |
 | Text file | The first lines, syntax-highlighted |
-| Image | A markdown card with the image embedded as `![name](/path)`. An image plugin such as [snacks.nvim](https://github.com/folke/snacks.nvim) or [image.nvim](https://github.com/3rd/image.nvim), if set up for markdown, draws it. |
+| Image | A metadata card with the image drawn below it by [image.nvim](https://github.com/3rd/image.nvim) (see [Images](#images)). Without image.nvim, the card embeds the image as `![name](/path)` for another markdown image plugin, such as [snacks.nvim](https://github.com/folke/snacks.nvim), to draw. |
 | Anything else (binary, video, PDF, archive, very large files) | A markdown card: kind, size, modified time, permissions, location |
 
 Files on remote oil adapters (SSH, S3) show a card for now; remote directories are listed
 normally.
+
+### Images
+
+With [image.nvim](https://github.com/3rd/image.nvim) installed and set up, coil draws images in the
+preview, filling the space below the metadata card. coil calls image.nvim directly, so image.nvim's
+markdown integration isn't needed.
+
+**coil doesn't set image.nvim up for you.** Call its `setup()` yourself, before or after coil's;
+until it has run, coil shows image cards without the image:
+
+```lua
+require("image").setup() -- with lazy.nvim, `opts = {}` in image.nvim's spec does this
+```
+
+image.nvim needs ImageMagick (`magick` or `convert` on `PATH`) and a terminal it can draw in: for
+its default backend, one that speaks the kitty graphics protocol (kitty, Ghostty, WezTerm), and
+inside tmux, `set -g allow-passthrough on`. See its README for other backends and options.
+
+- The image is drawn once the cursor has rested on the file for `preview.image_delay_ms`, because
+  image.nvim converts and resizes images while Neovim waits.
+- It's redrawn when the pane is resized or scrolled and when you come back to the tab, and removed
+  when the preview changes.
+- Set `preview.images = false` to get the `![](path)` card instead.
 
 ## Options
 
@@ -207,6 +236,10 @@ require("coil").setup({
     card_filetype = "markdown",
     -- Wait this long (ms) before showing "Loading..." for a slow directory
     loading_delay_ms = 100,
+    -- Draw images with image.nvim when it is installed and set up
+    images = true,
+    -- Wait this long (ms) after the cursor stops on an image before drawing it
+    image_delay_ms = 100,
   },
 })
 ```
@@ -235,8 +268,8 @@ require("coil").close()    -- like :CoilClose
 
 ## Standalone file manager
 
-The flake's default package is a `coil` command: a bare Neovim with only coil and oil.nvim,
-which opens the column view as soon as it starts.
+The flake's default package is a `coil` command: a bare Neovim with coil, oil.nvim and
+image.nvim (plus ImageMagick), which opens the column view as soon as it starts.
 
 ```sh
 nix profile install github:allen-liaoo/coil.nvim   # or add it to home.packages / environment.systemPackages
@@ -256,6 +289,9 @@ Things to know:
 - **It installs only `bin/coil`,** so it sits next to your own Neovim without clashing.
 - **It doesn't read your Neovim config.** It runs as its own Neovim app
   (`NVIM_APPNAME=coil-nvim`), so its history and state are kept apart from yours too.
+- **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). Inside tmux
+  this needs `set -g allow-passthrough on`. In other terminals, image previews show the metadata
+  card alone.
 - **Opening a file edits it in coil's first tab.** The column view stays open in its own tab.
   `q` or `:CoilClose` closes the column view and leaves you in the editor; `:qa` quits.
 

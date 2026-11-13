@@ -17,9 +17,8 @@ should be options set by the standalone build, not changes forced on people usin
 - [ ] **Delete to trash by default.** oil defaults to `delete_to_trash = false`, so deleting a line
   and saving removes files permanently. The standalone build should send them to the trash; oil's
   trash view (`g\`) can restore them.
-- [ ] **A fuller standalone build**, deferred until image previews are supported: an icon provider
-  (mini.icons or nvim-web-devicons), an image renderer (snacks.nvim's image module) and more
-  Tree-sitter grammars.
+- [ ] **A fuller standalone build:** an icon provider (mini.icons or nvim-web-devicons) and more
+  Tree-sitter grammars. (image.nvim is already included.)
 - [ ] **Notice outside changes.** Turn on oil's `watch_for_changes` in the standalone build, and make
   sure the side panes refresh too; today they refresh on navigation, saving and returning to the tab.
 - [ ] **Picker mode.** A `--chooser-file <path>` argument that writes the picked path(s), including
@@ -39,6 +38,8 @@ should be options set by the standalone build, not changes forced on people usin
 - [x] **Click to jump.** Clicking an entry in the parent pane or in a directory preview moves the
   middle pane to that entry's directory, with the cursor on the entry.
 - [ ] **Several directories in tabs**, like yazi's tabs.
+- [x] **Image previews.** With image.nvim installed and set up, the preview draws images below the
+  metadata card. The standalone build includes image.nvim and ImageMagick.
 - [ ] **Video and PDF thumbnails.** Generate a thumbnail (ffmpeg or ffmpegthumbnailer for video,
   pdftoppm for PDF) into a cache directory and embed it in the metadata card. Add the tools to the
   dev shell, and fall back to the plain card when a tool is missing.
