@@ -371,3 +371,38 @@ describe("oil's keymaps in the column view", function()
     end))
   end)
 end)
+
+describe("the quit key", function()
+  before_each(function()
+    pcall(coil.close)
+    h.reset_tab()
+    h.setup_oil()
+    coil.setup({ keymaps = { quit = "Q" } })
+  end)
+
+  after_each(function()
+    pcall(coil.close)
+    coil.setup()
+  end)
+
+  it("quits Neovim, asking about unsaved changes, from the middle or the preview pane", function()
+    local view = h.open_view(h.tmpdir())
+    local cmd = vim.cmd
+    local ran = {}
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    vim.cmd = function(c)
+      if c == "confirm qall" then
+        table.insert(ran, c)
+      else
+        cmd(c)
+      end
+    end
+    h.press("Q")
+    vim.wait(50)
+    vim.api.nvim_set_current_win(view.panes.preview)
+    h.press("Q")
+    vim.wait(50)
+    vim.cmd = cmd
+    assert.same({ "confirm qall", "confirm qall" }, ran)
+  end)
+end)

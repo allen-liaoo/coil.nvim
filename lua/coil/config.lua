@@ -24,6 +24,7 @@ local defaults = {
     go_in = "L", -- Enter a directory; files open in the editing tab
     go_out = "H", -- Go to the parent directory
     close = "q", -- Close the column view (also in the preview pane)
+    quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
   },
 }
 

@@ -38,6 +38,9 @@ M.actions = {
     bridge.open_parent()
   end,
   close = close,
+  quit = function()
+    vim.cmd("confirm qall")
+  end,
 }
 
 ---What an oil action does instead in the middle pane, if coil changes it
@@ -203,14 +206,22 @@ local function map_preview_buffer(view, bufnr)
     end, { buffer = bufnr, nowait = true, desc = DESC_PREFIX .. "back to the middle pane" })
   end
   local close_keys = oil_keys("close")
-  if config.get().keymaps.close then
-    table.insert(close_keys, config.get().keymaps.close)
+  local keymaps = config.get().keymaps
+  if keymaps.close then
+    table.insert(close_keys, keymaps.close)
   end
   for _, lhs in ipairs(close_keys) do
     vim.keymap.set("n", lhs, close, {
       buffer = bufnr,
       nowait = true,
       desc = DESC_PREFIX .. "close",
+    })
+  end
+  if keymaps.quit then
+    vim.keymap.set("n", keymaps.quit, M.actions.quit, {
+      buffer = bufnr,
+      nowait = true,
+      desc = DESC_PREFIX .. "quit",
     })
   end
 end

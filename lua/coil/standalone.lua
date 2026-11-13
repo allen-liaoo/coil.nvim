@@ -14,7 +14,10 @@ M.defaults = {
     -- Permissions, size and modification time next to each name
     columns = { "icon", "permissions", "size", "mtime" },
   },
-  coil = {},
+  coil = {
+    -- q quits, like other terminal file managers (oil's close key still closes one view)
+    keymaps = { close = false, quit = "q" },
+  },
   image = {},
   -- mini.icons, for oil's icon column
   icons = {},

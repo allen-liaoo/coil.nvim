@@ -61,6 +61,10 @@ describe("standalone startup", function()
       assert.is_false(standalone.options({ oil = { delete_to_trash = false } }).oil.delete_to_trash)
     end)
 
+    it("quits with q instead of closing one view", function()
+      assert.same({ close = false, quit = "q" }, standalone.options({}).coil.keymaps)
+    end)
+
     it("shows entry details, and lists in the config file replace the defaults'", function()
       assert.same({ "icon", "permissions", "size", "mtime" }, standalone.options({}).oil.columns)
       assert.same({ "icon" }, standalone.options({ oil = { columns = { "icon" } } }).oil.columns)

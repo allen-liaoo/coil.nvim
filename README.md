@@ -140,6 +140,7 @@ coil's own keys (set with the `keymaps` option):
 | `L` | Enter a directory. On a file, open it in your editing tab. |
 | `H` | Go to the parent directory. |
 | `q` | Close the column view (also works in the preview pane). |
+| (none) | `quit`: quit Neovim, asking about unsaved changes (also in the preview pane). The standalone `coil` maps it to `q`. |
 
 oil's keys, which coil changes in the middle pane. They are whatever you map these oil actions to
 in oil's `keymaps`; oil's defaults are shown:
@@ -251,6 +252,7 @@ require("coil").setup({
     go_in = "L", -- Enter a directory; files open in the editing tab
     go_out = "H", -- Go to the parent directory
     close = "q", -- Close the column view (also in the preview pane)
+    quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
   },
   preview = {
     -- Text files larger than this get an info card instead
@@ -339,8 +341,9 @@ Things to know:
 - **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). In other
   terminals, image previews show the info card alone.
 - **It starts with only the column views,** one tab per directory. Opening a file edits it in a
-  new tab, and the next files open next to it; the column views stay open in their tabs. `q` or
-  `:CoilClose` closes a column view; `:qa` quits.
+  new tab, and the next files open next to it; the column views stay open in their tabs.
+- **`q` quits,** asking first if anything has unsaved changes. oil's close key (`<C-c>`) or
+  `:CoilClose` closes just the current column view.
 
 ### Configuring the standalone command
 

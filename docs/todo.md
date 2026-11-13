@@ -40,7 +40,7 @@ Tree-sitter grammars, and ffmpeg and poppler for video and PDF previews (left ou
 their dependencies they add about 300 MB and 150 MB). image.nvim and ImageMagick are included.
 - [x] **Entry details.** Turn on oil's `permissions`, `size` and `mtime` columns in the standalone
 build (oil's default is the icon column only).
-- [ ] **`q` quits.** `q`/`:CoilClose` closes the column view and leaves an empty editor open. In
+- [x] **`q` quits.** `q`/`:CoilClose` closes the column view and leaves an empty editor open. In
   the standalone build it should quit, prompting if edited buffers have unsaved changes.
 - [ ] **cd on exit.** A `--cwd-file <path>` argument that writes the middle pane's last directory on
   exit, plus a documented shell function (like yazi's `y`) that `cd`s there (link to the doc in readme, dont write directly in readme).
