@@ -247,11 +247,14 @@ Images need a terminal that speaks the kitty graphics protocol (kitty, Ghostty, 
 ## Development
 
 ```sh
-nix develop      # or `direnv allow`
-make test        # headless test suite
-make dev         # your editor with this working copy of coil loaded
-make dev-clean   # the same in a clean Neovim
-make fmt         # format with stylua
+nix develop                         # or `direnv allow`
+make test                           # headless test suite
+make dev                            # your editor with this working copy of coil loaded
+make dev-clean                      # the same in a clean Neovim
+make dev-standalone ARGS="~/a ~/b"  # your editor as a file manager, with this working copy
+make dev-standalone-clean           # the same in a clean Neovim
+nix run .                           # the Nix coil from this working copy (files known to git)
+make fmt                            # format with stylua
 ```
 
 ## License
