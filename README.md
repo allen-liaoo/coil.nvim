@@ -341,11 +341,11 @@ Things to know:
   so its history and state are kept apart from yours too. It has a config file of its own; see
   [Configuring the standalone command](#configuring-the-standalone-command).
 - **The middle pane shows each entry's permissions, size and modification time** (oil's
-  `permissions`, `size` and `mtime` columns). Set `oil = { columns = { "icon" } }` in the
+  `permissions`, `size` and `mtime` columns). Set `columns = { "icon" }` in oil's setup in the
   [config file](#configuring-the-standalone-command) for names only.
 - **Deleting files moves them to the trash.** Delete a line and save, and the file goes to the
   trash rather than being removed; oil's trash view (`g\`) shows it and can restore it. Set
-  `oil = { delete_to_trash = false }` in the [config file](#configuring-the-standalone-command)
+  `delete_to_trash = false` in oil's setup in the [config file](#configuring-the-standalone-command)
   to delete for good.
 - **It uses Neovim's bundled `habamax` colour scheme,** which colours more of a highlighted
   preview than Neovim's default. Run `vim.cmd.colorscheme("...")` in the
@@ -361,24 +361,18 @@ Things to know:
 
 ### Configuring the standalone command
 
-`coil` runs `~/.config/coil/init.lua` (`$XDG_CONFIG_HOME/coil/init.lua`) if it exists. It's
-plain Lua, run before anything is set up, so it can set options and keymaps. It can also return
-setup options for oil.nvim, coil and image.nvim, which are merged into the build's own (lists,
-such as oil's `columns`, replace the build's):
+`coil`'s config is `~/.config/coil/init.lua` (`$XDG_CONFIG_HOME/coil/init.lua`), an ordinary
+Neovim config. After it runs, `coil` sets up whichever bundled plugin it didn't: oil.nvim (with
+the trash and details columns above), image.nvim, mini.icons, and the `habamax` colour scheme.
+Set one up yourself and your options are used as they are:
 
 ```lua
 -- ~/.config/coil/init.lua
 vim.o.number = true
-
-return {
-  oil = { view_options = { show_hidden = true } }, -- oil.nvim's setup() options
-  coil = { ratio = { 1, 3, 4 } }, -- coil's (see Options)
-  image = false, -- image.nvim's, or false to leave image previews off
-  icons = {}, -- mini.icons', or false to leave icons off
-}
+require("oil").setup({ view_options = { show_hidden = true } })
+require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
+vim.cmd.colorscheme("retrobox")
 ```
-
-If the file has an error, `coil` says so and starts with its defaults.
 
 ### Your own Neovim as a file manager
 

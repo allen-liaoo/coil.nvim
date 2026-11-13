@@ -1,7 +1,7 @@
-# `coil`: a standalone file manager in the terminal. It is a Neovim with coil.nvim, oil.nvim,
-# image.nvim and mini.icons that opens the column view on startup, installed as `bin/coil` only,
-# so it never clashes with your own Neovim. For adding coil to your own Neovim, use
-# ./coil-nvim.nix instead.
+# `coil`: coil.nvim as a terminal file manager, for people who don't use Neovim themselves. It is
+# a Neovim with coil.nvim, oil.nvim, image.nvim and mini.icons, started through coil's launcher
+# (bin/coil), installed as `bin/coil` only, so it never clashes with a Neovim of your own. To add
+# coil to your own Neovim, use ./coil-nvim.nix instead.
 #
 #   pkgs.callPackage ./nix/coil.nix { }
 #
@@ -12,6 +12,7 @@
   runCommandLocal,
   runtimeShell,
   vimPlugins,
+  vimUtils,
   neovim-unwrapped,
   wrapNeovimUnstable,
   imagemagick,
@@ -21,6 +22,12 @@
   coil-nvim ? callPackage ./coil-nvim.nix { },
 }:
 let
+  # Sets up the bundled plugins that ~/.config/coil/init.lua doesn't (./defaults)
+  defaults = vimUtils.buildVimPlugin {
+    pname = "coil-defaults";
+    inherit (coil-nvim) version;
+    src = ./defaults;
+  };
   nvim = wrapNeovimUnstable neovim-unwrapped {
     plugins = [
       coil-nvim
@@ -28,10 +35,13 @@ let
       vimPlugins.image-nvim
       # Icons in oil's icon column
       vimPlugins.mini-icons
+      defaults
     ];
+    # No init of its own: Neovim reads ~/.config/coil/init.lua (see NVIM_APPNAME), a config like
+    # any other
+    wrapRc = false;
     wrapperArgs = [
-      # Keep away from the user's own Neovim config, state and shada; the config file is
-      # ~/.config/coil/init.lua
+      # Keep away from the user's own Neovim config, state and shada
       "--set-default"
       "NVIM_APPNAME"
       "coil"
@@ -46,11 +56,6 @@ let
         poppler-utils
       ]}"
     ];
-    # The build's defaults and the optional ~/.config/coil/init.lua (lua/coil/standalone/build.lua).
-    # It turns on coil's standalone mode, which opens the column view for the command line
-    luaRcContent = ''
-      require("coil.standalone.build").start()
-    '';
   };
 in
 # Only bin/coil: the wrapped Neovim's own bin/nvim and share/ would collide with the user's Neovim
