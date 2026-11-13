@@ -133,14 +133,24 @@ nixvim, with its own oil module:
 
 Keys in the column view's **middle pane**:
 
+coil's own keys (set with the `keymaps` option):
+
 | Key | Does |
 |---|---|
-| `L`, `<CR>` | Enter a directory. On a file, open it in your editing tab. |
+| `L` | Enter a directory. On a file, open it in your editing tab. |
 | `H` | Go to the parent directory. |
-| `<C-s>` / `<C-h>` / `<C-t>` | Open in a vertical split / horizontal split / new tab in your editing tab. Also works on a visual selection. |
-| `<C-p>` | Jump into the preview pane. Press it there to come back. |
-| `g.` | Toggle hidden files in every pane, keeping the cursor on the same entry. |
 | `q` | Close the column view (also works in the preview pane). |
+
+oil's keys, which coil changes in the middle pane. They are whatever you map these oil actions to
+in oil's `keymaps`; oil's defaults are shown:
+
+| oil action | Default | In the middle pane |
+|---|---|---|
+| `actions.select` | `<CR>` | Like `L`. Also works on a visual selection. |
+| `actions.select` with `vertical` / `horizontal` / `tab` | `<C-s>` / `<C-h>` / `<C-t>` | Open in a vertical split / horizontal split / new tab in your editing tab. Also works on a visual selection. |
+| `actions.preview` | `<C-p>` | Jump into the preview pane. Press it there to come back. |
+| `actions.toggle_hidden` | `g.` | Toggle hidden files in every pane, keeping the cursor on the same entry. |
+| `actions.close` | `<C-c>` | Close the column view (also in the preview pane). |
 
 All of oil's other keys work as usual in the middle pane, for example `-` for the parent
 directory and `<C-l>` to refresh. In any other window, coil's keys keep their normal meaning:
@@ -232,17 +242,12 @@ require("coil").setup({
   tab_title = true,
   -- Show each pane's path in a title line (winbar) above it
   winbar = false,
-  -- Keys in the middle pane; set one to false to disable it
+  -- coil's own keys in the middle pane; set one to false to disable it. oil's keys (select,
+  -- preview, toggle hidden, close) are set in oil's `keymaps`; see Quick start
   keymaps = {
     go_in = "L", -- Enter a directory; files open in the editing tab
     go_out = "H", -- Go to the parent directory
-    open = "<CR>", -- Same as go_in
-    open_vsplit = "<C-s>", -- Open in a vertical split in the editing tab
-    open_split = "<C-h>", -- Open in a horizontal split in the editing tab
-    open_tab = "<C-t>", -- Open in a new tab
-    focus_preview = "<C-p>", -- Jump into the preview pane (press again there to come back)
-    toggle_hidden = "g.", -- Toggle hidden files, refreshing every pane
-    close = "q", -- Close the column view
+    close = "q", -- Close the column view (also in the preview pane)
   },
   preview = {
     -- Text files larger than this get an info card instead

@@ -16,18 +16,14 @@ local defaults = {
   -- Sets the tab variable `tabname`, which tab lines such as lualine's `tabs` component show
   tab_title = true,
   preview = {},
-  -- Active in the column view's middle pane only. Anywhere else these keys keep their usual
-  -- meaning: oil's mapping if it has one, otherwise Vim's built-in key.
+  -- coil's own keys, in the column view's middle pane only. Anywhere else these keys keep their
+  -- usual meaning: oil's mapping if it has one, otherwise Vim's built-in key. oil's keys
+  -- (select and its split and tab variants, preview, toggle hidden, close) are configured in oil;
+  -- coil changes what they do in the middle pane.
   keymaps = {
     go_in = "L", -- Enter a directory; files open in the editing tab
     go_out = "H", -- Go to the parent directory
-    open = "<CR>", -- Same as go_in
-    open_vsplit = "<C-s>", -- Open in a vertical split in the editing tab
-    open_split = "<C-h>", -- Open in a horizontal split in the editing tab
-    open_tab = "<C-t>", -- Open in a new tab
-    focus_preview = "<C-p>", -- Jump into the preview pane (press again there to come back)
-    toggle_hidden = "g.", -- Toggle hidden files, refreshing every pane
-    close = "q", -- Close the column view
+    close = "q", -- Close the column view (also in the preview pane)
   },
 }
 

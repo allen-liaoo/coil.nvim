@@ -23,6 +23,12 @@ local function select_entry(view, how)
   end)
 end
 
+---@param view coil.View
+local function close()
+  require("coil.view").close()
+end
+
+---coil's own keys (the `keymaps` option)
 ---@type table<string, fun(view: coil.View)>
 M.actions = {
   go_in = function(view)
@@ -31,29 +37,107 @@ M.actions = {
   go_out = function()
     bridge.open_parent()
   end,
-  open = function(view)
-    select_entry(view, nil)
-  end,
-  open_vsplit = function(view)
-    select_entry(view, "vsplit")
-  end,
-  open_split = function(view)
-    select_entry(view, "split")
-  end,
-  open_tab = function(view)
-    select_entry(view, "tab")
-  end,
-  focus_preview = function(view)
-    vim.api.nvim_set_current_win(view.panes.preview)
-  end,
-  toggle_hidden = function(view)
-    bridge.toggle_hidden(view.panes.current)
-    sync.all(view)
-  end,
-  close = function()
-    require("coil.view").close()
-  end,
+  close = close,
 }
+
+---What an oil action does instead in the middle pane, if coil changes it
+---@param keymap coil.OilKeymap
+---@return nil|string name For the mapping's description
+---@return nil|fun(view: coil.View) run
+---@return boolean? visual Also in visual mode, where oil opens every selected entry
+local function override(keymap)
+  local action, opts = keymap.action, keymap.opts
+  local how
+  if action == "select" then
+    how = (opts.vertical and "vsplit") or (opts.horizontal and "split") or (opts.tab and "tab")
+  elseif action == "select_vsplit" or action == "select_split" or action == "select_tab" then
+    how = action:sub(#"select_" + 1)
+  elseif action == "preview" then
+    return "jump into the preview pane",
+      function(view)
+        vim.api.nvim_set_current_win(view.panes.preview)
+      end
+  elseif action == "toggle_hidden" then
+    return "toggle hidden files in every pane",
+      function(view)
+        bridge.toggle_hidden(view.panes.current)
+        sync.all(view)
+      end
+  elseif action == "close" then
+    return "close the column view", close
+  else
+    return nil
+  end
+  -- Without the wrap, oil would open files (and the selection) in splits of the middle pane
+  return how and ("open in a " .. how .. " in the editing tab") or "open",
+    function(view)
+      select_entry(view, how)
+    end,
+    true
+end
+
+---Whether a keymap's configured mode includes `mode` ("n" or "x")
+---@param configured string|string[]|nil
+---@param mode string
+---@return boolean
+local function covers(configured, mode)
+  if configured == nil or configured == "" then
+    return true
+  elseif type(configured) == "table" then
+    for _, m in ipairs(configured) do
+      if covers(m, mode) then
+        return true
+      end
+    end
+    return false
+  end
+  return configured == mode or (mode == "x" and configured == "v")
+end
+
+---@class (exact) coil.KeyBinding
+---@field lhs string
+---@field modes string[]
+---@field name string
+---@field run fun(view: coil.View)
+
+---Every key coil handles in the middle pane: its own, then oil's that it changes. A key in both
+---gets coil's own action.
+---@return coil.KeyBinding[]
+local function bindings()
+  local list = {}
+  for action, lhs in pairs(config.get().keymaps) do
+    if lhs and M.actions[action] then
+      table.insert(list, { lhs = lhs, modes = { "n" }, name = action, run = M.actions[action] })
+    end
+  end
+  for _, keymap in ipairs(bridge.oil_keymaps()) do
+    local name, run, visual = override(keymap)
+    if run then
+      local modes = {}
+      if covers(keymap.mode, "n") then
+        table.insert(modes, "n")
+      end
+      if visual and covers(keymap.mode, "x") then
+        table.insert(modes, "x")
+      end
+      table.insert(list, { lhs = keymap.lhs, modes = modes, name = name, run = run })
+    end
+  end
+  return list
+end
+
+---The keys oil's config maps to `action`
+---@param action string
+---@return string[]
+local function oil_keys(action)
+  local keys = {}
+  for _, keymap in ipairs(bridge.oil_keymaps()) do
+    if keymap.action == action then
+      table.insert(keys, keymap.lhs)
+    end
+  end
+  return keys
+end
 
 ---Run what `lhs` did before coil wrapped it
 ---@param lhs string
@@ -81,51 +165,49 @@ local function fallback(lhs, original)
   end
 end
 
--- Actions also wrapped in visual mode, where oil opens every selected entry. Without the wrap,
--- oil would open the selection in splits of the middle pane. (L and H stay Vim motions there.)
-local VISUAL_ACTIONS = { open = true, open_vsplit = true, open_split = true, open_tab = true }
-
 ---Wrap coil's keys in an oil buffer. Safe to call repeatedly: keys that are already wrapped are
 ---skipped, and keys oil re-mapped (e.g. after reloading the buffer) are wrapped again.
 ---@param bufnr integer
 M.wrap_buffer = function(bufnr)
-  for action, lhs in pairs(config.get().keymaps) do
-    if lhs and M.actions[action] then
-      for _, mode in ipairs(VISUAL_ACTIONS[action] and { "n", "x" } or { "n" }) do
-        local original = vim.api.nvim_buf_call(bufnr, function()
-          return vim.fn.maparg(lhs, mode, false, true)
-        end)
-        if not vim.startswith(original.desc or "", DESC_PREFIX) then
-          vim.keymap.set(mode, lhs, function()
-            local view = state.get()
-            if view and vim.api.nvim_get_current_win() == view.panes.current then
-              M.actions[action](view)
-            else
-              fallback(lhs, original)
-            end
-          end, {
-            buffer = bufnr,
-            nowait = true,
-            desc = DESC_PREFIX .. action .. " (column view only)",
-          })
-        end
+  for _, binding in ipairs(bindings()) do
+    for _, mode in ipairs(binding.modes) do
+      local original = vim.api.nvim_buf_call(bufnr, function()
+        return vim.fn.maparg(binding.lhs, mode, false, true)
+      end)
+      if not vim.startswith(original.desc or "", DESC_PREFIX) then
+        vim.keymap.set(mode, binding.lhs, function()
+          local view = state.get()
+          if view and vim.api.nvim_get_current_win() == view.panes.current then
+            binding.run(view)
+          else
+            fallback(binding.lhs, original)
+          end
+        end, {
+          buffer = bufnr,
+          nowait = true,
+          desc = DESC_PREFIX .. binding.name .. " (column view only)",
+        })
       end
     end
   end
 end
 
----Keys in the preview pane's buffers, which coil creates, so no wrapping is needed
+---Keys in the preview pane's buffers, which coil creates, so no wrapping is needed: oil's preview
+---keys go back to the middle pane, and the close keys (coil's and oil's) close the view
 ---@param view coil.View
 ---@param bufnr integer
 local function map_preview_buffer(view, bufnr)
-  local keymaps = config.get().keymaps
-  if keymaps.focus_preview then
-    vim.keymap.set("n", keymaps.focus_preview, function()
+  for _, lhs in ipairs(oil_keys("preview")) do
+    vim.keymap.set("n", lhs, function()
       vim.api.nvim_set_current_win(view.panes.current)
     end, { buffer = bufnr, nowait = true, desc = DESC_PREFIX .. "back to the middle pane" })
   end
-  if keymaps.close then
-    vim.keymap.set("n", keymaps.close, M.actions.close, {
+  local close_keys = oil_keys("close")
+  if config.get().keymaps.close then
+    table.insert(close_keys, config.get().keymaps.close)
+  end
+  for _, lhs in ipairs(close_keys) do
+    vim.keymap.set("n", lhs, close, {
       buffer = bufnr,
       nowait = true,
       desc = DESC_PREFIX .. "close",

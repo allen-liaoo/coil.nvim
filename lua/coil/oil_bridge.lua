@@ -341,6 +341,33 @@ M.cursor_target = function(winid)
   return M.entry_target(bufnr, entry)
 end
 
+---@class (exact) coil.OilKeymap
+---@field lhs string
+---@field action string oil's action name, without "actions." (e.g. "select")
+---@field opts table The action's opts (e.g. { vertical = true })
+---@field mode string|string[]|nil The keymap's mode, as configured ("" or nil: oil's default)
+
+---The keys oil's config maps to its built-in actions (`"actions.<name>"`, or a table naming one).
+---Keys mapped to functions or other commands aren't included.
+---@return coil.OilKeymap[]
+M.oil_keymaps = function()
+  local ret = {}
+  for lhs, rhs in pairs(require("oil.config").keymaps or {}) do
+    local name, opts, mode = nil, {}, nil
+    if type(rhs) == "string" then
+      name = rhs
+    elseif type(rhs) == "table" then
+      name = type(rhs[1]) == "string" and rhs[1] or rhs.callback
+      opts = type(rhs.opts) == "table" and rhs.opts or {}
+      mode = rhs.mode
+    end
+    if type(name) == "string" and vim.startswith(name, "actions.") then
+      table.insert(ret, { lhs = lhs, action = name:sub(#"actions." + 1), opts = opts, mode = mode })
+    end
+  end
+  return ret
+end
+
 ---Preview targets for the entries around a window's cursor, nearest first (below before above):
 ---the lines at distance 1, then 2, and so on. The cursor's own entry isn't included.
 ---@param winid integer A window showing an oil buffer

@@ -30,8 +30,9 @@ M.wait = function(cond, ms)
   return vim.wait(ms or 3000, cond, 10)
 end
 
-M.setup_oil = function()
-  require("oil").setup({
+---@param opts? table More oil options
+M.setup_oil = function(opts)
+  require("oil").setup(vim.tbl_deep_extend("force", {
     default_file_explorer = false,
     -- oil.setup() doesn't undo oil.set_sort() or a hidden-files toggle (they change oil's default
     -- view_options in place), so reset them explicitly between tests
@@ -39,7 +40,7 @@ M.setup_oil = function()
       show_hidden = false,
       sort = { { "type", "asc" }, { "name", "asc" } },
     },
-  })
+  }, opts or {}))
 end
 
 ---Open oil on `dir` in the current window and wait for the listing

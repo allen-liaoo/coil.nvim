@@ -20,7 +20,7 @@
   knows the panes are splits. A floating version needs geometry on resize, its own keys to move
   between panes, and hiding and restoring when a file opens in the editing tab.~~
 - [x] Packaging: Make coil-nvim not depend on oil nvim in nix, but require user to have oil nvim. Remove coil-nvim oil flake dependency, and just use nixpkgs's oilnvim
-- [ ] Refactor: make sure no coil config or logic duplicates oil's. For instance, keep keymaps (open in splits) config that oil has in oil. Coil should only change the behavior of it in coil's buffer.
+- [x] Refactor: make sure no coil config or logic duplicates oil's. For instance, keep keymaps (open in splits) config that oil has in oil. Coil should only change the behavior of it in coil's buffer.
 - [ ] **Several directories in tabs**, like yazi's tabs.
 - [ ] **Delete to trash by default.** oil defaults to `delete_to_trash = false`, so deleting a line
 and saving removes files permanently. The standalone build should send them to the trash; oil's

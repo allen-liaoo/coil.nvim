@@ -302,3 +302,72 @@ describe("column view keys", function()
     assert_view_intact(view)
   end)
 end)
+
+describe("oil's keymaps in the column view", function()
+  local proj, origin_tab
+
+  before_each(function()
+    pcall(coil.close)
+    h.reset_tab()
+    -- Keys moved away from oil's defaults: coil follows them
+    h.setup_oil({
+      keymaps = {
+        ["<C-s>"] = false,
+        ["<C-v>"] = { "actions.select", opts = { vertical = true } },
+        ["<C-p>"] = false,
+        ["gp"] = "actions.preview",
+        ["<C-c>"] = false,
+        ["gq"] = { "actions.close", mode = "n" },
+      },
+    })
+    coil.setup()
+    proj = h.tmpdir()
+    h.write(proj .. "/a.txt", { "hello" })
+    origin_tab = vim.api.nvim_get_current_tabpage()
+  end)
+
+  after_each(function()
+    pcall(coil.close)
+    h.setup_oil()
+  end)
+
+  it("opens in a split of the editing tab with oil's key for it", function()
+    local view = h.open_view(proj)
+    h.cursor_to(view.panes.current, "a.txt")
+    h.press("<C-v>")
+    assert.is_true(h.wait(function()
+      return vim.api.nvim_get_current_tabpage() == origin_tab
+    end))
+    assert.equals(2, #vim.api.nvim_tabpage_list_wins(origin_tab))
+    assert.equals(3, #vim.api.nvim_tabpage_list_wins(view.tab))
+  end)
+
+  it("doesn't take over keys oil no longer maps", function()
+    local view = h.open_view(proj)
+    local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+    local desc = vim.api.nvim_buf_call(bufnr, function()
+      return vim.fn.maparg("<C-s>", "n", false, true).desc
+    end)
+    assert.is_nil(desc)
+  end)
+
+  it("jumps into the preview pane and back with oil's preview key", function()
+    local view = h.open_view(proj)
+    h.press("gp")
+    assert.is_true(h.wait(function()
+      return vim.api.nvim_get_current_win() == view.panes.preview
+    end))
+    h.press("gp")
+    assert.is_true(h.wait(function()
+      return vim.api.nvim_get_current_win() == view.panes.current
+    end))
+  end)
+
+  it("closes the view with oil's close key", function()
+    h.open_view(proj)
+    h.press("gq")
+    assert.is_true(h.wait(function()
+      return state.get() == nil
+    end))
+  end)
+end)
