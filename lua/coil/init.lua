@@ -6,6 +6,13 @@ M.setup = function(opts)
   require("coil.preview").setup(require("coil.config").get().preview)
 end
 
+---Whether Neovim was started as a file manager (`nvim --cmd "let g:coil_standalone = 1"`). Known
+---from the start, so your config can check it too.
+---@return boolean
+M.standalone = function()
+  return require("coil.config").standalone()
+end
+
 ---Open the column view on `dirs`, one tab per directory (see :Coil)
 ---@param dirs? string|string[] Paths or oil URLs; nil means the current buffer's directory
 M.open = function(dirs)

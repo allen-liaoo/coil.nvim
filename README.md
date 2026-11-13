@@ -274,6 +274,11 @@ require("coil").setup({
     -- Size limit of the thumbnail cache, in MiB; the least recently used go first (false: none)
     thumbnail_cache_mb = 200,
   },
+  -- Merged over the options above when Neovim is started as a file manager
+  -- (`nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself.
+  standalone = {
+    keymaps = { close = false, quit = "q" },
+  },
 })
 ```
 
@@ -302,6 +307,7 @@ Hidden files, sorting and other listing behaviour follow your oil.nvim settings
 require("coil").open(dir)  -- like :Coil; dir is a path or an oil URL, nil for the current buffer's
 require("coil").open({ dir1, dir2 }) -- like :Coil dir1 dir2: one tab per directory
 require("coil").close()    -- like :CoilClose
+require("coil").standalone() -- whether Neovim was started as a file manager (g:coil_standalone)
 ```
 
 ## Standalone file manager

@@ -7,6 +7,7 @@ local M = {}
 ---@field tab_title boolean Name the column view's tab after the current directory (t:tabname)
 ---@field preview table Options for the preview module (see coil.PreviewOpts)
 ---@field keymaps table<string, string|false> Keys for coil actions in the middle pane (false disables)
+---@field standalone table Options that replace the others when Neovim runs as a file manager
 
 ---@type coil.Config
 local defaults = {
@@ -26,59 +27,110 @@ local defaults = {
     close = "q", -- Close the column view (also in the preview pane)
     quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
   },
+  -- Merged over the options above when Neovim was started as a file manager (g:coil_standalone,
+  -- set with `nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself.
+  standalone = {
+    keymaps = { close = false, quit = "q" },
+  },
 }
 
+---Whether Neovim was started as a file manager
+---@return boolean
+M.standalone = function()
+  local value = vim.g.coil_standalone
+  return value ~= nil and value ~= false and value ~= 0
+end
+
+---The options in effect: in standalone mode, with the `standalone` options merged over the rest
+---@param new coil.Config
+---@return coil.Config
+local function resolve(new)
+  if not M.standalone() then
+    return new
+  end
+  local ret = vim.tbl_deep_extend("force", new, new.standalone)
+  ret.standalone = new.standalone
+  return ret
+end
+
 ---@type coil.Config
-local config = vim.deepcopy(defaults)
+local config = resolve(vim.deepcopy(defaults))
 
 ---@param msg string
 local function fail(msg, ...)
   error("[coil] " .. string.format(msg, ...), 0)
 end
 
----Type errors are fatal; unknown keys (likely typos) only warn
----@param new coil.Config
----@param opts table What the user passed
-local function validate(new, opts)
+---Check the options' types. `prefix` names where they came from in error messages.
+---@param new table
+---@param prefix string
+local function check_types(new, prefix)
   local ratio = new.ratio
   local valid = type(ratio) == "table" and #ratio == 3
   for _, r in ipairs(valid and ratio or {}) do
     valid = valid and type(r) == "number" and r > 0
   end
   if not valid then
-    fail("ratio must be a list of three positive numbers, got %s", vim.inspect(ratio))
+    fail("%sratio must be a list of three positive numbers, got %s", prefix, vim.inspect(ratio))
   end
   if type(new.debounce_ms) ~= "number" or new.debounce_ms < 0 then
-    fail("debounce_ms must be a non-negative number, got %s", vim.inspect(new.debounce_ms))
+    fail(
+      "%sdebounce_ms must be a non-negative number, got %s",
+      prefix,
+      vim.inspect(new.debounce_ms)
+    )
   end
   if type(new.winbar) ~= "boolean" then
-    fail("winbar must be true or false, got %s", vim.inspect(new.winbar))
+    fail("%swinbar must be true or false, got %s", prefix, vim.inspect(new.winbar))
   end
   if type(new.tab_title) ~= "boolean" then
-    fail("tab_title must be true or false, got %s", vim.inspect(new.tab_title))
+    fail("%stab_title must be true or false, got %s", prefix, vim.inspect(new.tab_title))
   end
   if type(new.preview) ~= "table" then
-    fail("preview must be a table, got %s", vim.inspect(new.preview))
+    fail("%spreview must be a table, got %s", prefix, vim.inspect(new.preview))
   end
   if type(new.keymaps) ~= "table" then
-    fail("keymaps must be a table, got %s", vim.inspect(new.keymaps))
+    fail("%skeymaps must be a table, got %s", prefix, vim.inspect(new.keymaps))
   end
   for action, lhs in pairs(new.keymaps) do
     if lhs ~= false and (type(lhs) ~= "string" or lhs == "") then
-      fail("keymaps.%s must be a key (string) or false, got %s", action, vim.inspect(lhs))
+      fail("%skeymaps.%s must be a key (string) or false, got %s", prefix, action, vim.inspect(lhs))
     end
   end
+end
 
-  local unknown = {}
+---Option names in `opts` that coil doesn't have
+---@param opts table
+---@param prefix string
+---@param unknown string[] Appended to
+local function find_unknown(opts, prefix, unknown)
   for key in pairs(opts) do
-    if defaults[key] == nil then
-      table.insert(unknown, key)
+    if defaults[key] == nil or (prefix ~= "" and key == "standalone") then
+      table.insert(unknown, prefix .. key)
     end
   end
   for action in pairs(type(opts.keymaps) == "table" and opts.keymaps or {}) do
     if defaults.keymaps[action] == nil then
-      table.insert(unknown, "keymaps." .. action)
+      table.insert(unknown, prefix .. "keymaps." .. action)
     end
+  end
+end
+
+---Type errors are fatal; unknown keys (likely typos) only warn. The standalone options are
+---checked in either mode, so mistakes show up before Neovim is started as a file manager.
+---@param new coil.Config
+---@param opts table What the user passed
+local function validate(new, opts)
+  check_types(new, "")
+  if type(new.standalone) ~= "table" then
+    fail("standalone must be a table, got %s", vim.inspect(new.standalone))
+  end
+  check_types(vim.tbl_deep_extend("force", new, new.standalone), "standalone.")
+
+  local unknown = {}
+  find_unknown(opts, "", unknown)
+  if type(opts.standalone) == "table" then
+    find_unknown(opts.standalone, "standalone.", unknown)
   end
   if not vim.tbl_isempty(unknown) then
     table.sort(unknown)
@@ -94,7 +146,7 @@ M.setup = function(opts)
   opts = opts or {}
   local new = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts)
   validate(new, opts)
-  config = new
+  config = resolve(new)
 end
 
 ---@return coil.Config

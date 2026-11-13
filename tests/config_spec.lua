@@ -57,4 +57,65 @@ describe("config", function()
     assert.equals(vim.log.levels.WARN, notifications[1].level)
     assert.truthy(notifications[1].msg:find("keymaps.go_inn, ratoi", 1, true))
   end)
+
+  describe("standalone mode", function()
+    after_each(function()
+      vim.g.coil_standalone = nil
+      config.setup()
+    end)
+
+    it("is off unless g:coil_standalone is set", function()
+      assert.is_false(config.standalone())
+      assert.is_false(require("coil").standalone())
+      for _, value in ipairs({ 0, false }) do
+        vim.g.coil_standalone = value
+        assert.is_false(config.standalone())
+      end
+      for _, value in ipairs({ 1, true }) do
+        vim.g.coil_standalone = value
+        assert.is_true(config.standalone())
+      end
+    end)
+
+    it("ignores the standalone options otherwise", function()
+      config.setup({ standalone = { ratio = { 1, 1, 1 } } })
+      assert.same({ 1, 4, 3 }, config.get().ratio)
+      assert.equals("q", config.get().keymaps.close)
+      assert.is_false(config.get().keymaps.quit)
+    end)
+
+    it("merges the standalone options over the rest", function()
+      vim.g.coil_standalone = 1
+      config.setup({
+        winbar = true,
+        keymaps = { go_in = "l" },
+        standalone = { ratio = { 1, 1, 1 }, keymaps = { go_out = "h" } },
+      })
+      local c = config.get()
+      assert.same({ 1, 1, 1 }, c.ratio)
+      assert.is_true(c.winbar)
+      -- From the options, from the standalone options, and the standalone defaults
+      assert.same({ go_in = "l", go_out = "h", close = false, quit = "q" }, c.keymaps)
+    end)
+
+    it("checks the standalone options in either mode", function()
+      for _, case in ipairs({
+        { opts = { standalone = false }, match = "standalone must be a table" },
+        { opts = { standalone = { ratio = { 1 } } }, match = "standalone.ratio" },
+        { opts = { standalone = { keymaps = { quit = 1 } } }, match = "standalone.keymaps.quit" },
+      }) do
+        local ok, err = pcall(config.setup, case.opts)
+        assert.is_false(ok, vim.inspect(case.opts))
+        assert.truthy(err:find(case.match, 1, true), err)
+      end
+      config.setup({ standalone = { winbr = true, standalone = {}, keymaps = { qiut = "q" } } })
+      assert.truthy(
+        notifications[1].msg:find(
+          "standalone.keymaps.qiut, standalone.standalone, standalone.winbr",
+          1,
+          true
+        )
+      )
+    end)
+  end)
 end)
