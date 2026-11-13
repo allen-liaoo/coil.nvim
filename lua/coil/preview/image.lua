@@ -57,6 +57,63 @@ local function geometry(winid, row)
   return { x = 0, y = row, width = width, height = height }
 end
 
+---The exact size image.nvim will scale an image to when it fills `cols` x `rows` cells, so a copy
+---can be made at that size in the background (see thumbnail.lua's fit_thumb). image.nvim scales
+---any image whose width differs, while Neovim waits. This follows image.nvim's renderer using its
+---own terminal-size and aspect-ratio helpers; if they're missing or the result is off, image.nvim
+---just scales the image itself, as it would anyway.
+---@param cols integer
+---@param rows integer
+---@return nil|coil.ThumbnailFit
+local function fitter(cols, rows)
+  local ok_term, term = pcall(require, "image/utils/term")
+  local ok_math, image_math = pcall(require, "image/utils/math")
+  if
+    not (ok_term and ok_math)
+    or type(term.get_size) ~= "function"
+    or type(image_math.adjust_to_aspect_ratio) ~= "function"
+  then
+    return nil
+  end
+  local size = term.get_size()
+  if not size then
+    return nil
+  end
+  cols = math.min(cols, size.screen_cols)
+  return function(w, h)
+    local fit_cols, fit_rows = image_math.adjust_to_aspect_ratio(size, w, h, cols, rows)
+    local width, height = fit_cols * size.cell_width, fit_rows * size.cell_height
+    -- image.nvim compares the width exactly; with fractional cell sizes it always scales
+    if width % 1 ~= 0 or height % 1 ~= 0 then
+      return nil
+    end
+    return width, height
+  end
+end
+
+---The exact size image.nvim will draw an image at in `winid`, below line `row` of the buffer
+---shown there
+---@param winid integer
+---@param row integer 0-based buffer line
+---@return nil|coil.ThumbnailFit
+M.fitter = function(winid, row)
+  local geom = image_api() and geometry(winid, row)
+  return geom and fitter(geom.width, geom.height) or nil
+end
+
+---Like fitter(), for a card that isn't shown yet: assumes it is shown from its first line and its
+---lines don't wrap
+---@param winid integer
+---@param row integer 0-based line of that card where the image would start
+---@return nil|coil.ThumbnailFit
+M.estimated_fitter = function(winid, row)
+  local info = image_api() and vim.fn.getwininfo(winid)[1]
+  if not info or info.height - row < MIN_HEIGHT then
+    return nil
+  end
+  return fitter(info.width - info.textoff, info.height - row)
+end
+
 ---@param winid integer
 ---@param entry coil.DrawnImage
 local function render(winid, entry)

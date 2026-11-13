@@ -195,9 +195,10 @@ its README for other backends and options.
 - **Images are drawn from thumbnails.** coil shrinks each image to fit `preview.thumbnail_size`
   (600×900 by default) with ImageMagick, in the background, and keeps the thumbnail in
   `stdpath("cache")/coil/thumbnails`, so Neovim keeps responding and an image you've seen comes
-  back at once. The card says "Loading image..." until the thumbnail is ready. (Left to itself,
-  image.nvim converts the full-size image while Neovim waits, which takes seconds for a large
-  photo.)
+  back at once. The card says "Loading image..." until the thumbnail is ready. coil also makes a
+  copy at the exact size image.nvim will draw it at, so image.nvim doesn't have to resize it.
+  (Left to itself, image.nvim converts and resizes the full-size image while Neovim waits, which
+  takes seconds for a large photo.)
 - Work on an image starts once the cursor has rested on it for `preview.image_delay_ms`, so
   scrolling past images doesn't start a thumbnail for each.
 - In the column view, thumbnails are also made for the images up to `preview.prefetch` entries

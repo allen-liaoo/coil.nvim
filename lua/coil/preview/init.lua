@@ -145,13 +145,15 @@ local function show_image(winid, gen, target, info, opts)
     elseif not use_thumbnail then
       return draw(path)
     end
+    -- Made at the size image.nvim will draw it, so it doesn't scale it while Neovim waits
+    local fit = image.fitter(winid, row)
     thumbnail.get(path, stat, function(thumb, err)
       if thumb then
         draw(thumb)
       elseif current() then
         card.set_status(bufnr, row, "No image preview: " .. (err or "unknown error"))
       end
-    end)
+    end, fit)
   end, opts.image_delay_ms)
 end
 
@@ -211,16 +213,21 @@ M.prefetch = function(winid, targets)
     if generations[winid] ~= gen then
       return
     end
-    local files = {}
+    local files, fit = {}, nil
     for _, target in ipairs(targets) do
       if target.path and not target.is_dir and not target.unsaved then
         local stat = classify.kind_by_name(target.name) == "image" and uv.fs_stat(target.path)
         if stat and stat.type == "file" then
           table.insert(files, { path = target.path, stat = stat })
+          -- Image cards all have the same lines, so one estimate fits every image
+          if not fit then
+            local lines = card.lines(target, "image", { stat = stat }, config, true)
+            fit = image.estimated_fitter(winid, #lines - 1)
+          end
         end
       end
     end
-    thumbnail.prefetch(files)
+    thumbnail.prefetch(files, fit)
   end, config.image_delay_ms)
 end
 

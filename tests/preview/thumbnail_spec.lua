@@ -44,13 +44,14 @@ describe("thumbnails", function()
 
   ---Get a thumbnail and wait for it
   ---@param path string
+  ---@param fit? coil.ThumbnailFit
   ---@return string|nil thumb
   ---@return string|nil err
-  local function get(path)
+  local function get(path, fit)
     local done, thumb, err = false, nil, nil
     thumbnail.get(path, assert(uv.fs_stat(path)), function(t, e)
       done, thumb, err = true, t, e
-    end)
+    end, fit)
     assert.is_true(h.wait(function()
       return done
     end, 10000))
@@ -167,6 +168,58 @@ describe("thumbnails", function()
       return #order == 2
     end, 10000))
     assert.same({ "c", "b not done" }, order)
+  end)
+
+  it("makes a copy at exactly the size the drawer asks for", function()
+    local path = image("a.jpg", "1200x1800")
+    local seen
+    local thumb = assert(get(path, function(w, h)
+      seen = { w, h }
+      return 333, 444
+    end))
+    -- The fit is given the thumbnail's size
+    assert.same({ 600, 900 }, seen)
+    assert.truthy(thumb:match("%-333x444%.png$"))
+    assert.equals("333x444", dimensions(thumb))
+    -- Asking again reuses the copy
+    spawned = 0
+    assert.equals(
+      thumb,
+      get(path, function()
+        return 333, 444
+      end)
+    )
+    assert.equals(0, spawned)
+  end)
+
+  it("uses the thumbnail itself when no other size is needed", function()
+    local path = image("a.jpg", "100x100")
+    local plain = assert(get(path))
+    assert.equals(
+      plain,
+      get(path, function()
+        return nil
+      end)
+    )
+    assert.equals(
+      plain,
+      get(path, function(w, h)
+        return w, h
+      end)
+    )
+  end)
+
+  it("makes prefetched copies at the given size", function()
+    local path = image("a.png", "40x40")
+    thumbnail.prefetch({ { path = path, stat = assert(uv.fs_stat(path)) } }, function()
+      return 20, 10
+    end)
+    assert.is_true(h.wait(function()
+      return thumbnail.pending() == 0
+    end, 10000))
+    local thumb = assert(thumbnail.cached(path, assert(uv.fs_stat(path))))
+    local copy = thumb:gsub("%.png$", "-20x10.png")
+    assert.equals("20x10", dimensions(copy))
   end)
 
   it("knows when ImageMagick isn't installed", function()

@@ -99,6 +99,34 @@ describe("image previews", function()
     assert.equals(vim.api.nvim_win_get_height(win) - #lines + 1, geom.height)
   end)
 
+  it("draws a copy at the size image.nvim will draw it at", function()
+    -- image.nvim's helpers, as coil uses them: 10x20-pixel cells, and a fit that keeps the
+    -- width and takes 5 rows
+    package.loaded["image/utils/term"] = {
+      get_size = function()
+        return { cell_width = 10, cell_height = 20, screen_cols = 200, screen_rows = 50 }
+      end,
+    }
+    local asked
+    package.loaded["image/utils/math"] = {
+      adjust_to_aspect_ratio = function(_, w, h, cols, rows)
+        asked = { w, h, cols, rows }
+        return cols, 5
+      end,
+    }
+    preview.show(win, target("pic.png"))
+    local img = wait_drawn(1)
+    package.loaded["image/utils/term"] = nil
+    package.loaded["image/utils/math"] = nil
+    local cols = vim.api.nvim_win_get_width(win)
+    -- Asked with the thumbnail's size (the 40x30 image keeps its size) and the space below the card
+    assert.same({ 40, 30, cols, img.renders[1].height }, asked)
+    assert.equals(
+      thumb_of("pic.png"):gsub("%.png$", "") .. ("-%dx100.png"):format(cols * 10),
+      img.path
+    )
+  end)
+
   it("removes the image when the preview changes", function()
     preview.show(win, target("pic.png"))
     local img = wait_drawn(1)

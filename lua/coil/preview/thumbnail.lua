@@ -63,11 +63,15 @@ end
 
 ---@alias coil.ThumbnailCallback fun(thumb?: string, err?: string)
 
+---Given a thumbnail's size, the exact size to draw it at (nil to draw it as it is)
+---@alias coil.ThumbnailFit fun(width: integer, height: integer): nil|integer, nil|integer
+
 ---@class (exact) coil.ThumbnailJob
 ---@field src string
 ---@field out string
 ---@field callbacks coil.ThumbnailCallback[]
 ---@field prefetch boolean Nobody is waiting for it
+---@field fit? coil.ThumbnailFit Also make a copy at this size (prefetch)
 
 ---Jobs waiting to start, the next one first
 ---@type coil.ThumbnailJob[]
@@ -77,7 +81,7 @@ local queue = {}
 local jobs = {}
 local running = 0
 
-local start_next
+local start_next, fit_thumb
 
 ---@param job coil.ThumbnailJob
 ---@param thumb? string
@@ -85,6 +89,9 @@ local start_next
 local function finish(job, thumb, err)
   jobs[job.out] = nil
   running = running - 1
+  if thumb and job.fit then
+    fit_thumb(thumb, job.fit, function() end)
+  end
   for _, cb in ipairs(job.callbacks) do
     cb(thumb, err)
   end
@@ -157,6 +164,89 @@ local function exists(out)
   return uv.fs_stat(out) ~= nil
 end
 
+---Width and height of a PNG, read from its header
+---@param path string
+---@return nil|integer width
+---@return nil|integer height
+local function png_size(path)
+  local fd = uv.fs_open(path, "r", 0)
+  if not fd then
+    return nil
+  end
+  local data = uv.fs_read(fd, 24, 0)
+  uv.fs_close(fd)
+  if not data or #data < 24 or data:sub(2, 4) ~= "PNG" then
+    return nil
+  end
+  local function u32(i)
+    local a, b, c, d = data:byte(i, i + 3)
+    return ((a * 256 + b) * 256 + c) * 256 + d
+  end
+  return u32(17), u32(21)
+end
+
+-- Copies being scaled, with whoever is waiting for each, by output path
+---@type table<string, coil.ThumbnailCallback[]>
+local scaling = {}
+
+---A copy of `thumb` at exactly the size `fit` asks for. Drawing the thumbnail at another size
+---means image.nvim scales it, and it does that while Neovim waits (close to a second for a large
+---window, mostly spent compressing the PNG). Here it happens in the background, with light PNG
+---compression. Falls back to `thumb` itself.
+---@param thumb string
+---@param fit coil.ThumbnailFit
+---@param cb fun(file: string)
+fit_thumb = function(thumb, fit, cb)
+  local w, h = png_size(thumb)
+  local width, height
+  if w and h then
+    width, height = fit(w, h)
+  end
+  local cmd = magick()
+  if not (width and height and cmd) or (width == w and height == h) then
+    return cb(thumb)
+  end
+  local out = string.format("%s-%dx%d.png", (thumb:gsub("%.png$", "")), width, height)
+  if exists(out) then
+    return cb(out)
+  elseif scaling[out] then
+    return table.insert(scaling[out], cb)
+  end
+  scaling[out] = { cb }
+  local tmp = string.format("%s.%d.tmp", out, uv.os_getpid())
+  ---@param ok boolean
+  local function done(ok)
+    local waiting = scaling[out]
+    scaling[out] = nil
+    if not ok then
+      uv.fs_unlink(tmp)
+    end
+    for _, waiting_cb in ipairs(waiting) do
+      waiting_cb(ok and out or thumb)
+    end
+  end
+  local ok = pcall(vim.system, {
+    cmd,
+    thumb,
+    -- Exactly this size (`!`): the drawer computes it from the thumbnail's own aspect ratio, so
+    -- the stretch is under one terminal cell
+    "-scale",
+    string.format("%dx%d!", width, height),
+    "-define",
+    "png:compression-level=1",
+    "png:" .. tmp,
+  }, {}, function(result)
+    vim.schedule(function()
+      done(result.code == 0 and uv.fs_rename(tmp, out) == true)
+    end)
+  end)
+  if not ok then
+    vim.schedule(function()
+      done(false)
+    end)
+  end
+end
+
 ---The thumbnail of `path`, if it has already been made
 ---@param path string
 ---@param stat uv.fs_stat.result
@@ -173,7 +263,18 @@ end
 ---@param path string
 ---@param stat uv.fs_stat.result
 ---@param cb coil.ThumbnailCallback
-M.get = function(path, stat, cb)
+---@param fit? coil.ThumbnailFit Call back with a copy at this size instead (see fit_thumb)
+M.get = function(path, stat, cb, fit)
+  if fit then
+    local want = cb
+    cb = function(thumb, err)
+      if thumb then
+        fit_thumb(thumb, fit, want)
+      else
+        want(nil, err)
+      end
+    end
+  end
   local out = M.path_for(path, stat)
   if exists(out) then
     return cb(out)
@@ -201,7 +302,8 @@ end
 ---Make thumbnails in the background, in this order, before anyone asks for them. Replaces the
 ---previous prefetch's files that haven't started yet; ones already being made are finished.
 ---@param files {path: string, stat: uv.fs_stat.result}[]
-M.prefetch = function(files)
+---@param fit? coil.ThumbnailFit Also make copies at this size (see fit_thumb)
+M.prefetch = function(files, fit)
   queue = vim.tbl_filter(function(job)
     if job.prefetch then
       jobs[job.out] = nil
@@ -211,8 +313,12 @@ M.prefetch = function(files)
   end, queue)
   for _, file in ipairs(files) do
     local out = M.path_for(file.path, file.stat)
-    if not jobs[out] and not exists(out) then
-      local job = { src = file.path, out = out, callbacks = {}, prefetch = true }
+    if exists(out) then
+      if fit then
+        fit_thumb(out, fit, function() end)
+      end
+    elseif not jobs[out] then
+      local job = { src = file.path, out = out, callbacks = {}, prefetch = true, fit = fit }
       jobs[out] = job
       table.insert(queue, job)
     end
@@ -223,7 +329,7 @@ end
 ---Jobs queued or running, for tests
 ---@return integer
 M.pending = function()
-  return vim.tbl_count(jobs)
+  return vim.tbl_count(jobs) + vim.tbl_count(scaling)
 end
 
 return M
