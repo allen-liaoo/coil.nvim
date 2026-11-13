@@ -10,11 +10,17 @@
     nvimx = {
       url = "github:allen-liaoo/nvimx";
       inputs.nixpkgs.follows = "nixpkgs";
-    };  
+    };
   };
 
   outputs =
-    { nixpkgs, oil-nvim, nvimx, ... }:
+    {
+      self,
+      nixpkgs,
+      oil-nvim,
+      nvimx,
+      ...
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -22,28 +28,48 @@
         "x86_64-darwin"
         "aarch64-darwin"
       ];
-      forAllSystems =
-        f: nixpkgs.lib.genAttrs systems (system: f system nixpkgs.legacyPackages.${system});
+      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system nixpkgs.legacyPackages.${system});
     in
     {
       devShells = forAllSystems (
         system: pkgs: {
-        default = pkgs.mkShell {
-          packages = [
-            pkgs.gnumake
-            pkgs.lua-language-server
-            pkgs.stylua
-            (nvimx.makeNvimxWithModule system {
-              nvimx.preset.lua.enable = true;
-            })
-          ];
+          default = pkgs.mkShell {
+            packages = [
+              pkgs.gnumake
+              pkgs.lua-language-server
+              pkgs.stylua
+              (nvimx.makeNvimxWithModule system {
+                nvimx.preset.lua.enable = true;
+              })
+            ];
 
-          # Neovim is exposed through COIL_NVIM instead of PATH so the shell does not
-          # shadow your own configured `nvim`. Tests run this clean, unconfigured build.
-          COIL_NVIM = "${pkgs.neovim-unwrapped}/bin/nvim";
-          COIL_OIL_PATH = "${oil-nvim}";
-          COIL_PLENARY_PATH = "${pkgs.vimPlugins.plenary-nvim}";
-        };
+            # Neovim is exposed through COIL_NVIM instead of PATH so the shell does not
+            # shadow your own configured `nvim`. Tests run this clean, unconfigured build.
+            COIL_NVIM = "${pkgs.neovim-unwrapped}/bin/nvim";
+            COIL_OIL_PATH = "${oil-nvim}";
+            COIL_PLENARY_PATH = "${pkgs.vimPlugins.plenary-nvim}";
+          };
+        }
+      );
+
+      packages = forAllSystems (
+        system: pkgs:
+        let
+          # The oil.nvim commit coil is tested against
+          oil = pkgs.vimUtils.buildVimPlugin {
+            pname = "oil.nvim";
+            version = "0-unstable-${builtins.substring 0 7 oil-nvim.rev}";
+            src = oil-nvim;
+          };
+          # The plugin, for adding to your own Neovim (pulls in the pinned oil.nvim)
+          coil-nvim = pkgs.callPackage ./nix/coil-nvim.nix {
+            oil-nvim = oil;
+            version = "0-unstable-${self.shortRev or self.dirtyShortRev or "dirty"}";
+          };
+        in
+        {
+          inherit coil-nvim;
+          oil-nvim = oil;
         }
       );
 
