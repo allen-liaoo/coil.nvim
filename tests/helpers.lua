@@ -31,7 +31,15 @@ M.wait = function(cond, ms)
 end
 
 M.setup_oil = function()
-  require("oil").setup({ default_file_explorer = false })
+  require("oil").setup({
+    default_file_explorer = false,
+    -- oil.setup() doesn't undo oil.set_sort() or a hidden-files toggle (they change oil's default
+    -- view_options in place), so reset them explicitly between tests
+    view_options = {
+      show_hidden = false,
+      sort = { { "type", "asc" }, { "name", "asc" } },
+    },
+  })
 end
 
 ---Open oil on `dir` in the current window and wait for the listing
