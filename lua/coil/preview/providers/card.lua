@@ -1,5 +1,6 @@
--- Metadata "cards" for anything without a text preview. The card is a markdown buffer so image
--- renderers (snacks.nvim, image.nvim) can draw the embedded `![](path)` when installed.
+-- Metadata "cards" for anything without a text preview. The card is a markdown buffer. Image cards
+-- either leave room at the bottom for coil to draw the image (with image.nvim), or embed
+-- `![](path)` for whatever markdown image renderer is installed.
 local buffer = require("coil.preview.buffer")
 local M = {}
 
@@ -79,8 +80,9 @@ end
 ---@param kind coil.PreviewKind
 ---@param info coil.ClassifyInfo
 ---@param opts coil.PreviewOpts
+---@param draws_image? boolean coil draws the image below the card
 ---@return string[]
-M.lines = function(target, kind, info, opts)
+M.lines = function(target, kind, info, opts, draws_image)
   local lines = { "# " .. target.name, "" }
   table.insert(lines, string.format("- **Kind:** %s", kind_labels[kind] or kind))
   local stat = info.stat
@@ -101,7 +103,10 @@ M.lines = function(target, kind, info, opts)
   if note then
     vim.list_extend(lines, { "", note })
   end
-  if kind == "image" and target.path then
+  if draws_image then
+    -- A blank line, then the line the image starts on (see M.image_row)
+    vim.list_extend(lines, { "", "" })
+  elseif kind == "image" and target.path then
     vim.list_extend(lines, {
       "",
       string.format("![%s](%s)", target.name, markdown_destination(target.path)),
@@ -114,13 +119,21 @@ end
 ---@param kind coil.PreviewKind
 ---@param info coil.ClassifyInfo
 ---@param opts coil.PreviewOpts
+---@param draws_image? boolean coil draws the image below the card
 ---@return integer bufnr
-M.render = function(target, kind, info, opts)
-  local bufnr = buffer.scratch(M.lines(target, kind, info, opts))
+M.render = function(target, kind, info, opts, draws_image)
+  local bufnr = buffer.scratch(M.lines(target, kind, info, opts, draws_image))
   if opts.card_filetype then
     vim.bo[bufnr].filetype = opts.card_filetype
   end
   return bufnr
+end
+
+---The 0-based line of an image card where the drawn image starts
+---@param bufnr integer
+---@return integer
+M.image_row = function(bufnr)
+  return vim.api.nvim_buf_line_count(bufnr) - 1
 end
 
 return M

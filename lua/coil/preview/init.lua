@@ -4,6 +4,7 @@ local buffer = require("coil.preview.buffer")
 local card = require("coil.preview.providers.card")
 local classify = require("coil.preview.classify")
 local directory = require("coil.preview.providers.directory")
+local image = require("coil.preview.image")
 local text = require("coil.preview.providers.text")
 local M = {}
 
@@ -22,6 +23,8 @@ local M = {}
 ---@field sniff_bytes integer Bytes read to detect binary content
 ---@field card_filetype? string Filetype for metadata cards (nil to skip)
 ---@field loading_delay_ms integer Wait this long before showing "Loading..."
+---@field images boolean Draw images with image.nvim when it is installed and set up
+---@field image_delay_ms integer Wait this long before drawing an image (drawing blocks Neovim)
 ---@field list_dir? coil.ListDir Lists directories for directory previews
 
 ---@type coil.PreviewOpts
@@ -31,6 +34,8 @@ local defaults = {
   sniff_bytes = 8192,
   card_filetype = "markdown",
   loading_delay_ms = 100,
+  images = true,
+  image_delay_ms = 100,
   list_dir = nil,
 }
 
@@ -50,6 +55,7 @@ local generations = {}
 ---@param winid integer
 ---@return integer
 local function next_generation(winid)
+  image.clear(winid)
   generations[winid] = (generations[winid] or 0) + 1
   return generations[winid]
 end
@@ -97,6 +103,23 @@ local function show_directory(winid, gen, target, opts)
   end)
 end
 
+---Show an image card, then draw the image once the cursor has rested on it. image.nvim converts
+---and resizes images synchronously, so drawing every image passed on the way would stall Neovim.
+---@param winid integer
+---@param gen integer
+---@param target coil.PreviewTarget
+---@param info coil.ClassifyInfo
+---@param opts coil.PreviewOpts
+local function show_image(winid, gen, target, info, opts)
+  local bufnr = card.render(target, "image", info, opts, true)
+  place(winid, gen, bufnr)
+  vim.defer_fn(function()
+    if is_latest(winid, gen) and vim.api.nvim_win_get_buf(winid) == bufnr then
+      image.draw(winid, bufnr, card.image_row(bufnr), assert(target.path))
+    end
+  end, opts.image_delay_ms)
+end
+
 ---Show a preview of `target` in `winid`
 ---@param winid integer
 ---@param target coil.PreviewTarget
@@ -120,6 +143,8 @@ M.show = function(winid, target, opts)
     return show_directory(winid, gen, target, o)
   elseif kind == "text" then
     return place(winid, gen, text.render(assert(target.path), o))
+  elseif kind == "image" and o.images and image.available() then
+    return show_image(winid, gen, target, info, o)
   end
   place(winid, gen, card.render(target, kind, info, o))
 end

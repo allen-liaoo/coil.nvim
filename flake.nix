@@ -38,6 +38,8 @@
               pkgs.gnumake
               pkgs.lua-language-server
               pkgs.stylua
+              # image.nvim converts and resizes images with ImageMagick
+              pkgs.imagemagick
               (nvimx.makeNvimxWithModule system {
                 nvimx.preset.lua.enable = true;
               })
@@ -48,6 +50,8 @@
             COIL_NVIM = "${pkgs.neovim-unwrapped}/bin/nvim";
             COIL_OIL_PATH = "${oil-nvim}";
             COIL_PLENARY_PATH = "${pkgs.vimPlugins.plenary-nvim}";
+            # Optional dependency, for drawing images in previews
+            COIL_IMAGE_PATH = "${pkgs.vimPlugins.image-nvim}";
           };
         }
       );
