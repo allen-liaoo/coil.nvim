@@ -38,7 +38,7 @@ optional `~/.config/coil/init.lua` for customising it.
 - [x] **A fuller standalone build:** an icon provider (mini.icons or nvim-web-devicons), more
 Tree-sitter grammars, and ffmpeg and poppler for video and PDF previews (left out for now: with
 their dependencies they add about 300 MB and 150 MB). image.nvim and ImageMagick are included.
-- [ ] **Entry details.** Turn on oil's `permissions`, `size` and `mtime` columns in the standalone
+- [x] **Entry details.** Turn on oil's `permissions`, `size` and `mtime` columns in the standalone
 build (oil's default is the icon column only).
 - [ ] **`q` quits.** `q`/`:CoilClose` closes the column view and leaves an empty editor open. In
   the standalone build it should quit, prompting if edited buffers have unsaved changes.

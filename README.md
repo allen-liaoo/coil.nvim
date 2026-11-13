@@ -329,6 +329,9 @@ Things to know:
 - **It doesn't read your Neovim config.** It runs as its own Neovim app (`NVIM_APPNAME=coil`),
   so its history and state are kept apart from yours too. It has a config file of its own; see
   [Configuring the standalone command](#configuring-the-standalone-command).
+- **The middle pane shows each entry's permissions, size and modification time** (oil's
+  `permissions`, `size` and `mtime` columns). Set `oil = { columns = { "icon" } }` in the
+  [config file](#configuring-the-standalone-command) for names only.
 - **Deleting files moves them to the trash.** Delete a line and save, and the file goes to the
   trash rather than being removed; oil's trash view (`g\`) shows it and can restore it. Set
   `oil = { delete_to_trash = false }` in the [config file](#configuring-the-standalone-command)
@@ -343,7 +346,8 @@ Things to know:
 
 `coil` runs `~/.config/coil/init.lua` (`$XDG_CONFIG_HOME/coil/init.lua`) if it exists. It's
 plain Lua, run before anything is set up, so it can set options and keymaps. It can also return
-setup options for oil.nvim, coil and image.nvim, which are merged into the build's own:
+setup options for oil.nvim, coil and image.nvim, which are merged into the build's own (lists,
+such as oil's `columns`, replace the build's):
 
 ```lua
 -- ~/.config/coil/init.lua

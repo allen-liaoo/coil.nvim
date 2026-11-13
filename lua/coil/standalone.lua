@@ -11,6 +11,8 @@ M.defaults = {
     -- Deleting a line and saving moves the file to the trash, which oil's trash view (g\)
     -- can restore from
     delete_to_trash = true,
+    -- Permissions, size and modification time next to each name
+    columns = { "icon", "permissions", "size", "mtime" },
   },
   coil = {},
   image = {},
@@ -56,6 +58,35 @@ M.load_config = function(path)
   return result
 end
 
+---@param t any
+---@return boolean
+local function is_nonempty_list(t)
+  return type(t) == "table" and vim.islist(t) and next(t) ~= nil
+end
+
+---`over` on top of `base`. Key/value tables merge; lists (such as oil's `columns`) and everything
+---else replace what was there.
+---@param base table
+---@param over table
+---@return table
+local function merge(base, over)
+  local ret = vim.deepcopy(base)
+  for key, value in pairs(over) do
+    local current = ret[key]
+    if
+      type(value) == "table"
+      and type(current) == "table"
+      and not is_nonempty_list(value)
+      and not is_nonempty_list(current)
+    then
+      ret[key] = merge(current, value)
+    else
+      ret[key] = vim.deepcopy(value)
+    end
+  end
+  return ret
+end
+
 ---Each plugin's setup() options: the defaults with the config file's on top. false (image,
 ---icons) means not set up at all.
 ---@param user table What the config file returned
@@ -67,7 +98,7 @@ M.options = function(user)
     if value == false then
       ret[name] = false
     elseif type(value) == "table" then
-      ret[name] = vim.tbl_deep_extend("force", vim.deepcopy(defaults), value)
+      ret[name] = merge(defaults, value)
     else
       ret[name] = vim.deepcopy(defaults)
     end

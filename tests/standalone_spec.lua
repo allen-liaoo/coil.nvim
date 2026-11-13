@@ -61,6 +61,11 @@ describe("standalone startup", function()
       assert.is_false(standalone.options({ oil = { delete_to_trash = false } }).oil.delete_to_trash)
     end)
 
+    it("shows entry details, and lists in the config file replace the defaults'", function()
+      assert.same({ "icon", "permissions", "size", "mtime" }, standalone.options({}).oil.columns)
+      assert.same({ "icon" }, standalone.options({ oil = { columns = { "icon" } } }).oil.columns)
+    end)
+
     it("can turn image.nvim off", function()
       assert.is_false(standalone.options(load({ "return { image = false }" })).image)
     end)
