@@ -19,7 +19,8 @@ end
 
 -- image.nvim creates :ImageReport in its setup()
 if vim.fn.exists(":ImageReport") ~= 2 then
-  require("image").setup()
+  -- In tmux, show images only in the active window (needs tmux's visual-activity off)
+  require("image").setup({ tmux_show_only_in_active_window = true })
 end
 
 -- Neovim's default colour scheme draws keywords, types and numbers in the normal text colour, so

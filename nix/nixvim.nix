@@ -21,7 +21,7 @@ packages:
     (lib.nixvim.plugins.mkNeovimPlugin {
       name = "coil";
       url = "https://github.com/allen-liaoo/coil.nvim";
-      description = "Column view (parent | current | preview) with file previews for oil.nvim.";
+      description = "Column view with file previews for oil.nvim.";
       maintainers = [ ];
 
       package = lib.mkOption {
@@ -63,6 +63,8 @@ packages:
           }
           (lib.mkIf cfg.images.enable {
             plugins.image.enable = lib.mkDefault true;
+            # In tmux, show images only in the active window (needs tmux's visual-activity off)
+            plugins.image.settings.tmux_show_only_in_active_window = lib.mkDefault true;
             # image.nvim and coil's thumbnails use ImageMagick; nixvim's image module only adds it
             # for the sixel backend
             dependencies.imagemagick.enable = lib.mkDefault true;
