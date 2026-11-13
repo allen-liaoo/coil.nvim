@@ -26,7 +26,8 @@ You can use coil in two ways:
   [Installation](#installation)).
 - **As a standalone terminal file manager**, like yazi or ranger: the `coil` command opens the
   column view straight away, and files you open are edited in the same program (see
-  [Standalone file manager](#standalone-file-manager)).
+  [Standalone file manager](#standalone-file-manager)). It comes ready-made with Nix, or runs
+  [your own Neovim](#your-own-neovim-as-a-file-manager) with your config.
 
 ## Try it
 
@@ -379,12 +380,44 @@ return {
 
 If the file has an error, `coil` says so and starts with its defaults.
 
-Without Nix, you can get close with your own Neovim and a shell function:
+### Your own Neovim as a file manager
+
+Your own Neovim, with your config, plugins and colour scheme, can work as a file manager too.
+Start it in coil's standalone mode:
 
 ```sh
-coil() { nvim +"Coil ${1:-.}"; }
+nvim --cmd "let g:coil_standalone = 1"           # the current directory
+nvim --cmd "let g:coil_standalone = 1" ~/a ~/b   # one tab per directory
 ```
 
+In standalone mode, coil opens the column view for the directory arguments (only the views: the
+tab Neovim starts with is closed), `q` quits, and coil's `standalone` options apply (see
+[Options](#options)). Plain `nvim` and `:Coil` work as always.
+
+The plugin comes with a launcher, `bin/coil`, which does this and also takes `--cwd-file` (see
+[Shell integration](docs/shell-integration.md)). Put it on your PATH, for example from where
+lazy.nvim installs coil:
+
+```sh
+ln -s ~/.local/share/nvim/lazy/coil.nvim/bin/coil ~/.local/bin/coil
+```
+
+It runs the `nvim` on your PATH (set `$COIL_NVIM_PROGRAM` for another). If you also install the
+Nix `coil`, give one of them another name.
+
+In your config:
+
+- **`require("coil").standalone()` says which mode Neovim is in,** already while your config
+  loads, so you can set things up differently:
+
+  ```lua
+  require("oil").setup({ delete_to_trash = require("coil").standalone() })
+  ```
+
+- **Don't lazy-load coil in standalone mode;** it has to load during startup to open the column
+  view. With lazy.nvim: `lazy = not vim.g.coil_standalone`.
+- **Start screens and session restore run at startup too.** Turn them off in standalone mode the
+  same way, for example `enabled = not vim.g.coil_standalone` in their lazy.nvim spec.
 
 ## Development
 

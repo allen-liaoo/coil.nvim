@@ -3,7 +3,8 @@
 ## Change directory on exit
 
 A program can't change its shell's working directory, so `coil` writes the directory to change to
-in a file, and a shell function `cd`s there:
+in a file, and a shell function `cd`s there. This works with the Nix `coil` and with the plugin's
+launcher, `bin/coil`, for your own Neovim:
 
 ```sh
 coil --cwd-file <path> [dir...]
