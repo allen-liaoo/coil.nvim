@@ -70,6 +70,52 @@
         }
       );
 
+      # `plugins.coil` for nixvim (./nix/nixvim.nix)
+      nixvimModules = rec {
+        coil = import ./nix/nixvim.nix self.packages;
+        default = coil;
+      };
+
+      # The nixvim module, in a nixvim that starts headless without errors (nixvim from nvimx)
+      checks = forAllSystems (
+        system: pkgs:
+        let
+          nixvimCheck =
+            name: module:
+            nvimx.inputs.nixvim.lib.${system}.check.mkTestDerivationFromNixvimModule {
+              inherit name pkgs;
+              module = {
+                imports = [ self.nixvimModules.default ];
+              }
+              // module;
+            };
+        in
+        {
+          nixvim-module = nixvimCheck "coil-nixvim-module" {
+            plugins.coil = {
+              enable = true;
+              settings = {
+                ratio = [
+                  1
+                  3
+                  4
+                ];
+                keymaps.go_in = "l";
+              };
+            };
+          };
+          nixvim-module-images = nixvimCheck "coil-nixvim-module-images" {
+            # image.nvim needs a real terminal at startup, so this one only builds (as nixvim's own
+            # image.nvim tests do)
+            test.runNvim = false;
+            plugins.coil = {
+              enable = true;
+              images.enable = true;
+            };
+          };
+        }
+      );
+
       apps = forAllSystems (
         system: _: {
           default = {

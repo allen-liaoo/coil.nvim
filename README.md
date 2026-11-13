@@ -76,13 +76,21 @@ programs.neovim.plugins = [
 ];
 ```
 
+For [nixvim](https://github.com/nix-community/nixvim), the flake has a module,
+`nixvimModules.default`, with `plugins.coil` like nixvim's own plugins. It turns on `plugins.oil`
+too, unless you set it yourself:
+
 ```nix
-# nixvim, with its own oil module
-{ pkgs, inputs, ... }:
+{ inputs, ... }:
 {
-  plugins.oil.enable = true;
-  extraPlugins = [ inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system}.coil-nvim ];
-  extraConfigLua = ''require("coil").setup()'';
+  imports = [ inputs.coil-nvim.nixvimModules.default ];
+  plugins.coil = {
+    enable = true;
+    # image.nvim, plus ImageMagick, ffmpeg and poppler for the thumbnails
+    images.enable = true;
+    # require("coil").setup() options (see Options)
+    settings.ratio = [ 1 3 4 ];
+  };
 }
 ```
 
