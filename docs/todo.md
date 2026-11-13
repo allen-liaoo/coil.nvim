@@ -23,7 +23,7 @@
 - [x] Refactor: make sure no coil config or logic duplicates oil's. For instance, keep keymaps (open in splits) config that oil has in oil. Coil should only change the behavior of it in coil's buffer.
 - [x] **Several directories in tabs**, like yazi's tabs: `:Coil dir1 dir2 ...` and `coil dir1 dir2 ...`
   open a column view per directory, one tab each.
-- [ ] **Delete to trash by default.** oil defaults to `delete_to_trash = false`, so deleting a line
+- [x] **Delete to trash by default.** oil defaults to `delete_to_trash = false`, so deleting a line
 and saving removes files permanently. The standalone build should send them to the trash; oil's
 trash view (`g\`) can restore them.
 - [ ] **`:help coil` docs**, a vimdoc version of the README.

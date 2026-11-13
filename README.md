@@ -327,6 +327,10 @@ Things to know:
 - **It doesn't read your Neovim config.** It runs as its own Neovim app (`NVIM_APPNAME=coil`),
   so its history and state are kept apart from yours too. It has a config file of its own; see
   [Configuring the standalone command](#configuring-the-standalone-command).
+- **Deleting files moves them to the trash.** Delete a line and save, and the file goes to the
+  trash rather than being removed; oil's trash view (`g\`) shows it and can restore it. Set
+  `oil = { delete_to_trash = false }` in the [config file](#configuring-the-standalone-command)
+  to delete for good.
 - **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). In other
   terminals, image previews show the info card alone.
 - **It starts with only the column views,** one tab per directory. Opening a file edits it in a

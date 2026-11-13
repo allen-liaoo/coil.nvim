@@ -56,6 +56,11 @@ describe("standalone startup", function()
       assert.same({ a = 1, nested = { b = 2, c = 3 } }, options.oil)
     end)
 
+    it("deletes to the trash unless told otherwise", function()
+      assert.is_true(standalone.options({}).oil.delete_to_trash)
+      assert.is_false(standalone.options({ oil = { delete_to_trash = false } }).oil.delete_to_trash)
+    end)
+
     it("can turn image.nvim off", function()
       assert.is_false(standalone.options(load({ "return { image = false }" })).image)
     end)

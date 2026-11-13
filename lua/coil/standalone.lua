@@ -7,7 +7,11 @@ local M = {}
 ---merged into these.
 ---@type table<string, table>
 M.defaults = {
-  oil = {},
+  oil = {
+    -- Deleting a line and saving moves the file to the trash, which oil's trash view (g\)
+    -- can restore from
+    delete_to_trash = true,
+  },
   coil = {},
   image = {},
 }
