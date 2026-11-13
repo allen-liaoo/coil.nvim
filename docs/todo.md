@@ -26,6 +26,7 @@
 - [x] **Delete to trash by default.** oil defaults to `delete_to_trash = false`, so deleting a line
 and saving removes files permanently. The standalone build should send them to the trash; oil's
 trash view (`g\`) can restore them.
+- [ ] Preview card should now show for any file type, which includes: file path first, directly, without a "file path" label; other metadatas, then a horizontal line, then the preview (thumbnail or text). Include a preview config like oil's that let you choose what (other) metadata to display, default to none.
 - [ ] **`:help coil` docs**, a vimdoc version of the README.
 
 ## Standalone coil
@@ -59,6 +60,18 @@ build (oil's default is the icon column only).
   a visual selection, and exits, so other programs can use coil as a file picker.
 - [ ] **Other arguments:** `--hidden`, `--ratio`, `--help`, `--version`. Today `coil [dir]` opens the
   column view and anything else is passed to Neovim.
+
+## Bugs
+
+- [ ] **Images one column too far left with kitty placeholders.** With
+  `kitty_method = "unicode-placeholders"`, image.nvim draws every image one column left of where
+  it means to, covering the separator left of the preview. Its renderer passes a 0-based column;
+  the normal kitty method adds 1 (`kitty/init.lua`, `move_cursor(x + 1, y + 1, true)`), but
+  `write_placeholder` doesn't (`kitty/helpers.lua`, `move_cursor(x, y + i + 1)`). coil can't
+  shift the image itself: the anchor line is empty and `screenpos` clamps to its end. Plan: patch
+  image.nvim in the Nix builds (`nix/coil.nix`, the nixvim module) and send the fix upstream,
+  along with resetting attributes before the placeholders (coil works around that one today).
+- [ ] Something is drawn below the preview, causing background of terminal to leak through the neovim background. It happens when it isn't a text preview or a text preview with short enough text.
 
 ## Known gaps
 - SSH and S3 directories are listed through oil's adapters, but haven't been tested against a real

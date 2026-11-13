@@ -21,7 +21,7 @@ vimUtils.buildVimPlugin {
     ];
   };
   meta = {
-    description = "Yazi-style column view and file preview for oil.nvim";
+    description = "Column view and file preview for oil.nvim";
     homepage = "https://github.com/allen-liaoo/coil.nvim";
     license = lib.licenses.mit;
   };

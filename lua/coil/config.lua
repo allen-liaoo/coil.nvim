@@ -18,20 +18,18 @@ local defaults = {
   winbar = false,
   -- Sets the tab variable `tabname`, which tab lines such as lualine's `tabs` component show
   tab_title = true,
-  -- With L or <CR>, open files that aren't text (images, videos, audio, PDFs, archives, other
+  -- Open files that aren't text (images, videos, audio, PDFs, archives, other
   -- binary files) in the system's default program (vim.ui.open) instead of the editor. Local files
   -- only; the split and tab keys still open them in the editor.
   open_external = false,
-  -- With L or <CR>, open text files in this Neovim. When false, they open in the system's text
+  -- Open text files in this Neovim. When false, they open in the system's text
   -- editor: XDG's default for text/plain, otherwise $VISUAL or $EDITOR, otherwise here. Editors
   -- that need a terminal open in a new terminal window (xdg-terminal-exec or $TERMINAL). Local
   -- files only; the split and tab keys still open them here.
   edit_here = true,
   preview = {},
-  -- coil's own keys, in the column view's middle pane only. Anywhere else these keys keep their
-  -- usual meaning: oil's mapping if it has one, otherwise Vim's built-in key. oil's keys
-  -- (select and its split and tab variants, preview, toggle hidden, close) are configured in oil;
-  -- coil changes what they do in the middle pane.
+  -- coil's own keys in the middle pane; set one to false to disable it. Coil make change oil's keymap
+  -- behaviors when you're using coil's panes (as opposed to ordinary oil buffers)
   keymaps = {
     go_in = "L", -- Enter a directory; files open in the editing tab
     go_out = "H", -- Go to the parent directory

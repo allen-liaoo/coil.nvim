@@ -1,5 +1,4 @@
 -- The open column views, one per tab. Each tab can hold one view, and several can be open, like
--- yazi's tabs.
 local M = {}
 
 ---@alias coil.PaneRole "parent"|"current"|"preview"

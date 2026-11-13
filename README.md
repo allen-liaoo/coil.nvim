@@ -12,21 +12,17 @@ nix run github:allen-liaoo/coil.nvim               # the current directory
 nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 ```
 
-Without flakes enabled, add `--extra-experimental-features 'nix-command flakes'` after `nix`.
-
 ## Requirements
 
 - Neovim 0.10 or newer (developed and tested on 0.12)
-- [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals and is
-  tested against [v2.16.0](https://github.com/stevearc/oil.nvim/releases/tag/v2.16.0) (the version
-  in nixpkgs) and later commits.
-- Optional, for images in the preview: [image.nvim](https://github.com/3rd/image.nvim), set up
-  with its own `setup()` (coil doesn't set it up for you), and a terminal it can draw in. Videos
-  also need [ffmpeg](https://ffmpeg.org), and PDFs [poppler](https://poppler.freedesktop.org)'s
-  `pdftoppm`.
+- [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals.
+- For images in the preview (optional): [image.nvim](https://github.com/3rd/image.nvim), set up
+  with its own `setup()` (coil doesn't set it up for you), install [ImageMagick](https://github.com/ImageMagick/ImageMagick), and use a terminal it can draw in.
+    Video thumbnails need [ffmpeg](https://ffmpeg.org), and PDFs need [poppler](https://poppler.freedesktop.org)'s `pdftoppm`.
 
-In tmux, images need these in image.nvim's setup and in tmux's config (the Nix `coil` and the
-nixvim module set image.nvim's for you):
+<details>
+<summary>Tmux Setup</summary>
+If you are using tmux, image.nvim need this setup:
 
 ```lua
 require("image").setup({
@@ -36,14 +32,15 @@ require("image").setup({
   tmux_show_only_in_active_window = true,
 })
 ```
-
+Tmux needs this config:
 ```tmux
 set -gq allow-passthrough on
 set -g visual-activity off
 set -g focus-events on
 ```
+</details>
 
-## Installation
+## Installation (As Neovim Plugin)
 
 Set up oil.nvim as usual, then coil. `require("coil").setup()` is optional; call it to change
 the defaults.
@@ -78,38 +75,59 @@ require("coil").setup()
 The flake has the plugin as `packages.<system>.coil-nvim` (`nix/coil-nvim.nix` without flakes).
 It doesn't bring oil.nvim along: add oil.nvim the way you normally would.
 
-```nix
-# Home Manager
-programs.neovim.plugins = [
-  {
-    plugin = pkgs.vimPlugins.oil-nvim;
-    type = "lua";
-    config = ''require("oil").setup()'';
-  }
-  {
-    plugin = inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system}.coil-nvim;
-    type = "lua";
-    config = ''require("coil").setup()'';
-  }
-];
+For [nixvim](https://github.com/nix-community/nixvim), the flake has a module,
+`nixvimModules.default`, with `plugins.coil` like nixvim's own plugins. 
+
+## As Standalone File Manager
+
+You can either use your neovim + coil.nvim as a standalone file manager, or use our (nix) distributed `coil` binary.
+Standalone coil differs from coil-as-a-plugin: everything opens in system's default programs, `q` quits neovim,
+and you can setup [shell integration](docs/shell-integration.md) so it will automatically `cd` to the last directory on exit.
+
+Once setup:
+```sh
+coil [dir1] [dir2] ...
 ```
 
-For [nixvim](https://github.com/nix-community/nixvim), the flake has a module,
-`nixvimModules.default`, with `plugins.coil` like nixvim's own plugins. It turns on `plugins.oil`
-too, unless you set it yourself:
+### Bring Your Own Neovim
 
-```nix
-{ inputs, ... }:
-{
-  imports = [ inputs.coil-nvim.nixvimModules.default ];
-  plugins.coil = {
-    enable = true;
-    # image.nvim, plus ImageMagick, ffmpeg and poppler for the thumbnails
-    images.enable = true;
-    # require("coil").setup() options (see Options)
-    settings.ratio = [ 1 3 4 ];
-  };
-}
+Add an alias to your shell's config:
+
+```sh
+alias coil='nvim --cmd "let g:coil_standalone = 1"'
+```
+
+That starts your Neovim, with your config, plugins and colour scheme, in coil's standalone mode,
+which turns on coil's `standalone` options. Your config can check it with
+`require("coil").standalone()`, even while it loads:
+
+```lua
+require("oil").setup({ delete_to_trash = require("coil").standalone() })
+```
+
+- **Don't lazy-load coil:** If using lazy.nvim,
+  `lazy = not vim.g.coil_standalone`.
+- **For a separate config,** history and state, run it as another Neovim app:
+  Setting `NVIM_APPNAME=coil nvim` make it read `~/.config/coil/init.lua` (which then has to install and set
+  up oil.nvim and coil itself).
+
+### Without Neovim
+
+The flake's default package is a `coil` binary: Neovim with coil, plus all its plugin and binary dependencies necessary for preview. It installs only `bin/coil`, so it
+doesn't clash with a Neovim of your own.
+
+```sh
+nix profile install github:allen-liaoo/coil.nvim
+```
+
+It runs as its own Neovim app (`NVIM_APPNAME=coil`), so its config is `~/.config/coil/init.lua`,
+an ordinary Neovim config. After that runs, `coil` sets up any bundled plugin it didn't:
+
+```lua
+-- ~/.config/coil/init.lua
+require("oil").setup({ view_options = { show_hidden = true } })
+require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
+vim.cmd.colorscheme("retrobox")
 ```
 
 ## Usage
@@ -121,8 +139,8 @@ too, unless you set it yourself:
 | `:CoilPreview` | In a plain oil window, toggle a preview split that follows the cursor |
 | `:CoilClearCache` | Delete the cached image thumbnails |
 
-The middle pane is an oil buffer, and oil's keys work there as usual. coil adds its own, set
-with the `keymaps` option:
+The middle pane is an oil buffer, and oil's keys work there as usual, except some behaviors are changed.
+coil adds its own keymaps, set with the `keymaps` option:
 
 | Key | Does |
 |---|---|
@@ -131,9 +149,8 @@ with the `keymaps` option:
 | `q` | Close the column view |
 | (none) | Quit Neovim, asking about unsaved changes (`keymaps.quit`) |
 
-## Options
 
-The defaults:
+## Options
 
 ```lua
 require("coil").setup({
@@ -144,19 +161,19 @@ require("coil").setup({
   -- Name the column view's tab after the current directory. Sets the tab variable `tabname`,
   -- which tab lines such as lualine's `tabs` component show.
   tab_title = true,
-  -- With L or <CR>, open files that aren't text (images, videos, audio, PDFs, archives, other
+  -- Open files that aren't text (images, videos, audio, PDFs, archives, other
   -- binary files) in the system's default program instead of the editor. Local files only; the
   -- split and tab keys still open them in the editor.
   open_external = false,
-  -- With L or <CR>, open text files in this Neovim. When false, they open in the system's text
+  -- Open text files in this Neovim. When false, they open in the system's text
   -- editor: XDG's default for text/plain, otherwise $VISUAL or $EDITOR, otherwise here. Editors
   -- that need a terminal open in a new terminal window (xdg-terminal-exec or $TERMINAL). Local
   -- files only; the split and tab keys still open them here.
   edit_here = true,
   -- Show each pane's path in a title line (winbar) above it
   winbar = false,
-  -- coil's own keys in the middle pane; set one to false to disable it. oil's keys are set in
-  -- oil's `keymaps`.
+  -- coil's own keys in the middle pane; set one to false to disable it. Coil make change oil's keymap
+  -- behaviors when you're using coil's panes (as opposed to ordinary oil buffers)
   keymaps = {
     go_in = "L", -- Enter a directory; files open in the editing tab
     go_out = "H", -- Go to the parent directory
@@ -194,93 +211,26 @@ require("coil").setup({
 })
 ```
 
-Options with the wrong type raise an error naming the option; unknown options only warn. Hidden
-files and sorting follow oil's `view_options`.
-
-### Highlights
-
-| Group | Default link | Used for |
-|---|---|---|
-| `CoilParentSelected` | `Visual` | The current directory in the parent pane |
-| `CoilDir`, `CoilLink` | `OilDir`, `OilLink` | Directories and symlinks in the side panes |
-| `CoilDirHidden`, `CoilFileHidden`, `CoilLinkHidden` | `OilDirHidden`, `OilFileHidden`, `OilLinkHidden` | Hidden entries in the side panes |
-| `CoilCardTitle`, `CoilCardRule` | `Title`, `WinSeparator` | An info card's file name, and the line under it |
-| `CoilCardLabel`, `CoilCardValue` | `Identifier`, `Normal` | Its rows |
-| `CoilCardNote` | `Comment` | Its notes |
-
-### Lua API
-
-```lua
-require("coil").open(dir)            -- like :Coil; a path or oil URL, nil for the current buffer's
-require("coil").open({ dir1, dir2 }) -- like :Coil dir1 dir2
-require("coil").close()              -- like :CoilClose
-require("coil").standalone()         -- whether Neovim was started as a file manager
-```
-
-## As a file manager
-
-`coil [dir...]` starts Neovim as a file manager: only the column views, one tab per directory,
-files open in your system's default programs (text files in its text editor; set
-`edit_here = true` to edit them in coil), and `q` quits. Your shell can also `cd` to the last
-directory on exit (see [Shell integration](docs/shell-integration.md)).
-
-### With your own Neovim
-
-Add an alias to your shell's config:
-
-```sh
-alias coil='nvim --cmd "let g:coil_standalone = 1"'
-```
-
-That starts your Neovim, with your config, plugins and colour scheme, in coil's standalone mode,
-which turns on coil's `standalone` options. Your config can check it with
-`require("coil").standalone()`, even while it loads:
-
-```lua
-require("oil").setup({ delete_to_trash = require("coil").standalone() })
-```
-
-- **Don't lazy-load coil then:** it opens the column view during startup. With lazy.nvim,
-  `lazy = not vim.g.coil_standalone`.
-- **Start screens and session restore run at startup too.** Turn them off the same way, for
-  example `enabled = not vim.g.coil_standalone`.
-- **For a separate config,** history and state, run it as another Neovim app:
-  `NVIM_APPNAME=coil coil` reads `~/.config/coil/init.lua` (which then has to install and set
-  up oil.nvim and coil itself).
-
-### Without Neovim
-
-The flake's default package is a ready-made `coil`: Neovim with coil, oil.nvim, image.nvim and
-mini.icons, plus ImageMagick, ffmpeg and poppler for previews. It installs only `bin/coil`, so it
-doesn't clash with a Neovim of your own.
-
-```sh
-nix profile install github:allen-liaoo/coil.nvim
-```
-
-```nix
-# Home Manager (nix/coil.nix without flakes)
-home.packages = [ inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system}.default ];
-```
-
-It runs as its own Neovim app (`NVIM_APPNAME=coil`), so its config is `~/.config/coil/init.lua`,
-an ordinary Neovim config. After that runs, `coil` sets up any bundled plugin it didn't:
-
-- **oil.nvim** with `delete_to_trash = true` (oil's trash view, `g\`, restores files) and the
-  permissions, size and modification time columns
-- **image.nvim** and **mini.icons** with their defaults
-- **the `habamax` colour scheme**, if none is set
-
-Set one up yourself and your options are used as they are:
-
-```lua
--- ~/.config/coil/init.lua
-require("oil").setup({ view_options = { show_hidden = true } })
-require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
-vim.cmd.colorscheme("retrobox")
-```
-
-Images need a terminal that speaks the kitty graphics protocol (kitty, Ghostty, WezTerm).
+<!-- ### Highlights -->
+<!-- Metadata card uses these highlights: -->
+<!---->
+<!-- | Group | Default link | Used for | -->
+<!-- |---|---|---| -->
+<!-- | `CoilParentSelected` | `Visual` | The current directory in the parent pane | -->
+<!-- | `CoilDir`, `CoilLink` | `OilDir`, `OilLink` | Directories and symlinks in the side panes | -->
+<!-- | `CoilDirHidden`, `CoilFileHidden`, `CoilLinkHidden` | `OilDirHidden`, `OilFileHidden`, `OilLinkHidden` | Hidden entries in the side panes | -->
+<!-- | `CoilCardTitle`, `CoilCardRule` | `Title`, `WinSeparator` | An info card's file name, and the line under it | -->
+<!-- | `CoilCardLabel`, `CoilCardValue` | `Identifier`, `Normal` | Its rows | -->
+<!-- | `CoilCardNote` | `Comment` | Its notes | -->
+<!---->
+<!-- ### Lua API -->
+<!---->
+<!-- ```lua -->
+<!-- require("coil").open(dir)            -- like :Coil; a path or oil URL, nil for the current buffer's -->
+<!-- require("coil").open({ dir1, dir2 }) -- like :Coil dir1 dir2 -->
+<!-- require("coil").close()              -- like :CoilClose -->
+<!-- require("coil").standalone()         -- whether Neovim was started as a file manager -->
+<!-- ``` -->
 
 ## Development
 
@@ -294,7 +244,3 @@ make dev-standalone-clean           # the same in a clean Neovim
 nix run .                           # the Nix coil from this working copy (files known to git)
 make fmt                            # format with stylua
 ```
-
-## License
-
-MIT

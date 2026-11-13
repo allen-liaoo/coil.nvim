@@ -90,7 +90,7 @@ M.write_cwd_on_exit = function()
       local cwd_file = vim.g.coil_cwd_file
       local dir = M.exit_dir()
       if type(cwd_file) == "string" and cwd_file ~= "" and dir then
-        -- Without the trailing slash (except for /) or newline, as yazi writes it
+        -- Without the trailing slash (except for /) or newline
         local path = dir:match("^(.-)/*$")
         vim.fn.writefile({ path ~= "" and path or "/" }, cwd_file, "b")
       end
