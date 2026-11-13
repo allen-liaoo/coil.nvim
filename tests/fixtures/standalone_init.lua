@@ -20,6 +20,7 @@ vim.api.nvim_create_autocmd("VimEnter", {
       local report = {
         tabs = tabs,
         quit = require("coil.config").get().keymaps.quit,
+        cwd_file = vim.g.coil_cwd_file or vim.NIL,
         cwd_file_env = vim.env.COIL_CWD_FILE or vim.NIL,
       }
       vim.fn.writefile({ vim.json.encode(report) }, vim.env.COIL_TEST_OUT)

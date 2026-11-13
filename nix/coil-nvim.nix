@@ -17,8 +17,6 @@ vimUtils.buildVimPlugin {
     fileset = lib.fileset.unions [
       ../lua
       ../plugin
-      # The launcher, for starting your own Neovim as a file manager
-      ../bin
       ../LICENSE
     ];
   };

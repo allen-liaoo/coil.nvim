@@ -25,6 +25,7 @@ describe("standalone startup", function()
     end)
 
     after_each(function()
+      vim.g.coil_cwd_file = nil
       for _ = 1, 5 do
         pcall(coil.close)
       end
@@ -37,9 +38,10 @@ describe("standalone startup", function()
       assert.is_nil(startup.dirs_for({ dir .. "/one", dir .. "/file.txt" }))
     end)
 
-    it("writes the column view's directory to the --cwd-file on exit", function()
+    it("writes the column view's directory to g:coil_cwd_file on exit", function()
       local cwd_file = dir .. "/cwd"
-      startup.write_cwd_on_exit(cwd_file)
+      vim.g.coil_cwd_file = cwd_file
+      startup.write_cwd_on_exit()
       h.open_view(dir .. "/one")
       vim.api.nvim_exec_autocmds("VimLeavePre", {})
       -- No trailing slash or newline
@@ -88,10 +90,11 @@ describe("standalone mode", function()
     local cwd_file = dir .. "/cwd"
     local cmd = { vim.v.progpath, "--headless", "--clean" }
     vim.list_extend(cmd, flags)
+    -- As a cd-on-exit shell function passes it
+    vim.list_extend(cmd, { "--cmd", string.format("let g:coil_cwd_file = '%s'", cwd_file) })
     vim.list_extend(cmd, { "-u", "tests/fixtures/standalone_init.lua", "--" })
     vim.list_extend(cmd, args)
-    local result =
-      vim.system(cmd, { env = { COIL_TEST_OUT = out, COIL_CWD_FILE = cwd_file } }):wait(20000)
+    local result = vim.system(cmd, { env = { COIL_TEST_OUT = out } }):wait(20000)
     assert.equals(0, result.code, result.stderr)
     return vim.json.decode(table.concat(vim.fn.readfile(out), "\n")), cwd_file
   end
@@ -104,8 +107,6 @@ describe("standalone mode", function()
     -- Only the column views, one per directory
     assert.same({ "oil://" .. dir .. "/one/", "oil://" .. dir .. "/two/" }, report.tabs)
     assert.equals("q", report.quit)
-    -- Read and cleared, so Neovims started from this one don't inherit it
-    assert.equals(vim.NIL, report.cwd_file_env)
     assert.equals(dir .. "/one", table.concat(vim.fn.readfile(cwd_file, "b"), "\n"))
   end)
 

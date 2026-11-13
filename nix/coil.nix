@@ -1,6 +1,6 @@
 # `coil`: coil.nvim as a terminal file manager, for people who don't use Neovim themselves. It is
-# a Neovim with coil.nvim, oil.nvim, image.nvim and mini.icons, started through coil's launcher
-# (bin/coil), installed as `bin/coil` only, so it never clashes with a Neovim of your own. To add
+# a Neovim with coil.nvim, oil.nvim, image.nvim and mini.icons, started in coil's standalone mode by
+# ./coil.sh, installed as `bin/coil` only, so it never clashes with a Neovim of your own. To add
 # coil to your own Neovim, use ./coil-nvim.nix instead.
 #
 #   pkgs.callPackage ./nix/coil.nix { }
@@ -73,10 +73,9 @@ runCommandLocal "coil-${coil-nvim.version}"
     };
   }
   ''
-    # The repo's launcher (bin/coil), running this build's Neovim
     mkdir -p $out/bin
-    substitute ${../bin/coil} $out/bin/coil \
-      --replace-fail '#!/usr/bin/env bash' '#!${runtimeShell}' \
-      --replace-fail 'nvim_program="''${COIL_NVIM_PROGRAM:-nvim}"' 'nvim_program="${lib.getExe nvim}"'
+    substitute ${./coil.sh} $out/bin/coil \
+      --replace-fail '@shell@' '${runtimeShell}' \
+      --replace-fail '@nvim@' '${lib.getExe nvim}'
     chmod +x $out/bin/coil
   ''

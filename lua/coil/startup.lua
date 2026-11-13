@@ -1,7 +1,7 @@
--- Internal. Startup in standalone mode, when Neovim was started as a file manager (bin/coil, or
--- `nvim --cmd "let g:coil_standalone = 1"`): open the column view for the command line's
--- directories, and with $COIL_CWD_FILE write the last directory on exit. plugin/coil.lua calls
--- init() in that mode.
+-- Internal. Startup in standalone mode, when Neovim was started as a file manager
+-- (`nvim --cmd "let g:coil_standalone = 1"`): open the column view for the command line's
+-- directories, and on exit write the last directory to g:coil_cwd_file, if it's set.
+-- plugin/coil.lua calls init() in that mode.
 local M = {}
 
 ---@param arg string
@@ -81,14 +81,15 @@ M.exit_dir = function()
   return last_dir
 end
 
----Write the directory to cd to on exit to `cwd_file`, for a shell function to cd there
----@param cwd_file string
-M.write_cwd_on_exit = function(cwd_file)
+---On exit, write the directory to cd to to g:coil_cwd_file, for a shell function to cd there.
+---Read at exit, so it can be set any time before (usually `--cmd "let g:coil_cwd_file = '…'"`).
+M.write_cwd_on_exit = function()
   M.track_dir()
   vim.api.nvim_create_autocmd("VimLeavePre", {
     callback = function()
+      local cwd_file = vim.g.coil_cwd_file
       local dir = M.exit_dir()
-      if dir then
+      if type(cwd_file) == "string" and cwd_file ~= "" and dir then
         -- Without the trailing slash (except for /) or newline, as yazi writes it
         local path = dir:match("^(.-)/*$")
         vim.fn.writefile({ path ~= "" and path or "/" }, cwd_file, "b")
@@ -103,12 +104,7 @@ M.init = function()
   if vim.v.vim_did_enter == 1 then
     return
   end
-  -- Read once and cleared, so Neovims started from this one (:terminal) don't inherit it
-  local cwd_file = vim.env.COIL_CWD_FILE
-  vim.env.COIL_CWD_FILE = nil
-  if cwd_file and cwd_file ~= "" then
-    M.write_cwd_on_exit(cwd_file)
-  end
+  M.write_cwd_on_exit()
   vim.api.nvim_create_autocmd("VimEnter", {
     once = true,
     -- Let the autocmds coil and oil rely on (BufReadCmd, BufWinEnter, ...) fire from here

@@ -183,22 +183,20 @@ require("coil").standalone()         -- whether Neovim was started as a file man
 ## As a file manager
 
 `coil [dir...]` starts Neovim as a file manager: only the column views, one tab per directory,
-and `q` quits. With `--cwd-file`, your shell can `cd` to the last directory on exit (see
+and `q` quits. Your shell can also `cd` to the last directory on exit (see
 [Shell integration](docs/shell-integration.md)).
 
 ### With your own Neovim
 
-The plugin comes with the `coil` command as `bin/coil`. Put it on your PATH, for example from
-where lazy.nvim installs coil:
+Add an alias to your shell's config:
 
 ```sh
-ln -s ~/.local/share/nvim/lazy/coil.nvim/bin/coil ~/.local/bin/coil
+alias coil='nvim --cmd "let g:coil_standalone = 1"'
 ```
 
-It starts the `nvim` on your PATH (`$COIL_NVIM_PROGRAM` for another) with your config,
-plugins and colour scheme, plus `--cmd "let g:coil_standalone = 1"`. That variable turns on
-coil's `standalone` options. Your config can check it with `require("coil").standalone()`,
-even while it loads:
+That starts your Neovim, with your config, plugins and colour scheme, in coil's standalone mode,
+which turns on coil's `standalone` options. Your config can check it with
+`require("coil").standalone()`, even while it loads:
 
 ```lua
 require("oil").setup({ delete_to_trash = require("coil").standalone() })
@@ -209,7 +207,8 @@ require("oil").setup({ delete_to_trash = require("coil").standalone() })
 - **Start screens and session restore run at startup too.** Turn them off the same way, for
   example `enabled = not vim.g.coil_standalone`.
 - **For a separate config,** history and state, run it as another Neovim app:
-  `NVIM_APPNAME=coil coil` reads `~/.config/coil/init.lua`.
+  `NVIM_APPNAME=coil coil` reads `~/.config/coil/init.lua` (which then has to install and set
+  up oil.nvim and coil itself).
 
 ### Without Neovim
 
