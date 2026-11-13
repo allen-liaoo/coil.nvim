@@ -27,8 +27,9 @@ local defaults = {
     close = "q", -- Close the column view (also in the preview pane)
     quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
   },
-  -- Merged over the options above when Neovim was started as a file manager (g:coil_standalone,
-  -- set with `nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself.
+  -- Options for when Neovim was started as a file manager (g:coil_standalone, set with
+  -- `nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself. These defaults
+  -- give way to the options you set; your own `standalone` options win over everything.
   standalone = {
     keymaps = { close = false, quit = "q" },
   },
@@ -41,20 +42,36 @@ M.standalone = function()
   return value ~= nil and value ~= false and value ~= 0
 end
 
----The options in effect: in standalone mode, with the `standalone` options merged over the rest
----@param new coil.Config
+---The options in effect in either mode. Later layers win: coil's defaults, coil's standalone
+---defaults, the user's options, the user's standalone options.
+---@param opts table What the user passed
+---@param standalone boolean
 ---@return coil.Config
-local function resolve(new)
-  if not M.standalone() then
-    return new
+local function resolve(opts, standalone)
+  local function without_standalone(t)
+    local ret = vim.deepcopy(t)
+    ret.standalone = nil
+    return ret
   end
-  local ret = vim.tbl_deep_extend("force", new, new.standalone)
-  ret.standalone = new.standalone
+  local layers = { without_standalone(defaults) }
+  if standalone then
+    table.insert(layers, defaults.standalone)
+  end
+  table.insert(layers, without_standalone(opts))
+  if standalone and type(opts.standalone) == "table" then
+    table.insert(layers, opts.standalone)
+  end
+  local ret = vim.tbl_deep_extend("force", unpack(layers))
+  ret.standalone = vim.tbl_deep_extend(
+    "force",
+    defaults.standalone,
+    type(opts.standalone) == "table" and opts.standalone or {}
+  )
   return ret
 end
 
 ---@type coil.Config
-local config = resolve(vim.deepcopy(defaults))
+local config = resolve({}, M.standalone())
 
 ---@param msg string
 local function fail(msg, ...)
@@ -116,16 +133,15 @@ local function find_unknown(opts, prefix, unknown)
   end
 end
 
----Type errors are fatal; unknown keys (likely typos) only warn. The standalone options are
----checked in either mode, so mistakes show up before Neovim is started as a file manager.
----@param new coil.Config
+---Type errors are fatal; unknown keys (likely typos) only warn. Both modes' options are checked,
+---so mistakes show up before Neovim is started as a file manager.
 ---@param opts table What the user passed
-local function validate(new, opts)
-  check_types(new, "")
-  if type(new.standalone) ~= "table" then
-    fail("standalone must be a table, got %s", vim.inspect(new.standalone))
+local function validate(opts)
+  if opts.standalone ~= nil and type(opts.standalone) ~= "table" then
+    fail("standalone must be a table, got %s", vim.inspect(opts.standalone))
   end
-  check_types(vim.tbl_deep_extend("force", new, new.standalone), "standalone.")
+  check_types(resolve(opts, false), "")
+  check_types(resolve(opts, true), "standalone.")
 
   local unknown = {}
   find_unknown(opts, "", unknown)
@@ -144,9 +160,8 @@ end
 ---@param opts? table
 M.setup = function(opts)
   opts = opts or {}
-  local new = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts)
-  validate(new, opts)
-  config = resolve(new)
+  validate(opts)
+  config = resolve(opts, M.standalone())
 end
 
 ---@return coil.Config

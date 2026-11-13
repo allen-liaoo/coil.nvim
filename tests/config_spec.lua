@@ -98,6 +98,15 @@ describe("config", function()
       assert.same({ go_in = "l", go_out = "h", close = false, quit = "q" }, c.keymaps)
     end)
 
+    it("lets the options you set win over coil's standalone defaults", function()
+      vim.g.coil_standalone = 1
+      config.setup({ keymaps = { quit = "Q" } })
+      assert.equals("Q", config.get().keymaps.quit)
+      assert.is_false(config.get().keymaps.close)
+      config.setup({ keymaps = { quit = "Q" }, standalone = { keymaps = { quit = "<C-q>" } } })
+      assert.equals("<C-q>", config.get().keymaps.quit)
+    end)
+
     it("checks the standalone options in either mode", function()
       for _, case in ipairs({
         { opts = { standalone = false }, match = "standalone must be a table" },

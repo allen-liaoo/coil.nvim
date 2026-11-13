@@ -274,8 +274,9 @@ require("coil").setup({
     -- Size limit of the thumbnail cache, in MiB; the least recently used go first (false: none)
     thumbnail_cache_mb = 200,
   },
-  -- Merged over the options above when Neovim is started as a file manager
-  -- (`nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself.
+  -- Options for when Neovim is started as a file manager
+  -- (`nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself. These defaults
+  -- give way to the options you set; your own `standalone` options win over everything.
   standalone = {
     keymaps = { close = false, quit = "q" },
   },
