@@ -1,5 +1,5 @@
 -- Opening things outside the column view: files go to the editing window (where :Coil was run), or
--- with `open_external`, to another program.
+-- elsewhere when the options say so (`open_external`, `edit_here`).
 local bridge = require("coil.oil_bridge")
 local config = require("coil.config")
 local state = require("coil.view.state")
@@ -33,16 +33,48 @@ local EXTERNAL_KINDS = {
   binary = true,
 }
 
----With `open_external`, open a file that isn't text in the system's default program instead of
----the editor
+-- The kinds of file the system's text editor opens with `edit_here = false`
+local TEXT_KINDS = { text = true, too_large = true }
+
+---@param path string
+---@return boolean opened
+local function open_external(path)
+  local _, err = vim.ui.open(path)
+  if err then
+    vim.notify(string.format("[coil] Can't open %s: %s", path, err), vim.log.levels.ERROR)
+  end
+  return true
+end
+
+---@param path string
+---@return boolean opened False when there's no system text editor, or it failed to start
+local function open_in_editor(path)
+  local editor = require("coil.editor").find()
+  if not editor then
+    return false
+  end
+  if require("coil.editor").open(editor, path) then
+    return true
+  end
+  vim.notify(
+    string.format("[coil] Couldn't start %s; opening %s here", editor.name, path),
+    vim.log.levels.WARN
+  )
+  return false
+end
+
+---Open a file outside this Neovim if the options say so: with `open_external`, files that aren't
+---text in the system's default program; with `edit_here = false`, text files in the system's
+---text editor
 ---@param bufnr integer The file's buffer from oil's select (not loaded unless already open)
----@return boolean opened Whether it was handed to another program
-M.externally = function(bufnr)
-  if not config.get().open_external then
+---@return boolean opened Whether it was opened elsewhere
+M.elsewhere = function(bufnr)
+  local options = config.get()
+  if not options.open_external and options.edit_here then
     return false
   end
   local name = vim.api.nvim_buf_get_name(bufnr)
-  -- oil gives local files as plain paths; remote ones keep their oil URL and stay in the editor
+  -- oil gives local files as plain paths; remote ones keep their oil URL and stay here
   local path = name:match("^[%w-]+://") and bridge.local_path(name) or name
   if not path then
     return false
@@ -53,18 +85,17 @@ M.externally = function(bufnr)
     path = path,
     is_dir = false,
   })
-  if not EXTERNAL_KINDS[kind] then
-    return false
-  end
-  local _, err = vim.ui.open(path)
-  if err then
-    vim.notify(string.format("[coil] Can't open %s: %s", path, err), vim.log.levels.ERROR)
+  local opened = false
+  if options.open_external and EXTERNAL_KINDS[kind] then
+    opened = open_external(path)
+  elseif not options.edit_here and TEXT_KINDS[kind] then
+    opened = open_in_editor(path)
   end
   -- oil added a buffer for the file; drop it unless the file was already open
-  if vim.fn.bufloaded(bufnr) == 0 then
+  if opened and vim.fn.bufloaded(bufnr) == 0 then
     pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
   end
-  return true
+  return opened
 end
 
 ---Show `bufnr` in the editing tab and switch there. The column view stays open.

@@ -36,6 +36,7 @@ describe("config", function()
       { opts = { winbar = "yes" }, match = "winbar" },
       { opts = { tab_title = 1 }, match = "tab_title" },
       { opts = { open_external = "yes" }, match = "open_external" },
+      { opts = { edit_here = 1 }, match = "edit_here" },
       { opts = { preview = false }, match = "preview" },
       { opts = { keymaps = { go_in = 1 } }, match = "keymaps.go_in" },
       { opts = { keymaps = { go_in = "" } }, match = "keymaps.go_in" },

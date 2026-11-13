@@ -6,6 +6,7 @@ local M = {}
 ---@field winbar boolean Show each pane's path in a title line (winbar)
 ---@field tab_title boolean Name the column view's tab after the current directory (t:tabname)
 ---@field open_external boolean Open files that aren't text in the system's default program
+---@field edit_here boolean Open text files in this Neovim (otherwise in the system's text editor)
 ---@field preview table Options for the preview module (see coil.PreviewOpts)
 ---@field keymaps table<string, string|false> Keys for coil actions in the middle pane (false disables)
 ---@field standalone table Options that replace the others when Neovim runs as a file manager
@@ -21,6 +22,11 @@ local defaults = {
   -- binary files) in the system's default program (vim.ui.open) instead of the editor. Local files
   -- only; the split and tab keys still open them in the editor.
   open_external = false,
+  -- With L or <CR>, open text files in this Neovim. When false, they open in the system's text
+  -- editor: XDG's default for text/plain, otherwise $VISUAL or $EDITOR, otherwise here.
+  -- Editors that need a terminal run in a new tab. Local files only; the split and tab keys
+  -- still open them here.
+  edit_here = true,
   preview = {},
   -- coil's own keys, in the column view's middle pane only. Anywhere else these keys keep their
   -- usual meaning: oil's mapping if it has one, otherwise Vim's built-in key. oil's keys
@@ -37,6 +43,7 @@ local defaults = {
   -- give way to the options you set; your own `standalone` options win over everything.
   standalone = {
     open_external = true,
+    edit_here = false,
     keymaps = { close = false, quit = "q" },
   },
 }
@@ -111,6 +118,9 @@ local function check_types(new, prefix)
   end
   if type(new.open_external) ~= "boolean" then
     fail("%sopen_external must be true or false, got %s", prefix, vim.inspect(new.open_external))
+  end
+  if type(new.edit_here) ~= "boolean" then
+    fail("%sedit_here must be true or false, got %s", prefix, vim.inspect(new.edit_here))
   end
   if type(new.preview) ~= "table" then
     fail("%spreview must be a table, got %s", prefix, vim.inspect(new.preview))

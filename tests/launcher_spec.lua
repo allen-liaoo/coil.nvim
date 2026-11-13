@@ -23,11 +23,12 @@ describe("the Nix coil's launcher (nix/coil.sh)", function()
     local coil
 
     before_each(function()
-      -- Prints $COIL_CWD_FILE, then one argument per line
+      -- Prints its environment, then one argument per line
       local stub = dir .. "/nvim"
       h.write(stub, {
         "#!/usr/bin/env bash",
         'echo "cwd_file=${COIL_CWD_FILE-unset}"',
+        'echo "appname=${NVIM_APPNAME-unset} user_appname=${COIL_USER_NVIM_APPNAME-unset}"',
         'printf "%s\\n" "$@"',
       })
       vim.fn.setfperm(stub, "rwxr-xr-x")
@@ -36,10 +37,11 @@ describe("the Nix coil's launcher (nix/coil.sh)", function()
 
     ---@param args string[]
     ---@return vim.SystemCompleted
-    local function run(args)
+    ---@param env? table<string, string>
+    local function run(args, env)
       local cmd = { coil }
       vim.list_extend(cmd, args)
-      return vim.system(cmd):wait(5000)
+      return vim.system(cmd, { env = env }):wait(5000)
     end
 
     ---@param result vim.SystemCompleted
@@ -49,7 +51,14 @@ describe("the Nix coil's launcher (nix/coil.sh)", function()
       return vim.split(result.stdout, "\n", { trimempty = true })
     end
 
-    local standalone = { "--cmd", "let g:coil_standalone = 1" }
+    local standalone = {
+      "--cmd",
+      "let g:coil_standalone = 1",
+      "--cmd",
+      'let g:coil_editor_env = {"NVIM_APPNAME": $COIL_USER_NVIM_APPNAME}'
+        .. " | unlet $COIL_USER_NVIM_APPNAME",
+    }
+    local env = "appname=coil user_appname="
     local cwd = { "--cmd", "let g:coil_cwd_file = $COIL_CWD_FILE | unlet $COIL_CWD_FILE" }
 
     ---@param ... string[]
@@ -64,21 +73,25 @@ describe("the Nix coil's launcher (nix/coil.sh)", function()
 
     it("starts Neovim in standalone mode with the other arguments", function()
       assert.same(
-        concat({ "cwd_file=unset" }, standalone, { "a dir", "-R" }),
+        concat({ "cwd_file=unset", env }, standalone, { "a dir", "-R" }),
         lines(run({ "a dir", "-R" }))
       )
-      assert.same(concat({ "cwd_file=unset" }, standalone), lines(run({})))
+      assert.same(concat({ "cwd_file=unset", env }, standalone), lines(run({})))
     end)
 
     it("passes --cwd-file on through the environment, never in a command", function()
-      local expected = concat({ "cwd_file=/tmp/it's x" }, standalone, cwd, { "a" })
+      local expected = concat({ "cwd_file=/tmp/it's x", env }, standalone, cwd, { "a" })
       assert.same(expected, lines(run({ "--cwd-file", "/tmp/it's x", "a" })))
       assert.same(expected, lines(run({ "a", "--cwd-file=/tmp/it's x" })))
     end)
 
+    it("runs as its own Neovim app, keeping the user's for editors", function()
+      assert.equals("appname=coil user_appname=mine", lines(run({}, { NVIM_APPNAME = "mine" }))[2])
+    end)
+
     it("leaves everything after -- to Neovim", function()
       assert.same(
-        concat({ "cwd_file=unset" }, standalone, { "--", "--cwd-file" }),
+        concat({ "cwd_file=unset", env }, standalone, { "--", "--cwd-file" }),
         lines(run({ "--", "--cwd-file" }))
       )
     end)
@@ -103,6 +116,9 @@ describe("the Nix coil's launcher (nix/coil.sh)", function()
     assert.equals(cwd_file, report.cwd_file)
     -- Copied and removed, so Neovims started from this one (:terminal) don't inherit it
     assert.equals(vim.NIL, report.cwd_file_env)
+    -- Editors get the user's NVIM_APPNAME back (none here), and the copy is gone too
+    assert.same({ NVIM_APPNAME = "" }, report.editor_env)
+    assert.equals(vim.NIL, report.user_appname_env)
     assert.equals(dir .. "/one", table.concat(vim.fn.readfile(cwd_file, "b"), "\n"))
   end)
 end)

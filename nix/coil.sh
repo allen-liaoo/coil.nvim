@@ -8,6 +8,15 @@
 set -euo pipefail
 
 nvim_args=(--cmd "let g:coil_standalone = 1")
+
+# The build's own config and state (~/.config/coil, ...), whatever NVIM_APPNAME the user has.
+# Editors coil starts get the user's value back (g:coil_editor_env; empty means Neovim's default),
+# so a Neovim editor loads the user's own config. Copied out of the environment, like --cwd-file.
+export COIL_USER_NVIM_APPNAME="${NVIM_APPNAME-}"
+export NVIM_APPNAME=coil
+nvim_args+=(--cmd 'let g:coil_editor_env = {"NVIM_APPNAME": $COIL_USER_NVIM_APPNAME}'\
+' | unlet $COIL_USER_NVIM_APPNAME')
+
 args=()
 while [ $# -gt 0 ]; do
   case "$1" in

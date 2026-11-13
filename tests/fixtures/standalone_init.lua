@@ -22,6 +22,8 @@ vim.api.nvim_create_autocmd("VimEnter", {
         quit = require("coil.config").get().keymaps.quit,
         cwd_file = vim.g.coil_cwd_file or vim.NIL,
         cwd_file_env = vim.env.COIL_CWD_FILE or vim.NIL,
+        editor_env = vim.g.coil_editor_env or vim.NIL,
+        user_appname_env = vim.env.COIL_USER_NVIM_APPNAME or vim.NIL,
       }
       vim.fn.writefile({ vim.json.encode(report) }, vim.env.COIL_TEST_OUT)
       vim.cmd("qa!")

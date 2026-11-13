@@ -122,6 +122,11 @@ require("coil").setup({
   -- binary files) in the system's default program instead of the editor. Local files only; the
   -- split and tab keys still open them in the editor.
   open_external = false,
+  -- With L or <CR>, open text files in this Neovim. When false, they open in the system's text
+  -- editor: XDG's default for text/plain, otherwise $VISUAL or $EDITOR, otherwise here. Editors
+  -- that need a terminal run in a new tab. Local files only; the split and tab keys still open
+  -- them here.
+  edit_here = true,
   -- Show each pane's path in a title line (winbar) above it
   winbar = false,
   -- coil's own keys in the middle pane; set one to false to disable it. oil's keys are set in
@@ -157,6 +162,7 @@ require("coil").setup({
   -- over everything.
   standalone = {
     open_external = true,
+    edit_here = false,
     keymaps = { close = false, quit = "q" },
   },
 })
@@ -188,8 +194,9 @@ require("coil").standalone()         -- whether Neovim was started as a file man
 ## As a file manager
 
 `coil [dir...]` starts Neovim as a file manager: only the column views, one tab per directory,
-files that aren't text open in your system's default program, and `q` quits. Your shell can
-also `cd` to the last directory on exit (see [Shell integration](docs/shell-integration.md)).
+files open in your system's default programs (text files in its text editor; set
+`edit_here = true` to edit them in coil), and `q` quits. Your shell can also `cd` to the last
+directory on exit (see [Shell integration](docs/shell-integration.md)).
 
 ### With your own Neovim
 

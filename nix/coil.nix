@@ -37,14 +37,10 @@ let
       vimPlugins.mini-icons
       defaults
     ];
-    # No init of its own: Neovim reads ~/.config/coil/init.lua (see NVIM_APPNAME), a config like
-    # any other
+    # No init of its own: Neovim reads ~/.config/coil/init.lua (./coil.sh sets NVIM_APPNAME), a config
+    # like any other
     wrapRc = false;
     wrapperArgs = [
-      # Keep away from the user's own Neovim config, state and shada
-      "--set-default"
-      "NVIM_APPNAME"
-      "coil"
       # Thumbnails for previews: ImageMagick for images (image.nvim uses it too), ffmpeg for video
       # frames, poppler for PDF pages. Appended, so versions already on PATH are used first
       "--suffix"
