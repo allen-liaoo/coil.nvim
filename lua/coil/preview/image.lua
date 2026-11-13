@@ -28,6 +28,30 @@ local function image_api()
   return api
 end
 
+---image.nvim's kitty unicode placeholders are characters it writes straight to the terminal,
+---setting only their colour, so they take whatever attributes Neovim's own drawing left on, and
+---kitty draws those over the image: an underline (vim-illuminate's on the word under the cursor,
+---say) becomes a line across every row. Turn the attributes off first, on every draw, including
+---the ones image.nvim does by itself on scroll. Its kitty backend loads this module; other
+---backends don't need it.
+local function reset_placeholder_attributes()
+  local helpers = package.loaded["image/backends/kitty/helpers"]
+  if
+    type(helpers) ~= "table"
+    or helpers.coil_reset_attributes
+    or type(helpers.write) ~= "function"
+    or type(helpers.write_placeholder) ~= "function"
+  then
+    return
+  end
+  local write_placeholder = helpers.write_placeholder
+  helpers.write_placeholder = function(...)
+    helpers.write("\27[0m")
+    return write_placeholder(...)
+  end
+  helpers.coil_reset_attributes = true
+end
+
 ---@return boolean
 M.available = function()
   return image_api() ~= nil
@@ -165,6 +189,7 @@ M.draw = function(winid, bufnr, row, path)
   if not api or vim.api.nvim_win_get_buf(winid) ~= bufnr then
     return false
   end
+  reset_placeholder_attributes()
   local ok, image = pcall(api.from_file, path, {
     window = winid,
     buffer = bufnr,

@@ -246,6 +246,29 @@ describe("image previews", function()
     assert.equals(0, #fake.created)
   end)
 
+  it("turns text attributes off before image.nvim writes kitty placeholders", function()
+    -- image.nvim's kitty helpers, as coil uses them
+    local written = {}
+    local helpers = {
+      write = function(data)
+        table.insert(written, data)
+      end,
+    }
+    helpers.write_placeholder = function()
+      helpers.write("placeholders")
+    end
+    package.loaded["image/backends/kitty/helpers"] = helpers
+    preview.show(win, target("pic.png"))
+    wait_drawn(1)
+    preview.show(win, target("a.txt"))
+    preview.show(win, target("pic.png"))
+    wait_drawn(2)
+    package.loaded["image/backends/kitty/helpers"] = nil
+    -- As image.nvim's backend calls it, including when it redraws by itself; wrapped only once
+    helpers.write_placeholder()
+    assert.same({ "\27[0m", "placeholders" }, written)
+  end)
+
   it("works with the real image.nvim", function()
     local image_path = os.getenv("COIL_IMAGE_PATH")
     assert.truthy(image_path, "COIL_IMAGE_PATH is not set; run tests inside `nix develop`")
