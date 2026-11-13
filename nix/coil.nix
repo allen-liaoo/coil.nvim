@@ -1,7 +1,7 @@
 # `coil`: a standalone file manager in the terminal. It is a Neovim with coil.nvim, oil.nvim,
-# image.nvim, mini.icons and Tree-sitter grammars that opens the column view on startup, installed
-# as `bin/coil` only, so it never clashes with your own Neovim. For adding coil to your own Neovim,
-# use ./coil-nvim.nix instead.
+# image.nvim and mini.icons that opens the column view on startup, installed as `bin/coil` only,
+# so it never clashes with your own Neovim. For adding coil to your own Neovim, use
+# ./coil-nvim.nix instead.
 #
 #   pkgs.callPackage ./nix/coil.nix { }
 #
@@ -21,41 +21,6 @@
   coil-nvim ? callPackage ./coil-nvim.nix { },
 }:
 let
-  # Highlighting for text previews, beyond the few grammars Neovim ships with
-  treesitter = vimPlugins.nvim-treesitter.withPlugins (
-    p: with p; [
-      bash
-      c
-      cpp
-      css
-      csv
-      diff
-      dockerfile
-      git_config
-      gitcommit
-      gitignore
-      go
-      html
-      ini
-      java
-      javascript
-      json
-      kotlin
-      make
-      nix
-      php
-      python
-      ruby
-      rust
-      sql
-      toml
-      tsx
-      typescript
-      xml
-      yaml
-      zig
-    ]
-  );
   nvim = wrapNeovimUnstable neovim-unwrapped {
     plugins = [
       coil-nvim
@@ -63,7 +28,6 @@ let
       vimPlugins.image-nvim
       # Icons in oil's icon column
       vimPlugins.mini-icons
-      treesitter
     ];
     wrapperArgs = [
       # Keep away from the user's own Neovim config, state and shada; the config file is

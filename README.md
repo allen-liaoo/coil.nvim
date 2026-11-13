@@ -307,8 +307,8 @@ require("coil").close()    -- like :CoilClose
 ## Standalone file manager
 
 The flake's default package is a `coil` command: a Neovim with coil, oil.nvim, image.nvim,
-mini.icons (icons in oil's listing), Tree-sitter grammars for highlighting text previews, and
-ImageMagick, ffmpeg and poppler for image, video and PDF previews. It opens the column view as
+mini.icons (icons in oil's listing), and ImageMagick, ffmpeg and poppler for image, video and PDF
+previews. Text previews are highlighted by Neovim's built-in syntax files. It opens the column view as
 soon as it starts.
 
 ```sh
