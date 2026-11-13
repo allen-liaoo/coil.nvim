@@ -324,13 +324,33 @@ home.packages = [ inputs.coil-nvim.packages.${pkgs.stdenv.hostPlatform.system}.d
 Things to know:
 
 - **It installs only `bin/coil`,** so it sits next to your own Neovim without clashing.
-- **It doesn't read your Neovim config.** It runs as its own Neovim app
-  (`NVIM_APPNAME=coil-nvim`), so its history and state are kept apart from yours too.
+- **It doesn't read your Neovim config.** It runs as its own Neovim app (`NVIM_APPNAME=coil`),
+  so its history and state are kept apart from yours too. It has a config file of its own; see
+  [Configuring the standalone command](#configuring-the-standalone-command).
 - **Images are drawn with the kitty graphics protocol** (kitty, Ghostty, WezTerm). In other
   terminals, image previews show the info card alone.
 - **It starts with only the column views,** one tab per directory. Opening a file edits it in a
   new tab, and the next files open next to it; the column views stay open in their tabs. `q` or
   `:CoilClose` closes a column view; `:qa` quits.
+
+### Configuring the standalone command
+
+`coil` runs `~/.config/coil/init.lua` (`$XDG_CONFIG_HOME/coil/init.lua`) if it exists. It's
+plain Lua, run before anything is set up, so it can set options and keymaps. It can also return
+setup options for oil.nvim, coil and image.nvim, which are merged into the build's own:
+
+```lua
+-- ~/.config/coil/init.lua
+vim.o.number = true
+
+return {
+  oil = { view_options = { show_hidden = true } }, -- oil.nvim's setup() options
+  coil = { ratio = { 1, 3, 4 } }, -- coil's (see Options)
+  image = false, -- image.nvim's, or false to leave image previews off
+}
+```
+
+If the file has an error, `coil` says so and starts with its defaults.
 
 Without Nix, you can get close with your own Neovim and a shell function:
 

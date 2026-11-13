@@ -33,7 +33,7 @@ trash view (`g\`) can restore them.
 These concern the `coil` command (`nix/coil.nix`). Most are standalone-mode behaviour, so they
 should be options set by the standalone build, not changes forced on people using coil as a plugin.
 
-- [ ] **Config file.** The build loads its own generated init and ignores user config. Load an
+- [x] **Config file.** The build loads its own generated init and ignores user config. Load an
 optional `~/.config/coil/init.lua` for customising it.
 - [ ] **A fuller standalone build:** an icon provider (mini.icons or nvim-web-devicons), more
 Tree-sitter grammars, and ffmpeg and poppler for video and PDF previews (left out for now: with
