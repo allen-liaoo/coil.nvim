@@ -159,6 +159,7 @@ M.preview = function(view, force)
   if target then
     set_winbar(winid, target.is_dir and (target.name .. "/") or target.name)
     preview.show(winid, target, { list_dir = bridge.list_dir })
+    preview.prefetch(winid, bridge.targets_near(view.panes.current, preview.prefetch_distance()))
   else
     set_winbar(winid, "")
     preview.clear(winid)

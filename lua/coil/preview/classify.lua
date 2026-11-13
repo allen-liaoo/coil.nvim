@@ -59,6 +59,18 @@ local function read_head(path, nbytes)
   return data, read_err
 end
 
+---The kind a file name's extension alone decides, if any (image, video, ...)
+---@param name string
+---@return nil|coil.PreviewKind
+M.kind_by_name = function(name)
+  local ext = extension(name)
+  for kind, exts in pairs(by_extension) do
+    if ext and exts[ext] then
+      return kind
+    end
+  end
+end
+
 ---@param target coil.PreviewTarget
 ---@param opts coil.PreviewOpts
 ---@return coil.PreviewKind
@@ -78,11 +90,9 @@ M.classify = function(target, opts)
     return "special", { stat = stat }
   end
 
-  local ext = extension(target.name)
-  for kind, exts in pairs(by_extension) do
-    if ext and exts[ext] then
-      return kind, { stat = stat }
-    end
+  local kind = M.kind_by_name(target.name)
+  if kind then
+    return kind, { stat = stat }
   end
 
   if stat.size > opts.max_bytes then

@@ -85,6 +85,25 @@ describe("oil_bridge", function()
     assert.equals("oil://" .. dir .. "/sub/", target.url)
   end)
 
+  it("resolves the entries around the cursor, nearest first", function()
+    for _, name in ipairs({ "a", "b", "c", "d", "e" }) do
+      h.write(dir .. "/" .. name, { "" })
+    end
+    h.open_oil(dir)
+    local win = vim.api.nvim_get_current_win()
+    local function names(distance)
+      return vim.tbl_map(function(target)
+        return target.name
+      end, bridge.targets_near(win, distance))
+    end
+    h.cursor_to(win, "c")
+    assert.same({ "d", "b", "e", "a" }, names(2))
+    assert.same({}, names(0))
+    -- Lines past either end of the listing are skipped
+    h.cursor_to(win, "a")
+    assert.same({ "b", "c", "d" }, names(3))
+  end)
+
   it("marks entries typed but not yet saved", function()
     local bufnr = h.open_oil(dir)
     local win = vim.api.nvim_get_current_win()

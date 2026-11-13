@@ -200,6 +200,8 @@ its README for other backends and options.
   photo.)
 - Work on an image starts once the cursor has rested on it for `preview.image_delay_ms`, so
   scrolling past images doesn't start a thumbnail for each.
+- In the column view, thumbnails are also made for the images up to `preview.prefetch` entries
+  above and below the cursor (2 by default), so they're ready when you get there.
 - The image is redrawn when the pane is resized or scrolled and when you come back to the tab,
   and removed when the preview changes.
 - Without ImageMagick's command-line tools (if image.nvim uses its `magick_rock` processor),
@@ -250,6 +252,8 @@ require("coil").setup({
     image_delay_ms = 100,
     -- Images are drawn from thumbnails that fit {width, height} pixels (only read by setup())
     thumbnail_size = { 600, 900 },
+    -- In the column view, also make thumbnails for images this many entries from the cursor
+    prefetch = 2,
   },
 })
 ```

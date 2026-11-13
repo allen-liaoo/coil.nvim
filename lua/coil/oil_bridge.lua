@@ -341,4 +341,29 @@ M.cursor_target = function(winid)
   return M.entry_target(bufnr, entry)
 end
 
+---Preview targets for the entries around a window's cursor, nearest first (below before above):
+---the lines at distance 1, then 2, and so on. The cursor's own entry isn't included.
+---@param winid integer A window showing an oil buffer
+---@param distance integer How many lines above and below the cursor
+---@return coil.PreviewTarget[]
+M.targets_near = function(winid, distance)
+  local bufnr = vim.api.nvim_win_get_buf(winid)
+  if not M.is_oil_buffer(bufnr) then
+    return {}
+  end
+  local oil = require("oil")
+  local lnum = vim.api.nvim_win_get_cursor(winid)[1]
+  local line_count = vim.api.nvim_buf_line_count(bufnr)
+  local targets = {}
+  for d = 1, distance do
+    for _, line in ipairs({ lnum + d, lnum - d }) do
+      local entry = line >= 1 and line <= line_count and oil.get_entry_on_line(bufnr, line)
+      if entry and entry.name ~= ".." then
+        table.insert(targets, M.entry_target(bufnr, entry))
+      end
+    end
+  end
+  return targets
+end
+
 return M

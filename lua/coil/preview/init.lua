@@ -7,6 +7,7 @@ local directory = require("coil.preview.providers.directory")
 local image = require("coil.preview.image")
 local text = require("coil.preview.providers.text")
 local thumbnail = require("coil.preview.thumbnail")
+local uv = vim.uv or vim.loop
 local M = {}
 
 ---@class (exact) coil.PreviewTarget
@@ -27,6 +28,7 @@ local M = {}
 ---@field images boolean Draw images with image.nvim when it is installed and set up
 ---@field image_delay_ms integer Wait this long after an image card is shown before working on the image
 ---@field thumbnail_size integer[] Images are drawn from thumbnails at most {width, height} pixels (setup only)
+---@field prefetch integer prefetch() prepares images up to this many entries from the cursor (0 for none)
 ---@field list_dir? coil.ListDir Lists directories for directory previews
 
 ---@type coil.PreviewOpts
@@ -39,6 +41,7 @@ local defaults = {
   images = true,
   image_delay_ms = 100,
   thumbnail_size = { 600, 900 },
+  prefetch = 2,
   list_dir = nil,
 }
 
@@ -186,6 +189,39 @@ end
 ---@param lines? string[]
 M.clear = function(winid, lines)
   place(winid, next_generation(winid), buffer.message(lines or {}))
+end
+
+---How far from the cursor prefetch() should look, in entries (the `prefetch` option)
+---@return integer
+M.prefetch_distance = function()
+  return config.prefetch
+end
+
+---Prepare the images among `targets` (entries near the cursor, nearest first) in the background,
+---so they are ready when the cursor reaches them. Call it after show(): like the image the cursor
+---is on, nothing starts until the preview has stayed the same for `image_delay_ms`.
+---@param winid integer The window show() last ran in
+---@param targets coil.PreviewTarget[]
+M.prefetch = function(winid, targets)
+  if not (config.images and image.available() and thumbnail.available()) then
+    return
+  end
+  local gen = generations[winid]
+  vim.defer_fn(function()
+    if generations[winid] ~= gen then
+      return
+    end
+    local files = {}
+    for _, target in ipairs(targets) do
+      if target.path and not target.is_dir and not target.unsaved then
+        local stat = classify.kind_by_name(target.name) == "image" and uv.fs_stat(target.path)
+        if stat and stat.type == "file" then
+          table.insert(files, { path = target.path, stat = stat })
+        end
+      end
+    end
+    thumbnail.prefetch(files)
+  end, config.image_delay_ms)
 end
 
 return M
