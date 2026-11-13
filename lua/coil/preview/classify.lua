@@ -7,6 +7,7 @@ local M = {}
 ---@class (exact) coil.ClassifyInfo
 ---@field stat? uv.fs_stat.result
 ---@field err? string
+---@field note? string Shown on the card (e.g. a tool to install)
 
 local function set(list)
   local ret = {}

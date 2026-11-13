@@ -222,6 +222,104 @@ describe("thumbnails", function()
     assert.equals("20x10", dimensions(copy))
   end)
 
+  ---Make a short test video with ffmpeg
+  ---@param name string
+  ---@param size string e.g. "1280x720"
+  ---@return string path
+  local function video(name, size)
+    local path = dir .. "/" .. name
+    vim.fn.system({
+      "ffmpeg",
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc=duration=2:rate=10:size=" .. size,
+      "-c:v",
+      "mpeg4",
+      path,
+    })
+    assert.equals(0, vim.v.shell_error)
+    return path
+  end
+
+  ---A one-page PDF of `width` x `height` points, written by hand
+  ---@param name string
+  ---@param width integer
+  ---@param height integer
+  ---@return string path
+  local function pdf(name, width, height)
+    local objects = {
+      "<< /Type /Catalog /Pages 2 0 R >>",
+      "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+      string.format("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %d %d] >>", width, height),
+    }
+    local out, offsets = { "%PDF-1.4\n" }, {}
+    local length = #out[1]
+    for i, body in ipairs(objects) do
+      local obj = string.format("%d 0 obj\n%s\nendobj\n", i, body)
+      offsets[i] = length
+      table.insert(out, obj)
+      length = length + #obj
+    end
+    table.insert(out, string.format("xref\n0 %d\n0000000000 65535 f \n", #objects + 1))
+    for _, offset in ipairs(offsets) do
+      table.insert(out, string.format("%010d 00000 n \n", offset))
+    end
+    table.insert(
+      out,
+      string.format(
+        "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n",
+        #objects + 1,
+        length
+      )
+    )
+    local path = dir .. "/" .. name
+    h.write_bytes(path, table.concat(out))
+    return path
+  end
+
+  it("makes a video's thumbnail from one of its frames", function()
+    local thumb = assert(get(video("big.mp4", "1280x720")))
+    local w, h = dimensions(thumb):match("(%d+)x(%d+)")
+    assert.equals("600", w)
+    assert.is_true(math.abs(tonumber(h) - 338) <= 1)
+    -- Small videos keep their size
+    assert.equals("320x240", dimensions(assert(get(video("small.mp4", "320x240")))))
+  end)
+
+  it("makes a PDF's thumbnail from its first page", function()
+    -- 200x100 points, 600 pixels wide
+    assert.equals("600x300", dimensions(assert(get(pdf("doc.pdf", 200, 100)))))
+  end)
+
+  it("reports videos and PDFs that can't be read, leaving nothing behind", function()
+    h.write(dir .. "/broken.mp4", { "not a video" })
+    h.write(dir .. "/broken.pdf", { "not a pdf" })
+    for _, name in ipairs({ "broken.mp4", "broken.pdf" }) do
+      local thumb, err = get(dir .. "/" .. name)
+      assert.is_nil(thumb)
+      assert.truthy(err)
+    end
+    assert.same({}, vim.fn.readdir(cache))
+  end)
+
+  it("knows which tools each kind needs", function()
+    assert.equals("image", thumbnail.kind_of("/a/b.png"))
+    assert.equals("video", thumbnail.kind_of("/a/b.MKV"))
+    assert.equals("pdf", thumbnail.kind_of("/a/b.pdf"))
+    assert.is_true(thumbnail.available("video"))
+    assert.is_true(thumbnail.available("pdf"))
+    local path = vim.env.PATH
+    vim.env.PATH = ""
+    local video_ok, pdf_ok = thumbnail.available("video"), thumbnail.available("pdf")
+    vim.env.PATH = path
+    assert.is_false(video_ok)
+    assert.is_false(pdf_ok)
+    assert.equals("poppler (pdftoppm)", thumbnail.tool_name("pdf"))
+  end)
+
   it("knows when ImageMagick isn't installed", function()
     assert.is_true(thumbnail.available())
     local path = vim.env.PATH

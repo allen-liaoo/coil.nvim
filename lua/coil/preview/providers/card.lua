@@ -50,15 +50,15 @@ end
 ---@param opts coil.PreviewOpts
 ---@return nil|string
 local function note_for(kind, info, opts)
-  if kind == "binary" then
+  if info.note then
+    return info.note
+  elseif kind == "binary" then
     return "No text preview for binary files."
   elseif kind == "too_large" then
     return string.format(
       "Larger than %s, so the text preview is skipped.",
       M.format_size(opts.max_bytes)
     )
-  elseif kind == "video" or kind == "pdf" then
-    return "Thumbnail preview is not available yet."
   elseif kind == "special" then
     return string.format("Not a regular file (%s).", info.stat and info.stat.type or "unknown")
   elseif kind == "unreadable" then

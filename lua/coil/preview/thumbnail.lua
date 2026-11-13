@@ -46,11 +46,48 @@ local function magick()
   end
 end
 
+---@alias coil.ThumbnailKind "image"|"video"|"pdf"
+
+---What makes each kind's thumbnails, as named to the user when it's missing
+---@type table<coil.ThumbnailKind, string>
+local tool_names = {
+  image = "ImageMagick (magick or convert)",
+  video = "ffmpeg (ffmpeg and ffprobe)",
+  pdf = "poppler (pdftoppm)",
+}
+
+---@param kind coil.ThumbnailKind
 ---@return boolean
-M.available = function()
+local function has_tools(kind)
+  if kind == "video" then
+    return vim.fn.executable("ffmpeg") == 1 and vim.fn.executable("ffprobe") == 1
+  elseif kind == "pdf" then
+    return vim.fn.executable("pdftoppm") == 1
+  end
   return magick() ~= nil
 end
 
+---Whether thumbnails of `kind` can be made (the tools are installed)
+---@param kind? coil.ThumbnailKind Default "image"
+---@return boolean
+M.available = function(kind)
+  return has_tools(kind or "image")
+end
+
+---The tool to install for thumbnails of `kind`, as shown to the user
+---@param kind coil.ThumbnailKind
+---@return string
+M.tool_name = function(kind)
+  return tool_names[kind]
+end
+
+---Which kind of thumbnail a file gets, from its extension
+---@param path string
+---@return coil.ThumbnailKind
+M.kind_of = function(path)
+  local kind = require("coil.preview.classify").kind_by_name(vim.fs.basename(path))
+  return (kind == "video" or kind == "pdf") and kind or "image"
+end
 ---Where the thumbnail of a file at this size, length and modification time lives. A changed file
 ---gets a new name, so a stale thumbnail is never shown.
 ---@param path string
@@ -75,6 +112,7 @@ end
 
 ---@class (exact) coil.ThumbnailJob
 ---@field src string
+---@field kind coil.ThumbnailKind
 ---@field out string
 ---@field callbacks coil.ThumbnailCallback[]
 ---@field prefetch boolean Nobody is waiting for it
@@ -142,7 +180,8 @@ local function list_cache()
         path = path,
         size = stat.size,
         mtime = stat.mtime.sec,
-        tmp = vim.endswith(name, ".tmp"),
+        -- Also pdftoppm's `<name>.tmp.png`
+        tmp = name:find("%.tmp") ~= nil,
       })
     end
   end
@@ -216,13 +255,143 @@ M.clear_cache = function()
   return count, bytes
 end
 
+---Run a command in the background; `cb` gets its result on the main loop
+---@param cmd string[]
+---@param cb fun(result: vim.SystemCompleted)
+local function spawn(cmd, cb)
+  local ok, err = pcall(vim.system, cmd, { text = true }, function(result)
+    vim.schedule(function()
+      cb(result)
+    end)
+  end)
+  if not ok then
+    vim.schedule(function()
+      cb({ code = -1, signal = 0, stdout = "", stderr = tostring(err) })
+    end)
+  end
+end
+
+---@param result vim.SystemCompleted
+---@return string
+local function first_error_line(result)
+  local msg = vim.trim(result.stderr or ""):match("^[^\n]*")
+  return msg ~= "" and msg or "failed"
+end
+
+---Makes a thumbnail of `src` that fits `w` x `h`, written to (or starting with) `tmp`. Calls
+---back with the file it wrote, or an error.
+---@alias coil.ThumbnailMaker fun(src: string, tmp: string, w: integer, h: integer, cb: fun(file?: string, err?: string))
+
+---@type table<coil.ThumbnailKind, coil.ThumbnailMaker>
+local makers = {
+  image = function(src, tmp, w, h, cb)
+    local input
+    if src:lower():match("%.jpe?g$") then
+      -- Read at up to twice the thumbnail's size, which lets the JPEG decoder skip detail the
+      -- thumbnail can't show (much faster for photos). Unlike `-define jpeg:size`, it never
+      -- enlarges small images.
+      input = string.format("%s[%dx%d>]", src, w * 2, h * 2)
+    else
+      -- The first frame of an animation or the first page of a TIFF; otherwise every frame
+      -- would be written as a separate file
+      input = src .. "[0]"
+    end
+    spawn({
+      assert(magick()),
+      input,
+      -- Phone photos store their rotation separately
+      "-auto-orient",
+      -- Shrink to fit, never enlarge
+      "-thumbnail",
+      string.format("%dx%d>", w, h),
+      "png:" .. tmp,
+    }, function(result)
+      if result.code == 0 then
+        cb(tmp)
+      else
+        cb(nil, first_error_line(result))
+      end
+    end)
+  end,
+
+  -- A frame 10% of the way in, which skips black intros and title fades
+  video = function(src, tmp, w, h, cb)
+    spawn({
+      "ffprobe",
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      src,
+    }, function(probe)
+      local duration = tonumber(vim.trim(probe.stdout or ""))
+      spawn({
+        "ffmpeg",
+        "-nostdin",
+        "-v",
+        "error",
+        -- Before -i: seek in the file instead of decoding up to that point
+        "-ss",
+        string.format("%.3f", duration and duration * 0.1 or 0),
+        "-i",
+        src,
+        "-frames:v",
+        "1",
+        -- Shrink to fit, never enlarge
+        "-vf",
+        string.format("scale='min(%d,iw)':'min(%d,ih)':force_original_aspect_ratio=decrease", w, h),
+        "-f",
+        "image2",
+        "-c:v",
+        "png",
+        "-y",
+        tmp,
+      }, function(result)
+        if result.code == 0 and uv.fs_stat(tmp) then
+          cb(tmp)
+        else
+          cb(nil, result.code == 0 and "no video frame" or first_error_line(result))
+        end
+      end)
+    end)
+  end,
+
+  -- The first page, `w` pixels wide
+  pdf = function(src, tmp, w, _, cb)
+    spawn({
+      "pdftoppm",
+      "-png",
+      "-f",
+      "1",
+      "-l",
+      "1",
+      "-singlefile",
+      "-scale-to-x",
+      tostring(w),
+      "-scale-to-y",
+      "-1",
+      src,
+      -- pdftoppm adds the extension
+      tmp,
+    }, function(result)
+      if result.code == 0 then
+        cb(tmp .. ".png")
+      else
+        uv.fs_unlink(tmp .. ".png")
+        cb(nil, first_error_line(result))
+      end
+    end)
+  end,
+}
+
 ---@param job coil.ThumbnailJob
 local function run(job)
-  local cmd = magick()
-  if not cmd then
+  if not has_tools(job.kind) then
     jobs[job.out] = nil
     for _, cb in ipairs(job.callbacks) do
-      cb(nil, "ImageMagick (magick or convert) is not installed")
+      cb(nil, tool_names[job.kind] .. " is not installed")
     end
     return
   end
@@ -231,44 +400,18 @@ local function run(job)
   -- Written under a temporary name and renamed when complete, so a half-written thumbnail is
   -- never drawn (by this Neovim or another one sharing the cache)
   local tmp = string.format("%s.%d.tmp", job.out, uv.os_getpid())
-  local w, h = config.size[1], config.size[2]
-  local src
-  if job.src:lower():match("%.jpe?g$") then
-    -- Read at up to twice the thumbnail's size, which lets the JPEG decoder skip detail the
-    -- thumbnail can't show (much faster for photos). Unlike `-define jpeg:size`, it never
-    -- enlarges small images.
-    src = string.format("%s[%dx%d>]", job.src, w * 2, h * 2)
-  else
-    -- The first frame of an animation or the first page of a TIFF; otherwise every frame would
-    -- be written as a separate file
-    src = job.src .. "[0]"
-  end
-  local ok, err = pcall(vim.system, {
-    cmd,
-    src,
-    -- Phone photos store their rotation separately
-    "-auto-orient",
-    -- Shrink to fit, never enlarge
-    "-thumbnail",
-    string.format("%dx%d>", w, h),
-    "png:" .. tmp,
-  }, { text = true }, function(result)
-    vim.schedule(function()
-      if result.code == 0 and uv.fs_rename(tmp, job.out) then
-        account(job.out)
-        finish(job, job.out)
-      else
-        uv.fs_unlink(tmp)
-        local msg = vim.trim(result.stderr or ""):match("^[^\n]*")
-        finish(job, nil, msg ~= "" and msg or "ImageMagick failed")
+  makers[job.kind](job.src, tmp, config.size[1], config.size[2], function(file, err)
+    if file and uv.fs_rename(file, job.out) then
+      account(job.out)
+      finish(job, job.out)
+    else
+      if file then
+        uv.fs_unlink(file)
       end
-    end)
+      uv.fs_unlink(tmp)
+      finish(job, nil, err or "failed")
+    end
   end)
-  if not ok then
-    vim.schedule(function()
-      finish(job, nil, tostring(err))
-    end)
-  end
 end
 
 start_next = function()
@@ -417,7 +560,7 @@ M.get = function(path, stat, cb, fit)
       end
     end
   else
-    job = { src = path, out = out, callbacks = { cb }, prefetch = false }
+    job = { src = path, kind = M.kind_of(path), out = out, callbacks = { cb }, prefetch = false }
     jobs[out] = job
     table.insert(queue, 1, job)
   end
@@ -443,7 +586,14 @@ M.prefetch = function(files, fit)
         fit_thumb(out, fit, function() end)
       end
     elseif not jobs[out] then
-      local job = { src = file.path, out = out, callbacks = {}, prefetch = true, fit = fit }
+      local job = {
+        src = file.path,
+        kind = M.kind_of(file.path),
+        out = out,
+        callbacks = {},
+        prefetch = true,
+        fit = fit,
+      }
       jobs[out] = job
       table.insert(queue, job)
     end

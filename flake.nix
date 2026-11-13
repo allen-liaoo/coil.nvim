@@ -40,6 +40,9 @@
               pkgs.stylua
               # image.nvim converts and resizes images with ImageMagick
               pkgs.imagemagick
+              # Video frames and PDF pages for previews
+              pkgs.ffmpeg-headless
+              pkgs.poppler-utils
               (nvimx.makeNvimxWithModule system {
                 nvimx.preset.lua.enable = true;
               })

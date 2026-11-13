@@ -44,7 +44,8 @@ enabled, add `--extra-experimental-features 'nix-command flakes'` after `nix`.
 
 - Neovim 0.10 or newer (developed and tested on 0.12)
 - Optional: [image.nvim](https://github.com/3rd/image.nvim), set up with its `setup()`, to draw
-  images in the preview (see [Images](#images))
+  images in the preview, plus [ffmpeg](https://ffmpeg.org) for video frames and
+  [poppler](https://poppler.freedesktop.org)'s `pdftoppm` for PDF pages (see [Images](#images))
 - [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals and is
   tested against commit [`d3733d9`](https://github.com/stevearc/oil.nvim/tree/d3733d933833a0e59b813ecec99341527adf0c28);
   much newer or older versions of oil may need changes.
@@ -171,7 +172,9 @@ How the column view behaves:
 | Directory | Its entries, sorted and filtered like oil (hidden entries greyed out when shown) |
 | Text file | The first lines, syntax-highlighted |
 | Image | An info card (with the image's dimensions) and the image drawn below it by [image.nvim](https://github.com/3rd/image.nvim) (see [Images](#images)). Without image.nvim, the card alone. |
-| Anything else (binary, video, PDF, archive, very large files) | An info card: kind, size, modified time, permissions, location |
+| Video | An info card and a frame from 10% into the video, drawn below it (needs image.nvim and ffmpeg) |
+| PDF | An info card and the first page, drawn below it (needs image.nvim and poppler's `pdftoppm`) |
+| Anything else (binary, audio, archive, very large files) | An info card: kind, size, modified time, permissions, location |
 
 Info cards are laid out and highlighted by coil (filetype `coil_card`), so markdown plugins leave
 them alone, and they look the same whether or not the preview has focus.
@@ -182,7 +185,9 @@ normally.
 ### Images
 
 With [image.nvim](https://github.com/3rd/image.nvim) installed and set up, coil draws images in the
-preview, filling the space below the info card. coil calls image.nvim directly, so image.nvim's
+preview, filling the space below the info card. It does the same for videos (a frame 10% of the
+way in, made with `ffmpeg`) and PDFs (the first page, made with `pdftoppm`) when those tools are
+installed; otherwise their cards say what to install. coil calls image.nvim directly, so image.nvim's
 markdown integration isn't needed.
 
 **coil doesn't set image.nvim up for you.** Call its `setup()` yourself, before or after coil's;
@@ -213,7 +218,8 @@ its README for other backends and options.
   and removed when the preview changes.
 - Without ImageMagick's command-line tools (if image.nvim uses its `magick_rock` processor),
   image.nvim gets the original file.
-- Set `preview.images = false` to show the card without the image.
+- Videos and PDFs go through the same thumbnails, cache and prefetching as images.
+- Set `preview.images = false` to show cards without pictures.
 
 ## Options
 
@@ -251,7 +257,7 @@ require("coil").setup({
     sniff_bytes = 8192,
     -- Wait this long (ms) before showing "Loading..." for a slow directory
     loading_delay_ms = 100,
-    -- Draw images with image.nvim when it is installed and set up
+    -- Draw images (and video frames, PDF pages) with image.nvim when it is installed and set up
     images = true,
     -- Wait this long (ms) after the cursor stops on an image before working on it
     image_delay_ms = 100,

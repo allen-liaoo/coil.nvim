@@ -178,7 +178,7 @@ describe("image previews", function()
     h.write(dir .. "/broken.png", { "not an image" })
     preview.show(win, target("broken.png"))
     assert.is_true(h.wait(function()
-      return (status() or ""):find("^No image preview: ") ~= nil
+      return (status() or ""):find("^No preview: ") ~= nil
     end, 10000))
     assert.equals(0, #fake.created)
   end)
@@ -190,6 +190,41 @@ describe("image previews", function()
     local img = wait_drawn(1)
     vim.env.PATH = path
     assert.equals(dir .. "/pic.png", img.path)
+  end)
+
+  it("draws a frame below a video's card", function()
+    local path = dir .. "/clip.mp4"
+    vim.fn.system({
+      "ffmpeg",
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc=duration=1:rate=10:size=64x48",
+      "-c:v",
+      "mpeg4",
+      path,
+    })
+    preview.show(win, target("clip.mp4"))
+    assert.equals("Loading a frame...", status())
+    local img = wait_drawn(1)
+    assert.equals(thumb_of("clip.mp4"), img.path)
+    assert.equals("Kind         Video", h.win_lines(win)[3])
+  end)
+
+  it("says which tool to install when one is missing", function()
+    h.write(dir .. "/doc.pdf", { "%PDF-1.4" })
+    local executable = vim.fn.executable
+    vim.fn.executable = function(name)
+      return name ~= "pdftoppm" and executable(name) or 0
+    end
+    preview.show(win, target("doc.pdf"))
+    vim.fn.executable = executable
+    local lines = h.win_lines(win)
+    assert.equals("Install poppler (pdftoppm) to see the first page.", lines[#lines])
+    vim.wait(20)
+    assert.equals(0, #fake.created)
   end)
 
   it("shows the card alone when images are off", function()

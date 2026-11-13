@@ -113,22 +113,30 @@ local function show_directory(winid, gen, target, opts)
   end)
 end
 
----Show an image card, then draw the image once the cursor has rested on it. The image drawn is a
----thumbnail made in the background (see thumbnail.lua): image.nvim converts and resizes the
----original synchronously, which stalls Neovim for seconds on a large photo. Without ImageMagick,
----image.nvim gets the original.
+-- Kinds whose preview is a picture drawn below the card, and what the card says meanwhile
+local loading = {
+  image = "Loading image...",
+  video = "Loading a frame...",
+  pdf = "Loading the first page...",
+}
+
+---Show a card for an image, video or PDF, then draw a picture of it below once the cursor has
+---rested on it. The picture is a thumbnail made in the background (see thumbnail.lua): the
+---image itself, a frame of the video, the PDF's first page. For images without ImageMagick,
+---image.nvim gets the original, which it converts and scales while Neovim waits.
 ---@param winid integer
 ---@param gen integer
 ---@param target coil.PreviewTarget
+---@param kind "image"|"video"|"pdf"
 ---@param info coil.ClassifyInfo
 ---@param opts coil.PreviewOpts
-local function show_image(winid, gen, target, info, opts)
+local function show_picture(winid, gen, target, kind, info, opts)
   local path, stat = assert(target.path), assert(info.stat)
-  local bufnr = card.render(target, "image", info, opts, true)
+  local bufnr = card.render(target, kind, info, opts, true)
   local row = card.image_row(bufnr)
-  local use_thumbnail = thumbnail.available()
+  local use_thumbnail = thumbnail.available(kind)
   if use_thumbnail and not thumbnail.cached(path, stat) then
-    card.set_status(bufnr, row, "Loading image...")
+    card.set_status(bufnr, row, loading[kind])
   end
   place(winid, gen, bufnr)
 
@@ -154,7 +162,7 @@ local function show_image(winid, gen, target, info, opts)
       if thumb then
         draw(thumb)
       elseif current() then
-        card.set_status(bufnr, row, "No image preview: " .. (err or "unknown error"))
+        card.set_status(bufnr, row, "No preview: " .. (err or "unknown error"))
       end
     end, fit)
   end, opts.image_delay_ms)
@@ -183,8 +191,14 @@ M.show = function(winid, target, opts)
     return show_directory(winid, gen, target, o)
   elseif kind == "text" then
     return place(winid, gen, text.render(assert(target.path), o))
-  elseif kind == "image" and o.images and image.available() then
-    return show_image(winid, gen, target, info, o)
+  elseif loading[kind] and o.images and image.available() then
+    if kind == "image" or thumbnail.available(kind) then
+      return show_picture(winid, gen, target, kind, info, o)
+    end
+    local what = kind == "pdf" and "the first page" or "a frame from the video"
+    info = vim.tbl_extend("force", info, {
+      note = string.format("Install %s to see %s.", thumbnail.tool_name(kind), what),
+    })
   end
   place(winid, gen, card.render(target, kind, info, o))
 end
@@ -202,13 +216,13 @@ M.prefetch_distance = function()
   return config.prefetch
 end
 
----Prepare the images among `targets` (entries near the cursor, nearest first) in the background,
+---Prepare the images, videos and PDFs among `targets` (entries near the cursor, nearest first) in the background,
 ---so they are ready when the cursor reaches them. Call it after show(): like the image the cursor
 ---is on, nothing starts until the preview has stayed the same for `image_delay_ms`.
 ---@param winid integer The window show() last ran in
 ---@param targets coil.PreviewTarget[]
 M.prefetch = function(winid, targets)
-  if not (config.images and image.available() and thumbnail.available()) then
+  if not (config.images and image.available()) then
     return
   end
   local gen = generations[winid]
@@ -219,12 +233,14 @@ M.prefetch = function(winid, targets)
     local files, fit = {}, nil
     for _, target in ipairs(targets) do
       if target.path and not target.is_dir and not target.unsaved then
-        local stat = classify.kind_by_name(target.name) == "image" and uv.fs_stat(target.path)
+        local kind = classify.kind_by_name(target.name)
+        local stat = loading[kind] and thumbnail.available(kind) and uv.fs_stat(target.path)
         if stat and stat.type == "file" then
           table.insert(files, { path = target.path, stat = stat })
-          -- Image cards all have the same lines, so one estimate fits every image
+          -- Cards of one kind have the same lines; for the others, the exact-size copy is made
+          -- when the cursor gets there
           if not fit then
-            local lines = card.lines(target, "image", { stat = stat }, config, true)
+            local lines = card.lines(target, kind, { stat = stat }, config, true)
             fit = image.estimated_fitter(winid, #lines - 1)
           end
         end
