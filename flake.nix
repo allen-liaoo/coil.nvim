@@ -66,10 +66,26 @@
             oil-nvim = oil;
             version = "0-unstable-${self.shortRev or self.dirtyShortRev or "dirty"}";
           };
+          # The standalone file manager: `coil [dir]`
+          coil = pkgs.callPackage ./nix/coil.nix {
+            oil-nvim = oil;
+            inherit coil-nvim;
+          };
         in
         {
-          inherit coil-nvim;
+          default = coil;
+          inherit coil coil-nvim;
           oil-nvim = oil;
+        }
+      );
+
+      apps = forAllSystems (
+        system: _: {
+          default = {
+            type = "app";
+            program = nixpkgs.lib.getExe self.packages.${system}.default;
+            meta.description = "Terminal file manager built on Neovim, oil.nvim and coil.nvim";
+          };
         }
       );
 
