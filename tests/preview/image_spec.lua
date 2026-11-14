@@ -99,7 +99,7 @@ describe("image previews", function()
     assert.equals(0, geom.y)
     assert.equals(0, geom.x)
     assert.equals(vim.api.nvim_win_get_width(win), geom.width)
-    -- image.nvim draws below line `y`, so the first row is left for "Loading image..."
+    -- image.nvim draws below line `y`, so the first row is left for "Loading thumbnail..."
     assert.equals(vim.api.nvim_win_get_height(win) - 1, geom.height)
   end)
 
@@ -161,7 +161,7 @@ describe("image previews", function()
     end))
   end)
 
-  ---The dimmed note on an image's preview ("Loading image...")
+  ---The dimmed note on an image's preview ("Loading thumbnail...")
   ---@return nil|string
   local function status()
     local ns = vim.api.nvim_get_namespaces()["coil_preview_status"]
@@ -170,16 +170,17 @@ describe("image previews", function()
     return marks[1] and marks[1][4].virt_text[1][1]
   end
 
-  it("says the image is loading until its thumbnail is ready", function()
+  it("says the thumbnail is loading until the image is drawn", function()
     preview.show(win, target("pic.png"))
-    assert.equals("Loading image...", status())
+    assert.equals("Loading thumbnail...", status())
     wait_drawn(1)
     assert.is_nil(status())
-    -- Once the thumbnail is cached there's nothing to wait for
+    -- Also with the thumbnail cached, until the image is drawn after image_delay_ms
     preview.show(win, target("a.txt"))
     preview.show(win, target("pic.png"))
-    assert.is_nil(status())
+    assert.equals("Loading thumbnail...", status())
     wait_drawn(2)
+    assert.is_nil(status())
   end)
 
   it("notes images that can't be read", function()
@@ -234,7 +235,7 @@ describe("image previews", function()
       path,
     })
     preview.show(win, target("clip.mp4"))
-    assert.equals("Loading a frame...", status())
+    assert.equals("Loading thumbnail...", status())
     local img = wait_drawn(1)
     assert.equals(thumb_of("clip.mp4"), img.path)
   end)

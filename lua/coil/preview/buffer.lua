@@ -32,7 +32,7 @@ end
 
 local status_ns = vim.api.nvim_create_namespace("coil_preview_status")
 
----Show a dimmed note on the first line ("Loading image..."), replacing any earlier one; nil
+---Show a dimmed note on the first line ("Loading thumbnail..."), replacing any earlier one; nil
 ---removes it
 ---@param bufnr integer
 ---@param msg? string

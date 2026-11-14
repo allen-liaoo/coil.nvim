@@ -112,12 +112,7 @@ local function show_directory(winid, gen, target, opts)
   end)
 end
 
--- Kinds whose preview is a picture, what the preview says until it is drawn, and what it shows
-local loading = {
-  image = "Loading image...",
-  video = "Loading a frame...",
-  pdf = "Loading the first page...",
-}
+-- Kinds whose preview is a picture, and what it shows
 local pictures = {
   image = "the image",
   video = "a frame from the video",
@@ -177,12 +172,12 @@ end
 ---@param opts coil.PreviewOpts
 local function show_picture(winid, gen, target, kind, info, opts)
   local path, stat = assert(target.path), assert(info.stat)
-  -- The picture fills the window from the buffer's only line
+  -- The picture fills the window below the buffer's only line, which says what is happening
+  -- until the picture is drawn: during image_delay_ms, while the thumbnail is made, and while
+  -- image.nvim scales an original
   local bufnr = buffer.scratch({ "" })
+  buffer.set_status(bufnr, "Loading thumbnail...")
   local use_thumbnail = thumbnail.available(kind)
-  if use_thumbnail and not thumbnail.cached(path, stat) then
-    buffer.set_status(bufnr, loading[kind])
-  end
   place(winid, gen, bufnr)
 
   local function current()
