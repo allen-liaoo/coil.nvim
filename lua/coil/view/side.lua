@@ -76,6 +76,26 @@ local function redraw_buffer(bufnr)
   end
 end
 
+---Buffers whose lines oil changed, waiting for redraw_changed
+---@type table<integer, boolean>
+local changed = {}
+
+---After oil redraws a side pane's buffer: redraw its side windows, and fire the TextChanged
+---Neovim fires only for the current buffer, which a side pane's never is. Extensions redecorate
+---oil buffers on it (oil-git-status puts back the signs the new lines lost), as they would in an
+---ordinary window.
+---@param bufnr integer
+local function redraw_changed(bufnr)
+  changed[bufnr] = nil
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+  redraw_buffer(bufnr)
+  if bufnr ~= vim.api.nvim_get_current_buf() then
+    vim.api.nvim_exec_autocmds("TextChanged", { buffer = bufnr, modeline = false })
+  end
+end
+
 ---Redraw the side windows showing `bufnr` whenever oil redraws it (hidden files, sort, files
 ---changed). Stops watching once no side window shows it.
 ---@param bufnr integer
@@ -90,9 +110,13 @@ local function watch(bufnr)
     on_lines = function()
       for _, s in pairs(shown) do
         if s.bufnr == bufnr then
-          vim.schedule(function()
-            redraw_buffer(bufnr)
-          end)
+          -- One redraw for however many line changes a render makes
+          if not changed[bufnr] then
+            changed[bufnr] = true
+            vim.schedule(function()
+              redraw_changed(bufnr)
+            end)
+          end
           return
         end
       end
@@ -146,7 +170,8 @@ M.shows_dir = function(winid)
 end
 
 ---Forget `winid`'s oil buffer before something else goes in: its conceal match and cursorline
----would apply to whatever the window shows next
+---would apply to whatever the window shows next, and so would oil's window options (such as a
+---sign column for git status signs, which a text preview doesn't need)
 ---@param winid integer
 M.release = function(winid)
   clear_match(winid)
@@ -154,6 +179,7 @@ M.release = function(winid)
   if vim.api.nvim_win_is_valid(winid) then
     vim.wo[winid].cursorline = false
     vim.wo[winid].conceallevel = 0
+    vim.wo[winid].signcolumn = "no"
   end
 end
 

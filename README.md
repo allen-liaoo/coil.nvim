@@ -20,6 +20,8 @@ nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 - For previews of remote files: what oil uses for them, `scp` for SSH and the `aws` CLI for S3.
     Previews never ask for a password, so SSH hosts need key or agent authentication (or an open
     `ControlMaster` connection); otherwise the preview says why it can't download the file.
+- For git status (optional): supports [oil-git-status.nvim](https://github.com/refractalize/oil-git-status.nvim).
+    The side panes are oil buffers, so its signs show in all three panes.
 
 <details>
 <summary>Tmux Setup</summary>

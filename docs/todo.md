@@ -29,7 +29,9 @@ trash view (`g\`) can restore them.
 - [x] **No file details in the preview.** A file's preview is its text or a picture of it
   (filling the pane), and anything else gets one dimmed line saying why. The info cards are gone;
   oil's columns show file details.
-- [ ] Test with git integration 3rd party extension(s). Challenge: Show git integration in parent/child folder? perhaps change them to oil buffers?
+- [x] **Git status from oil-git-status.nvim in every pane.** The side panes are oil buffers, so its
+  signs show there too; coil fires `TextChanged` for them after oil redraws them, as Neovim does
+  for the current buffer, so the signs come back. `make dev` and the `coil` binary include it.
 - [ ] **`:help coil` docs**, a vimdoc version of the README.
 
 ## Standalone coil

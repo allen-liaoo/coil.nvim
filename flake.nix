@@ -50,6 +50,8 @@
             COIL_PLENARY_PATH = "${pkgs.vimPlugins.plenary-nvim}";
             # Optional dependency, for drawing images in previews
             COIL_IMAGE_PATH = "${pkgs.vimPlugins.image-nvim}";
+            # Third-party oil extension coil is tested with: git status signs, in every pane
+            COIL_OIL_GIT_STATUS_PATH = "${pkgs.vimPlugins.oil-git-status-nvim}";
           };
         }
       );

@@ -11,7 +11,19 @@ if vim.fn.exists(":Oil") ~= 2 then
     columns = { "icon", "permissions", "size", "mtime" },
     -- Files changed outside Neovim show up in every pane (local directories)
     watch_for_changes = true,
+    -- Two sign columns, for oil-git-status's index and working-tree signs
+    win_options = { signcolumn = "yes:2" },
   })
+end
+
+-- Git status signs next to each entry (in a git repository). They need room in the sign column,
+-- which an oil set up by init.lua may not leave.
+local signcolumn = require("oil.config").win_options.signcolumn or ""
+if
+  not package.loaded["oil-git-status"]
+  and (vim.startswith(signcolumn, "yes") or vim.startswith(signcolumn, "auto"))
+then
+  require("oil-git-status").setup()
 end
 
 -- Icons in oil's icon column

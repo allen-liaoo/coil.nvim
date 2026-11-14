@@ -35,6 +35,8 @@ let
       vimPlugins.image-nvim
       # Icons in oil's icon column
       vimPlugins.mini-icons
+      # Git status signs next to each entry, in every pane
+      vimPlugins.oil-git-status-nvim
       defaults
     ];
     # No init of its own: Neovim reads ~/.config/coil/init.lua (./coil.sh sets NVIM_APPNAME), a config
