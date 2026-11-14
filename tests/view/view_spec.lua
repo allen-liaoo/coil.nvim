@@ -44,6 +44,20 @@ describe("column view", function()
     assert.equals(origin_buf, vim.api.nvim_win_get_buf(origin_win))
   end)
 
+  it("moves a file that lands in the middle pane to the editing tab", function()
+    local origin_win = vim.api.nvim_get_current_win()
+    local view = open_view(dir)
+    -- Not typed, as from a plugin or a <Cmd> mapping
+    vim.cmd.edit("oil://" .. dir .. "/a.txt")
+    assert.is_true(h.wait(function()
+      return vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(origin_win)) == dir .. "/a.txt"
+    end))
+    assert.equals(
+      "oil://" .. dir .. "/",
+      vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.panes.current))
+    )
+  end)
+
   ---@param view coil.View
   ---@return integer[]
   local function widths(view)
