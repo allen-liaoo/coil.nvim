@@ -27,6 +27,23 @@ describe("column view", function()
     return view
   end
 
+  it("opens on a directory URL typed without its trailing slash", function()
+    local origin_win = vim.api.nvim_get_current_win()
+    local origin_buf = vim.api.nvim_get_current_buf()
+    vim.cmd("Coil oil://" .. dir .. "/sub")
+    assert.is_true(h.wait(function()
+      return state.get() ~= nil
+    end))
+    local view = assert(state.get())
+    local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+    assert.is_true(h.wait(function()
+      return vim.b[bufnr].oil_ready == true
+    end))
+    assert.equals("oil://" .. dir .. "/sub/", vim.api.nvim_buf_get_name(bufnr))
+    -- Not handed to the editing window as if it were a file
+    assert.equals(origin_buf, vim.api.nvim_win_get_buf(origin_win))
+  end)
+
   ---@param view coil.View
   ---@return integer[]
   local function widths(view)

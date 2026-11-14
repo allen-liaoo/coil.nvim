@@ -158,14 +158,8 @@ local function open_tab(dir)
   sync_when_ready(view)
 end
 
----Open the column view on `dirs`, one tab per directory. The first goes to the current tab's
----view if there is one, otherwise to the view used most recently, or a new one if none is open;
----each further directory opens another view in a new tab. Focus ends on the first.
----@param dirs? string|string[] Paths or oil URLs; nil (or none) means the current buffer's directory
-M.open = function(dirs)
-  if type(dirs) ~= "table" then
-    dirs = { dirs }
-  end
+---@param dirs (string|nil)[] Paths or oil URLs; a nil first one means the current buffer's directory
+local function open_dirs(dirs)
   local first = state.get() or state.last()
   if first then
     show(first, dirs[1])
@@ -179,6 +173,22 @@ M.open = function(dirs)
     end
     show(first, nil)
   end
+end
+
+---Open the column view on `dirs`, one tab per directory. The first goes to the current tab's
+---view if there is one, otherwise to the view used most recently, or a new one if none is open;
+---each further directory opens another view in a new tab. Focus ends on the first.
+---@param dirs? string|string[] Paths or oil URLs; nil (or none) means the current buffer's directory
+M.open = function(dirs)
+  if dirs == nil then
+    return open_dirs({})
+  elseif type(dirs) ~= "table" then
+    dirs = { dirs }
+  end
+  -- Until oil has resolved it, a directory URL without its trailing slash looks like a file, and
+  -- the middle pane would hand it to the editing tab. Resolve such URLs first (for SSH, waiting
+  -- for the host).
+  bridge.normalize_urls(dirs, open_dirs)
 end
 
 ---@return boolean
