@@ -9,6 +9,8 @@ if vim.fn.exists(":Oil") ~= 2 then
     delete_to_trash = true,
     -- Permissions, size and modification time next to each name
     columns = { "icon", "permissions", "size", "mtime" },
+    -- Files changed outside Neovim show up in every pane (local directories)
+    watch_for_changes = true,
   })
 end
 

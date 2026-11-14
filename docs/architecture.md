@@ -93,6 +93,7 @@ It runs on these triggers:
 | A buffer enters the middle pane (`BufWinEnter`), once oil has listed it | Both side panes |
 | The cursor moves in the middle pane (`CursorMoved`, debounced by `debounce_ms`, skipped in visual mode) | Preview only, and only if the entry under the cursor changed |
 | oil finishes writing changes (`User OilMutationComplete`) | Both |
+| oil redraws a side pane's buffer, e.g. for files changed outside Neovim with oil's `watch_for_changes` (local directories), which the standalone build turns on | That pane: columns hidden again, the parent's selection kept |
 | Returning to the column view's tab (`TabEnter`) | Both |
 | `g.` (toggle hidden files) in the middle pane | Both |
 | oil's listing settings change — `gs` (sort), hidden files, `oil.set_sort()`, `oil.set_is_hidden_file()` — noticed when oil re-renders the middle buffer | Both |

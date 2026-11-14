@@ -151,6 +151,23 @@ describe("pane sync", function()
     h.setup_oil()
   end)
 
+  it("follows outside changes in the side panes with oil's watch_for_changes", function()
+    h.setup_oil({ watch_for_changes = true, columns = { "icon", "size" } })
+    local view = h.open_view(root .. "/proj")
+    h.cursor_to(view.panes.current, "sub/")
+    vim.api.nvim_exec_autocmds("CursorMoved", {})
+    h.wait_lines(view.panes.preview, { "inner.txt" })
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
+    -- Changed outside Neovim: oil's file watchers redraw the buffers, and coil hides the new
+    -- lines' columns and keeps the parent's selection
+    h.write(root .. "/new.txt", { "" })
+    h.write(root .. "/proj/sub/new_inner.txt", { "" })
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "new.txt", "other.txt" })
+    h.wait_lines(view.panes.preview, { "inner.txt", "new_inner.txt" })
+    assert.same({ 1 }, h.selected_lines(view.panes.parent))
+    h.setup_oil()
+  end)
+
   ---@param winid integer
   ---@return string
   local function winbar(winid)

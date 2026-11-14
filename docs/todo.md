@@ -57,8 +57,9 @@ build (oil's default is the icon column only).
   uses `vim.ui.open` (xdg-open / open / explorer). Text files keep opening in the editor. Limits:
   `open_external` only works for local files (`oil.get_current_dir()` is nil for SSH and S3), and it
   needs the system opener installed. Dont consider: configurable opener rules by extension or MIME type.
-- [ ] **Notice outside changes.** Turn on oil's `watch_for_changes` in the standalone build, and make
-  sure the side panes refresh too; today they refresh on navigation, saving and returning to the tab.
+- [x] **Notice outside changes.** The standalone build turns on oil's `watch_for_changes`. The side
+  panes are oil buffers, so oil's file watchers redraw them like any oil buffer, in any build that
+  turns it on (local directories only).
 - [ ] **Picker mode.** A `--chooser-file <path>` argument that writes the picked path(s), including
   a visual selection, and exits, so other programs can use coil as a file picker.
 - [ ] **Other arguments:** `--hidden`, `--ratio`, `--help`, `--version`. Today `coil [dir]` opens the
