@@ -24,6 +24,8 @@ M.render = function(path, opts)
   local ok, lines = pcall(vim.fn.readfile, path, "", opts.max_lines)
   if not ok then
     return buffer.message({ "Cannot read file: " .. tostring(lines) })
+  elseif #lines == 0 then
+    return buffer.message({ "(empty file)" })
   end
   local bufnr = buffer.scratch(lines)
   highlight(bufnr, path, lines)

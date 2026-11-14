@@ -28,6 +28,16 @@ describe("preview.show", function()
     assert.equals("", vim.bo[bufnr].filetype)
   end)
 
+  it("says when a text file is empty", function()
+    h.write_bytes(dir .. "/empty.txt", "")
+    preview.show(win, target("empty.txt"))
+    assert.same({ "(empty file)" }, h.win_lines(win))
+    -- A file with one empty line isn't empty
+    h.write(dir .. "/blank.txt", { "" })
+    preview.show(win, target("blank.txt"))
+    assert.same({ "" }, h.win_lines(win))
+  end)
+
   it("reads at most max_lines lines", function()
     h.write(dir .. "/long.txt", { "1", "2", "3", "4", "5" })
     preview.show(win, target("long.txt"), { max_lines = 2 })
