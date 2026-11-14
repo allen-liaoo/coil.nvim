@@ -114,7 +114,22 @@ M.attach = function(view)
         end
         local ok, err = pcall(vim.api.nvim_cmd, cmd, {})
         if not ok then
-          vim.notify((tostring(err):gsub("^Vim[^:]*:", "")), vim.log.levels.ERROR)
+          return vim.notify((tostring(err):gsub("^Vim[^:]*:", "")), vim.log.levels.ERROR)
+        end
+        if focus then
+          -- oil places the cursor only when it renders the buffer, and the parent pane may have
+          -- rendered this one already
+          local winid, bufnr = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+          bridge.on_ready(bufnr, function()
+            local lnum = bridge.line_of(bufnr, focus.name)
+            if
+              lnum
+              and vim.api.nvim_win_is_valid(winid)
+              and vim.api.nvim_win_get_buf(winid) == bufnr
+            then
+              vim.api.nvim_win_set_cursor(winid, { lnum, 0 })
+            end
+          end)
         end
       end
       vim.schedule(function()
