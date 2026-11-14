@@ -71,7 +71,7 @@ build (oil's default is the icon column only).
   shift the image itself: the anchor line is empty and `screenpos` clamps to its end. Plan: patch
   image.nvim in the Nix builds (`nix/coil.nix`, the nixvim module) and send the fix upstream,
   along with resetting attributes before the placeholders (coil works around that one today).
-- [ ] Something is drawn below the preview, causing background of terminal to leak through the neovim background. It happens when it isn't a text preview or a text preview with short enough text.
+- [x] Something is drawn below the preview, causing background of terminal to leak through the neovim background. It happens when it isn't a text preview or a text preview with short enough text.
 
 ## Known gaps
 - SSH and S3 directories are listed through oil's adapters, but haven't been tested against a real

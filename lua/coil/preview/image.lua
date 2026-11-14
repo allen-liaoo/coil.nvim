@@ -28,12 +28,43 @@ local function image_api()
   return api
 end
 
+---The escape sequence that sets the terminal's background to `group`'s, or nil when it has none
+---@param group string
+---@return nil|string
+local function background_sequence(group)
+  local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
+  if vim.o.termguicolors then
+    if hl.bg then
+      local r, g, b =
+        bit.rshift(hl.bg, 16), bit.band(bit.rshift(hl.bg, 8), 0xff), bit.band(hl.bg, 0xff)
+      return string.format("\27[48;2;%d;%d;%dm", r, g, b)
+    end
+  elseif hl.ctermbg then
+    return string.format("\27[48;5;%dm", hl.ctermbg)
+  end
+end
+
+---The background of the window image.nvim's image `internal_id` is drawn in: NormalNC's when the
+---window isn't focused, as Neovim draws it, else Normal's
+---@param internal_id? integer
+---@return nil|string
+local function placeholder_background(internal_id)
+  for winid, entry in pairs(drawn) do
+    if entry.image.internal_id == internal_id and winid ~= vim.api.nvim_get_current_win() then
+      return background_sequence("NormalNC") or background_sequence("Normal")
+    end
+  end
+  return background_sequence("Normal")
+end
+
 ---image.nvim's kitty unicode placeholders are characters it writes straight to the terminal,
 ---setting only their colour, so they take whatever attributes Neovim's own drawing left on, and
 ---kitty draws those over the image: an underline (vim-illuminate's on the word under the cursor,
 ---say) becomes a line across every row. Turn the attributes off first, on every draw, including
----the ones image.nvim does by itself on scroll. Its kitty backend loads this module; other
----backends don't need it.
+---the ones image.nvim does by itself on scroll, and set the window's background. The placeholders
+---stay on screen after the image is cleared, wherever Neovim has no new text to draw (below a
+---short preview), and kitty shows their background there: with the attributes only reset, the
+---terminal's own background. Its kitty backend loads this module; other backends don't need it.
 local function reset_placeholder_attributes()
   local helpers = package.loaded["image/backends/kitty/helpers"]
   if
@@ -45,9 +76,9 @@ local function reset_placeholder_attributes()
     return
   end
   local write_placeholder = helpers.write_placeholder
-  helpers.write_placeholder = function(...)
-    helpers.write("\27[0m")
-    return write_placeholder(...)
+  helpers.write_placeholder = function(internal_id, ...)
+    helpers.write("\27[0m" .. (placeholder_background(internal_id) or ""))
+    return write_placeholder(internal_id, ...)
   end
   helpers.coil_reset_attributes = true
 end

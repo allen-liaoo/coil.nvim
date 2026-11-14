@@ -1,7 +1,6 @@
 # coil.nvim
 
-A column view with file previews for [oil.nvim](https://github.com/stevearc/oil.nvim), in your
-Neovim or as a terminal file manager.
+A column view with file previews for [oil.nvim](https://github.com/stevearc/oil.nvim), in your Neovim or as a terminal file manager.
 
 ## Try it
 
@@ -16,8 +15,7 @@ nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 
 - Neovim 0.10 or newer (developed and tested on 0.12)
 - [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals.
-- For images in the preview (optional): [image.nvim](https://github.com/3rd/image.nvim), set up
-  with its own `setup()` (coil doesn't set it up for you), install [ImageMagick](https://github.com/ImageMagick/ImageMagick), and use a terminal it can draw in.
+- For images in the preview (optional): [image.nvim](https://github.com/3rd/image.nvim). Install [ImageMagick](https://github.com/ImageMagick/ImageMagick), and use a terminal it can draw in.
     Video thumbnails need [ffmpeg](https://ffmpeg.org), and PDFs need [poppler](https://poppler.freedesktop.org)'s `pdftoppm`.
 
 <details>
@@ -67,6 +65,7 @@ vim.pack.add({
   "https://github.com/allen-liaoo/coil.nvim",
 })
 require("oil").setup()
+-- require("image").setup()
 require("coil").setup()
 ```
 

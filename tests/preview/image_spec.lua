@@ -12,7 +12,14 @@ local function fake_image_nvim()
   fake.created = {}
   return {
     from_file = function(path, opts)
-      local img = { path = path, opts = opts, renders = {}, cleared = false }
+      -- image.nvim numbers its images; its kitty backend passes the number to its helpers
+      local img = {
+        path = path,
+        opts = opts,
+        renders = {},
+        cleared = false,
+        internal_id = #fake.created + 1,
+      }
       function img:render(geometry)
         table.insert(self.renders, geometry)
         self.cleared = false
@@ -246,7 +253,7 @@ describe("image previews", function()
     assert.equals(0, #fake.created)
   end)
 
-  it("turns text attributes off before image.nvim writes kitty placeholders", function()
+  it("resets attributes and sets the background for kitty placeholders", function()
     -- image.nvim's kitty helpers, as coil uses them
     local written = {}
     local helpers = {
@@ -254,19 +261,46 @@ describe("image previews", function()
         table.insert(written, data)
       end,
     }
-    helpers.write_placeholder = function()
-      helpers.write("placeholders")
+    helpers.write_placeholder = function(internal_id)
+      helpers.write("placeholders " .. internal_id)
     end
     package.loaded["image/backends/kitty/helpers"] = helpers
+    local normal = vim.api.nvim_get_hl(0, { name = "Normal" })
+    local normal_nc = vim.api.nvim_get_hl(0, { name = "NormalNC" })
+    local termguicolors = vim.o.termguicolors
+    vim.o.termguicolors = true
+    vim.api.nvim_set_hl(0, "Normal", { bg = 0x102030 })
+    vim.api.nvim_set_hl(0, "NormalNC", { bg = 0x405060 })
+
     preview.show(win, target("pic.png"))
     wait_drawn(1)
     preview.show(win, target("a.txt"))
     preview.show(win, target("pic.png"))
-    wait_drawn(2)
+    local id = wait_drawn(2).internal_id
     package.loaded["image/backends/kitty/helpers"] = nil
-    -- As image.nvim's backend calls it, including when it redraws by itself; wrapped only once
-    helpers.write_placeholder()
-    assert.same({ "\27[0m", "placeholders" }, written)
+    -- As image.nvim's backend calls it, including when it redraws by itself; wrapped only once.
+    -- The window's background, so the placeholders don't show the terminal's after the image is
+    -- cleared
+    helpers.write_placeholder(id)
+    -- The background Neovim draws the window with when it isn't focused
+    vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, { split = "below" })
+    helpers.write_placeholder(id)
+    -- No background to set: the terminal's is the colour scheme's
+    vim.api.nvim_set_hl(0, "Normal", {})
+    vim.api.nvim_set_hl(0, "NormalNC", {})
+    helpers.write_placeholder(id)
+
+    vim.o.termguicolors = termguicolors
+    vim.api.nvim_set_hl(0, "Normal", normal)
+    vim.api.nvim_set_hl(0, "NormalNC", normal_nc)
+    assert.same({
+      "\27[0m\27[48;2;16;32;48m",
+      "placeholders " .. id,
+      "\27[0m\27[48;2;64;80;96m",
+      "placeholders " .. id,
+      "\27[0m",
+      "placeholders " .. id,
+    }, written)
   end)
 
   it("works with the real image.nvim", function()
