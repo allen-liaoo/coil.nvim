@@ -147,7 +147,12 @@ M.preview = function(view, force)
     set_winbar(winid, target.name .. "/")
     -- A directory is previewed as its oil buffer
     preview.stop(winid)
-    side.show_dir(winid, target.url)
+    bridge.resolve_dir(target, function(dir_url)
+      -- A link resolves later; the cursor may have moved on by then
+      if sync_state[view.tab] == st and st.preview_url == url then
+        side.show_dir(winid, dir_url)
+      end
+    end)
     preview.prefetch(winid, bridge.targets_near(view.panes.current, preview.prefetch_distance()))
   elseif target then
     set_winbar(winid, target.is_dir and (target.name .. "/") or target.name)

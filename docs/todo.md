@@ -73,14 +73,10 @@ build (oil's default is the icon column only).
   the directory, so oil didn't render it again in the middle pane, and its rendering is what puts
   the cursor on the name. coil now moves the cursor to the name when a directory enters the
   middle pane.
-- [ ] On cursor over a symlinked directory in the middle pane, I get error:
-```
-vim.schedule callback: ...ir/pack/myNeovimPackages/start/oil.nvim/lua/oil/util.lua:199: Vim:E1513: Cannot switch buffer. 'winfixbuf' is enabled
-stack traceback:
-        [C]: in function 'nvim_win_set_buf'
-        ...ir/pack/myNeovimPackages/start/oil.nvim/lua/oil/util.lua:199: in function <...ir/pack/myNeovimPackages/start/oil.nvim/lua/oil/util.lua:194>
-```
-The directory preview still ends up loading.
+- [x] **`winfixbuf` error previewing a link to a directory.** oil resolves a link when it loads
+  it, and when the target directory already had a buffer it swapped that in with
+  `nvim_win_set_buf`, which the preview pane's `winfixbuf` refused. coil now resolves the link
+  with oil's adapter first and shows the target's buffer itself.
 - [ ] **Images one column too far left with kitty placeholders.** With
   `kitty_method = "unicode-placeholders"`, image.nvim draws every image one column left of where
   it means to, covering the separator left of the preview. Its renderer passes a 0-based column;

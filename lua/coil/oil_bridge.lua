@@ -196,6 +196,7 @@ M.entry_target = function(bufnr, entry)
     url = url,
     path = (is_local and path) and fs.posix_to_os_path(path) or nil,
     is_dir = is_dir,
+    is_link = entry.type == "link",
     unsaved = entry.id == nil,
   }
   local meta = entry.meta
@@ -406,6 +407,20 @@ M.show_dir_in = function(winid, url)
   end
   ensure_loaded(bufnr, winid)
   return bufnr
+end
+
+---The URL of the oil buffer that shows directory `target`. oil resolves a link when it loads one,
+---swapping the link's buffer for its target's in every window showing it, which fails in a window
+---with 'winfixbuf' such as a side pane. So resolve it first, as oil does.
+---@param target coil.PreviewTarget A directory
+---@param cb fun(url: string) Called right away unless `target` is a link
+M.resolve_dir = function(target, cb)
+  local ok, adapter = pcall(require("oil.config").get_adapter_by_scheme, target.url)
+  if not target.is_link or not ok or not adapter then
+    cb(target.url)
+    return
+  end
+  adapter.normalize_url(target.url, vim.schedule_wrap(cb))
 end
 
 ---List an already loaded oil directory buffer again. oil keeps a directory's buffer around after

@@ -16,6 +16,7 @@ local M = {}
 ---@field url string Where the target lives (oil URL or plain path)
 ---@field path? string Local filesystem path; nil for remote targets
 ---@field is_dir boolean
+---@field is_link? boolean A symbolic link (to a directory if is_dir)
 ---@field unsaved? boolean The entry only exists in an unsaved oil buffer
 ---@field size? integer Size in bytes, if known without reading the file (remote targets)
 ---@field mtime? string|number When it last changed, in any form (remote targets)

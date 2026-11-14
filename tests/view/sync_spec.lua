@@ -61,6 +61,18 @@ describe("pane sync", function()
     h.wait_lines(view.panes.preview, { "inner.txt" })
   end)
 
+  it("previews a link to a directory another pane already shows as that directory", function()
+    vim.uv.fs_symlink(root, proj .. "/up")
+    local view = h.open_view(proj)
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
+    move_to(view, "up/")
+    h.wait_lines(view.panes.preview, { "proj/", "zdir/", "other.txt" })
+    assert.equals(
+      vim.api.nvim_win_get_buf(view.panes.parent),
+      vim.api.nvim_win_get_buf(view.panes.preview)
+    )
+  end)
+
   it("follows the middle pane into a subdirectory", function()
     local view = h.open_view(proj)
     require("coil.oil_bridge").open_dir("oil://" .. proj .. "/sub/")
