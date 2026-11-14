@@ -79,7 +79,7 @@ describe("remote previews", function()
 
   it("says when nothing can download remote files", function()
     preview.show(win, target("r.txt"))
-    assert.same({ "No downloader configured for remote files" }, h.win_lines(win))
+    assert.same({ "No preview: coil can't download files from here" }, h.win_lines(win))
   end)
 
   it("downloads a text file and shows it", function()

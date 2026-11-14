@@ -59,7 +59,7 @@ describe("preview.show", function()
       { target("missing.txt"), "^Cannot read this file: " },
       {
         { name = "r.txt", url = "oil-ssh://host/r.txt", is_dir = false },
-        "No downloader configured for remote files",
+        "No preview: coil can't download files from here",
       },
     }
     for _, case in ipairs(cases) do

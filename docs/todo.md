@@ -13,9 +13,9 @@
 - [x] **Video and PDF thumbnails.** A frame 10% into a video (ffprobe and ffmpeg) or a PDF's first
   page (pdftoppm), drawn through the same thumbnail cache. Without the tool, the preview says
   what to install.
-- [ ] **Remote file previews** (SSH, S3). These show "not supported yet". They need an
-  asynchronous download (scp, `aws s3 cp`) to a temporary file with a size limit, then the normal
-  text or picture preview.
+- [x] **Remote file previews** (SSH, S3). The file is downloaded in the background (scp,
+  `aws s3 cp`) once the cursor rests on it, within a size limit taken from oil's listing, then
+  previewed like a local file. Copies live in Neovim's temporary folder. The trash has none.
 ~~- [ ] **Floating-window version of the column view.** `view/layout.lua` is the only module that
   knows the panes are splits. A floating version needs geometry on resize, its own keys to move
   between panes, and hiding and restoring when a file opens in the editing tab.~~

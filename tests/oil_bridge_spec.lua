@@ -158,4 +158,69 @@ describe("oil_bridge", function()
     assert.equals("/tmp/x/", bridge.display_path("oil:///tmp/x/"))
     assert.equals("oil-ssh://host/x/", bridge.display_path("oil-ssh://host/x/"))
   end)
+
+  describe("remote files", function()
+    after_each(function()
+      h.setup_oil()
+    end)
+
+    it("are downloaded with scp, never asking for a password, with oil's scp arguments", function()
+      h.setup_oil({ extra_scp_args = { "-O" } })
+      assert.same({
+        "scp",
+        "-C",
+        "-o",
+        "BatchMode=yes",
+        "-O",
+        -- Escaped like oil's own scp URLs, slashes too
+        "scp://me@host:2222/%2Fetc%2Fmy%20file",
+        "/tmp/dest",
+      }, bridge.fetch_command("oil-ssh://me@host:2222//etc/my file", "/tmp/dest"))
+      -- Paths relative to the remote home, as oil has them
+      assert.same(
+        "scp://host/notes.txt",
+        bridge.fetch_command("oil-ssh://host/notes.txt", "/tmp/dest")[6]
+      )
+    end)
+
+    it("are downloaded with aws s3 cp from S3, with oil's s3 arguments", function()
+      h.setup_oil({ extra_s3_args = { "--profile", "p" } })
+      local url = (vim.fn.has("nvim-0.12") == 1 and "oil-s3://" or "oil-sss://") .. "bucket/a/b.txt"
+      assert.same(
+        { "aws", "s3", "cp", "s3://bucket/a/b.txt", "/tmp/dest", "--profile", "p" },
+        bridge.fetch_command(url, "/tmp/dest")
+      )
+    end)
+
+    it("have no downloader for local files, the trash or unknown schemes", function()
+      assert.is_nil(bridge.fetcher("oil://" .. dir .. "/a.txt"))
+      assert.is_nil(bridge.fetcher("oil-trash:///a.txt"))
+      assert.is_nil(bridge.fetcher("https://example.com/a.txt"))
+      assert.is_function(bridge.fetcher("oil-ssh://host//a.txt"))
+    end)
+
+    it("get their size and modification time from oil's listing", function()
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_name(bufnr, "oil-ssh://host//srv/")
+      local target = bridge.entry_target(bufnr, {
+        name = "a.txt",
+        type = "file",
+        id = 1,
+        meta = { size = 42, iso_modified_date = "2026-11-14 10:00" },
+      })
+      assert.equals("oil-ssh://host//srv/a.txt", target.url)
+      assert.is_nil(target.path)
+      assert.equals(42, target.size)
+      assert.equals("2026-11-14 10:00", target.mtime)
+      -- A link's size is its target's
+      local link = bridge.entry_target(bufnr, {
+        name = "l",
+        type = "link",
+        id = 2,
+        meta = { size = 5, link_stat = { type = "file", size = 900 } },
+      })
+      assert.equals(900, link.size)
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+  end)
 end)

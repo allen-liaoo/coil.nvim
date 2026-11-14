@@ -189,15 +189,91 @@ M.entry_target = function(bufnr, entry)
   local parent_url = vim.api.nvim_buf_get_name(bufnr)
   local url = parent_url .. entry.name .. (is_dir and "/" or "")
   local scheme, path = util.parse_url(url)
+  local is_local = scheme ~= nil and config.adapters[scheme] == "files"
   ---@type coil.PreviewTarget
-  return {
+  local target = {
     name = entry.name,
     url = url,
-    path = (scheme and config.adapters[scheme] == "files" and path) and fs.posix_to_os_path(path)
-      or nil,
+    path = (is_local and path) and fs.posix_to_os_path(path) or nil,
     is_dir = is_dir,
     unsaved = entry.id == nil,
   }
+  local meta = entry.meta
+  if not is_local and type(meta) == "table" then
+    -- What the listing already knows (SSH: `ls -l`, S3: `aws s3 ls`), so a remote file's size
+    -- limit needs no download. A link's own size is its target path's length.
+    local link_stat = entry.type == "link" and meta.link_stat
+    target.size = link_stat and link_stat.size or meta.size
+    target.mtime = meta.iso_modified_date or meta.date
+  end
+  return target
+end
+
+---The command that downloads `url` to the local file `dest`, for the adapters that can (SSH, S3)
+---@param url string An oil URL
+---@param dest string
+---@return nil|string[]
+M.fetch_command = function(url, dest)
+  local config = require("oil.config")
+  local ok, adapter = pcall(config.get_adapter_by_scheme, url)
+  if not ok or not adapter then
+    return nil
+  end
+  if adapter.name == "ssh" then
+    local res = adapter.parse_url(url)
+    -- As oil's own scp URLs (its url_to_scp is private)
+    local scp_url = string.format(
+      "scp://%s%s%s/%s",
+      res.user and (res.user .. "@") or "",
+      res.host,
+      res.port and (":" .. res.port) or "",
+      require("oil.util").url_escape(res.path)
+    )
+    -- BatchMode: a preview must never stop to ask for a password or a host key; oil's own
+    -- connection is where those get answered
+    local cmd = { "scp", "-C", "-o", "BatchMode=yes" }
+    vim.list_extend(cmd, config.extra_scp_args or {})
+    return vim.list_extend(cmd, { scp_url, dest })
+  elseif adapter.name == "s3" then
+    local res = adapter.parse_url(url)
+    if not res.bucket or not res.path then
+      return nil
+    end
+    local cmd = { "aws", "s3", "cp", string.format("s3://%s/%s", res.bucket, res.path), dest }
+    return vim.list_extend(cmd, config.extra_s3_args or {})
+  end
+end
+
+---A coil.Fetch that downloads files from where `url` lives, or nil if coil can't (local files
+---need none; trash and other adapters aren't supported)
+---@param url string An oil URL
+---@return nil|coil.Fetch
+M.fetcher = function(url)
+  if not M.fetch_command(url, "") then
+    return nil
+  end
+  return function(file_url, dest, cb)
+    local cmd = assert(M.fetch_command(file_url, dest))
+    local ok, proc = pcall(vim.system, cmd, { text = true }, function(result)
+      vim.schedule(function()
+        if result.code == 0 then
+          cb()
+        else
+          local err = vim.trim(result.stderr or "")
+          cb(err ~= "" and err or string.format("%s exited with %d", cmd[1], result.code))
+        end
+      end)
+    end)
+    if not ok then
+      vim.schedule(function()
+        cb(tostring(proc))
+      end)
+      return nil
+    end
+    return function()
+      proc:kill("sigterm")
+    end
+  end
 end
 
 ---The oil directory URL to open for `dir`, resolved from the current window's buffer

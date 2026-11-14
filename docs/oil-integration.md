@@ -17,9 +17,12 @@ which the flake pins.
 | `is_oil_dir(buf)` | An oil directory, as opposed to a remote file (which also has an oil URL) | name ends in `/` |
 | `on_ready(buf, cb)` | Run `cb` once oil has listed the buffer | `oil.util.run_after_load` |
 | `list_dir(url, cb, opts)` | List a directory as plain entries, filtered and sorted like oil | adapter `list`, `oil.view.should_display`, `oil.columns` sort functions |
-| `entry_target(buf, entry)` / `cursor_target(win)` | Turn an oil entry into a preview target | `oil.get_entry_on_line`, `oil.util.is_directory` |
+| `entry_target(buf, entry)` / `cursor_target(win)` | Turn an oil entry into a preview target; remote entries carry the listing's size and modification time | `oil.get_entry_on_line`, `oil.util.is_directory`, entry `meta` (`size`, `link_stat`, `iso_modified_date`, `date`) |
+| `fetch_command(url, dest)` / `fetcher(url)` | The command that downloads a remote file (SSH: `scp`, S3: `aws s3 cp`), and a preview `fetch` running it; nothing for other adapters | adapter `parse_url`, `oil.util.url_escape`, `extra_scp_args`, `extra_s3_args` |
+| `normalize_url(url, cb)` / `normalize_urls(items, cb)` | Ask the adapter for a URL's full form (a directory typed without its trailing slash gets one) | adapter `normalize_url` |
 | `url_for_path(dir)` | The oil URL to open for a path | `oil.get_url_for_path` |
 | `parent_of(url)` | Parent URL and name, or nothing at the root | `oil.get_buffer_parent_url` |
+| `focus_entry(url, name)` | Put the cursor on `name` next time oil renders `url` | `oil.view.set_last_cursor` |
 | `open_dir(url, focus)` | Open a directory in the current window, cursor on `focus` | `oil.open`, `oil.view.set_last_cursor`, `oil.load_oil_buffer` |
 | `open_parent()` | oil's "go to parent" | `oil.open` |
 | `select(cb)` | Resolve the entry (or visual selection) under the cursor, hand each buffer to `cb` | `oil.select{ handle_buffer_callback }` |

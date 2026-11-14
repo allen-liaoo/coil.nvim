@@ -50,7 +50,11 @@ M.refresh = function(src)
   end
   local target = bridge.cursor_target(src)
   if target then
-    preview.show(split.win, target, { list_dir = bridge.list_dir })
+    preview.show(
+      split.win,
+      target,
+      { list_dir = bridge.list_dir, fetch = bridge.fetcher(target.url) }
+    )
   else
     preview.clear(split.win)
   end

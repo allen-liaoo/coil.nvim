@@ -191,7 +191,7 @@ local function message_for(kind, info, opts)
   elseif kind == "unreadable" then
     return "Cannot read this file: " .. (info.err or "unknown error")
   elseif kind == "remote" then
-    return "No downloader configured for remote files"
+    return "No preview: coil can't download files from here"
   elseif kind == "archive" then
     return "No preview for archives"
   end

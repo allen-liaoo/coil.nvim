@@ -1,8 +1,8 @@
 # Preview
 
 `lua/coil/preview/` shows a preview of a file or directory in any window. It knows nothing about
-oil or the column view. Directory listing is passed in as a function, so the module works on its
-own. The column view's preview pane and `:CoilPreview` both use it.
+oil or the column view. Directory listing and downloading remote files are passed in as functions,
+so the module works on its own. The column view's preview pane and `:CoilPreview` both use it.
 
 ## API
 
@@ -23,6 +23,8 @@ A **target** describes what to preview:
 | `path` | Local filesystem path; absent for remote targets |
 | `is_dir` | Whether it is a directory (or a link to one) |
 | `unsaved` | The entry only exists in an unsaved oil buffer |
+| `size` | Size in bytes, when known without reading the file (remote targets, from oil's listing) |
+| `mtime` | When it last changed, in any form (remote targets); a change means a new download |
 
 Options (`preview` in coil's setup):
 
@@ -38,12 +40,17 @@ Options (`preview` in coil's setup):
 | `prefetch` | 2 | `prefetch()` prepares images up to this many entries from the cursor (0 for none) |
 | `thumbnail_cache_mb` | 200 | Size limit of the thumbnail cache (read by `setup()` only; `false` for none) |
 | `list_dir` | none | `fun(url, cb)` that lists a directory; coil passes `oil_bridge.list_dir` |
+| `fetch` | none | `fun(url, dest, cb)` that downloads a remote file and returns a function that stops it; coil passes `oil_bridge.fetcher(url)` |
+| `remote_delay_ms` | 200 | Wait this long after a remote file's preview is shown before downloading it |
+| `remote_max_bytes` | 20 MiB | Remote images, videos and PDFs larger than this aren't downloaded (other remote files: `max_bytes`) |
+| `remote_cache_mb` | 100 | Size limit of the downloaded copies (read by `setup()` only; `false` for none) |
 
 ## Choosing a preview
 
 `classify.lua` decides from the file itself, without external tools such as `file(1)`:
 
-1. No local path: **remote**.
+1. No local path: **remote**. It is downloaded first, then classified from the copy (see
+   [Remote files](#remote-files)).
 2. Can't `stat` it: **unreadable**.
 3. A directory: **directory**. Any other non-regular file (fifo, socket, device): **special**.
    These are never opened, because reading a fifo could hang.
@@ -84,8 +91,31 @@ Every other file gets one dimmed line saying why there is no preview:
 | too large | Larger than 2.0M, so the text isn't shown |
 | special | Not a regular file (fifo) |
 | unreadable | Cannot read this file: <error> |
-| remote | Previews of remote files are not supported yet |
+| remote, with no way to download it (the trash) | No preview: coil can't download files from here |
+| remote, failed download | Cannot download: <first line of the error> |
+| remote picture over `remote_max_bytes` | Larger than 21.0M, so it isn't downloaded |
 | image, video, pdf with no picture | Image previews are off; Set up image.nvim to see the image; Install poppler (pdftoppm) to see the first page |
+
+### Remote files
+
+A target without a local path (SSH, S3) is previewed from a local copy (`preview/remote.lua`):
+
+- **Nothing is downloaded that couldn't be shown.** The extension alone settles audio, archives
+  and pictures image.nvim can't draw, and the size from oil's listing settles files over
+  `max_bytes` (pictures: `remote_max_bytes`). Their message shows at once.
+- **When:** "Downloading..." shows at once, and the download starts `remote_delay_ms` later if the
+  preview still shows the file, so scrolling past files downloads none of them. Showing the same
+  file again (a redraw) waits for the download already running; moving on to another file, or to
+  a local one, stops it.
+- **How:** with the injected `fetch`. For coil it is `oil_bridge.fetcher`, which runs `scp -C -o
+  BatchMode=yes` with oil's `extra_scp_args`, or `aws s3 cp` with oil's `extra_s3_args`.
+  `BatchMode` means a preview never stops to ask for a password or host key: hosts need key or
+  agent authentication, or an open `ControlMaster` connection.
+- **The copy** is kept under its own name, so filetype detection and thumbnails work as for local
+  files, in Neovim's temporary folder (deleted when Neovim exits). One copy per URL, size and
+  modification time, so coming back to a file is instant and a changed file is downloaded again.
+  Past `remote_cache_mb`, the least recently used copies are deleted.
+- `prefetch()` skips remote files: thumbnails ahead of the cursor would mean downloads too.
 
 ### Drawing images
 

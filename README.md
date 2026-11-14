@@ -17,6 +17,9 @@ nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 - [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals.
 - For images in the preview (optional): [image.nvim](https://github.com/3rd/image.nvim). Install [ImageMagick](https://github.com/ImageMagick/ImageMagick), and use a terminal it can draw in.
     Video thumbnails need [ffmpeg](https://ffmpeg.org), and PDFs need [poppler](https://poppler.freedesktop.org)'s `pdftoppm`.
+- For previews of remote files: what oil uses for them, `scp` for SSH and the `aws` CLI for S3.
+    Previews never ask for a password, so SSH hosts need key or agent authentication (or an open
+    `ControlMaster` connection); otherwise the preview says why it can't download the file.
 
 <details>
 <summary>Tmux Setup</summary>
@@ -203,6 +206,13 @@ require("coil").setup({
     prefetch = 2,
     -- Size limit of the thumbnail cache, in MiB; the least recently used go first (false: none)
     thumbnail_cache_mb = 200,
+    -- Remote files (SSH, S3) are downloaded for a preview. Wait this long (ms) after the cursor
+    -- stops on one before downloading it
+    remote_delay_ms = 200,
+    -- Remote images, videos and PDFs larger than this aren't downloaded (other files: max_bytes)
+    remote_max_bytes = 20 * 1024 * 1024,
+    -- Size limit of the downloaded copies, in MiB (false: none). They are deleted when Neovim exits.
+    remote_cache_mb = 100,
   },
   -- Options for when Neovim is started as a file manager (see below). Takes any option except
   -- itself. These defaults give way to the options you set; your own `standalone` options win
