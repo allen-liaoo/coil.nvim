@@ -57,5 +57,8 @@ vim.api.nvim_create_autocmd("VimEnter", {
 })
 
 -- With oil-git-status, two sign columns for its index and working-tree signs
-require("oil").setup(git_status and { win_options = { signcolumn = "yes:2" } } or nil)
+require("oil").setup(git_status and {
+  columns = { "icon", "permissions", "size", "mtime" },
+  win_options = { signcolumn = "yes:2" },
+} or nil)
 require("coil").setup()
