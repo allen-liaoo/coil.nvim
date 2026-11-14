@@ -39,9 +39,14 @@ M.open_args = function(args)
     vim.cmd.tabclose(vim.api.nvim_tabpage_get_number(start_tab))
   end
   vim.cmd("silent! %argdelete")
-  -- The start buffers no window shows any more (the views open their own)
+  -- The start buffers no window shows any more (the views open their own). Only listed ones:
+  -- plugins keep unlisted buffers of their own, such as oil's SSH login terminal.
   for _, bufnr in ipairs(start_bufs) do
-    if vim.api.nvim_buf_is_valid(bufnr) and #vim.fn.win_findbuf(bufnr) == 0 then
+    if
+      vim.api.nvim_buf_is_valid(bufnr)
+      and vim.bo[bufnr].buflisted
+      and #vim.fn.win_findbuf(bufnr) == 0
+    then
       pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
     end
   end

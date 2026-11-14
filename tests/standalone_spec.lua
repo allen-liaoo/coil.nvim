@@ -62,12 +62,16 @@ describe("standalone startup", function()
 
     it("starts with only the column views", function()
       local start_buf = vim.api.nvim_get_current_buf()
+      -- A plugin's own hidden buffer, like oil's SSH login terminal
+      local plugin_buf = vim.api.nvim_create_buf(false, true)
       startup.open_args({ dir .. "/one", dir .. "/two" })
       assert.equals(2, #vim.api.nvim_list_tabpages())
       for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
         assert.truthy(state.get(tab))
       end
       assert.is_false(vim.api.nvim_buf_is_valid(start_buf))
+      assert.is_true(vim.api.nvim_buf_is_valid(plugin_buf))
+      vim.api.nvim_buf_delete(plugin_buf, { force = true })
     end)
   end)
 end)
