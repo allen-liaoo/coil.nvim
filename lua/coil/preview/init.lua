@@ -364,6 +364,14 @@ M.show = function(winid, target, opts)
   show_file(winid, gen, target, o)
 end
 
+---Stop previewing in `winid` without placing a buffer, because something else will show there:
+---drops the image and any download, and keeps pending results from landing
+---@param winid integer
+M.stop = function(winid)
+  release_download(winid)
+  next_generation(winid)
+end
+
 ---Show an empty buffer (or a message) in `winid`
 ---@param winid integer
 ---@param lines? string[]

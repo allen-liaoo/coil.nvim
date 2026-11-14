@@ -345,6 +345,23 @@ M.focus_entry = function(url, name)
   require("oil.view").set_last_cursor(url, name)
 end
 
+---oil loads directories from its BufReadCmd autocmd, which doesn't fire inside another, non-nested
+---autocmd (e.g. `autocmd VimEnter * Coil`). Load the buffer ourselves then, in `winid`, as oil
+---does for its own preview window.
+---@param bufnr integer
+---@param winid integer
+local function ensure_loaded(bufnr, winid)
+  if
+    M.is_oil_buffer(bufnr)
+    and not vim.b[bufnr].oil_ready
+    and not require("oil.loading").is_loading(bufnr)
+  then
+    vim.api.nvim_win_call(winid, function()
+      require("oil").load_oil_buffer(bufnr)
+    end)
+  end
+end
+
 ---Open an oil directory in the current window
 ---@param url string
 ---@param focus_name? string Entry to put the cursor on once the listing renders
@@ -353,17 +370,91 @@ M.open_dir = function(url, focus_name)
     M.focus_entry(url, focus_name)
   end
   require("oil").open(url)
-  -- oil loads directories from its BufReadCmd autocmd, which doesn't fire when this runs inside
-  -- another, non-nested autocmd (e.g. `autocmd VimEnter * Coil`). Load the buffer ourselves then,
-  -- as oil does for its own preview window.
-  local bufnr = vim.api.nvim_get_current_buf()
+  ensure_loaded(vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win())
+end
+
+---Show the oil buffer for directory `url` in `winid`, which needn't be the current window (focus
+---stays where it is). oil keeps one buffer per directory, so this may be a buffer another window
+---shows too.
+---@param winid integer
+---@param url string A directory URL, with its trailing slash
+---@return nil|integer bufnr nil if the window can't show it
+M.show_dir_in = function(winid, url)
+  local bufnr = vim.fn.bufadd(url)
+  if not require("coil.preview.buffer").set_win_buf(winid, bufnr) then
+    return nil
+  end
+  ensure_loaded(bufnr, winid)
+  return bufnr
+end
+
+---List an already loaded oil directory buffer again. oil keeps a directory's buffer around after
+---it's hidden and shows that listing when it comes back, so a side pane showing one again would
+---miss what changed since. Buffers with unsaved edits are left alone.
+---@param bufnr integer
+M.refresh_dir = function(bufnr)
   if
-    M.is_oil_buffer(bufnr)
-    and not vim.b[bufnr].oil_ready
+    vim.b[bufnr].oil_ready
+    and not vim.bo[bufnr].modified
     and not require("oil.loading").is_loading(bufnr)
   then
-    require("oil").load_oil_buffer(bufnr)
+    require("oil.view").render_buffer_async(bufnr, { refetch = true })
   end
+end
+
+---Where each line of an oil buffer shows something other than the entry's icon and name: oil's
+---other columns, and a link's ` -> target`. The ID oil puts first is concealed by oil itself.
+---@param bufnr integer A rendered oil directory buffer
+---@return integer[][] positions {lnum, byte col, byte length} as matchaddpos() takes them
+M.column_positions = function(bufnr)
+  local parser = require("oil.mutator.parser")
+  local adapter = require("oil.util").get_adapter(bufnr, true)
+  if not adapter then
+    return {}
+  end
+  local column_defs = require("oil.columns").get_supported_columns(adapter)
+  local positions = {}
+  for lnum, line in ipairs(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)) do
+    local ok, result = pcall(parser.parse_line, adapter, line, column_defs)
+    local ranges = ok and result and result.ranges
+    if ranges then
+      for name, range in pairs(ranges) do
+        -- Each column's range includes the space after it
+        if name ~= "id" and name ~= "icon" and name ~= "name" and range[2] >= range[1] then
+          table.insert(positions, { lnum, range[1], range[2] - range[1] + 1 })
+        end
+      end
+      -- A link's target, after its name
+      local arrow = ranges.name and line:find(" -> ", ranges.name[2], true)
+      if arrow then
+        table.insert(positions, { lnum, arrow, #line - arrow + 1 })
+      end
+    end
+  end
+  return positions
+end
+
+---The line of an oil buffer that shows the entry called `name`
+---@param bufnr integer
+---@param name string
+---@return nil|integer lnum
+M.line_of = function(bufnr, name)
+  local oil = require("oil")
+  for lnum = 1, vim.api.nvim_buf_line_count(bufnr) do
+    local entry = oil.get_entry_on_line(bufnr, lnum)
+    if entry and entry.name == name then
+      return lnum
+    end
+  end
+end
+
+---The name of the entry on a line of an oil buffer
+---@param bufnr integer
+---@param lnum integer
+---@return nil|string
+M.name_on_line = function(bufnr, lnum)
+  local entry = require("oil").get_entry_on_line(bufnr, lnum)
+  return entry and entry.name ~= ".." and entry.name or nil
 end
 
 ---Open the parent directory in the current window. oil puts the cursor on the directory we left.
