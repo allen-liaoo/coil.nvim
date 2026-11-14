@@ -59,7 +59,7 @@ describe("preview.show", function()
       { target("missing.txt"), "^Cannot read this file: " },
       {
         { name = "r.txt", url = "oil-ssh://host/r.txt", is_dir = false },
-        "Previews of remote files are not supported yet",
+        "No downloader configured for remote files",
       },
     }
     for _, case in ipairs(cases) do

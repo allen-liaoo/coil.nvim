@@ -1,9 +1,11 @@
 -- Standalone file preview: show a target (file or directory) in any window.
--- Knows nothing about oil or coil's panes; directory listing is injected via `list_dir`.
+-- Knows nothing about oil or coil's panes; directory listing is injected via `list_dir`, and
+-- downloading remote files via `fetch`.
 local buffer = require("coil.preview.buffer")
 local classify = require("coil.preview.classify")
 local directory = require("coil.preview.providers.directory")
 local image = require("coil.preview.image")
+local remote = require("coil.preview.remote")
 local text = require("coil.preview.providers.text")
 local thumbnail = require("coil.preview.thumbnail")
 local uv = vim.uv or vim.loop
@@ -15,6 +17,8 @@ local M = {}
 ---@field path? string Local filesystem path; nil for remote targets
 ---@field is_dir boolean
 ---@field unsaved? boolean The entry only exists in an unsaved oil buffer
+---@field size? integer Size in bytes, if known without reading the file (remote targets)
+---@field mtime? string|number When it last changed, in any form (remote targets)
 
 ---@alias coil.ListDir fun(url: string, cb: fun(err?: string, entries?: coil.ListEntry[]))
 
@@ -29,6 +33,10 @@ local M = {}
 ---@field prefetch integer prefetch() prepares images up to this many entries from the cursor (0 for none)
 ---@field thumbnail_cache_mb number|false Size limit of the thumbnail cache in MiB (setup only; false for none)
 ---@field list_dir? coil.ListDir Lists directories for directory previews
+---@field fetch? coil.Fetch Downloads remote targets (those without a local path)
+---@field remote_max_bytes integer Remote images, videos and PDFs larger than this aren't downloaded (other remote files: max_bytes)
+---@field remote_delay_ms integer Wait this long after a remote file's preview is shown before downloading it
+---@field remote_cache_mb number|false Size limit of the downloaded copies in MiB (setup only; false for none)
 
 ---@type coil.PreviewOpts
 local defaults = {
@@ -42,6 +50,10 @@ local defaults = {
   prefetch = 2,
   thumbnail_cache_mb = 200,
   list_dir = nil,
+  fetch = nil,
+  remote_max_bytes = 20 * 1024 * 1024,
+  remote_delay_ms = 200,
+  remote_cache_mb = 100,
 }
 
 ---@type coil.PreviewOpts
@@ -54,6 +66,7 @@ M.setup = function(opts)
     size = config.thumbnail_size,
     max_bytes = config.thumbnail_cache_mb and config.thumbnail_cache_mb * 1024 * 1024,
   })
+  remote.setup({ max_bytes = config.remote_cache_mb and config.remote_cache_mb * 1024 * 1024 })
 end
 
 -- Bumped on every show/clear. Async work compares its generation before touching the window,
@@ -74,6 +87,20 @@ end
 ---@return boolean
 local function is_latest(winid, gen)
   return generations[winid] == gen and vim.api.nvim_win_is_valid(winid)
+end
+
+-- The download each window waits for, as the function that gives it up
+---@type table<integer, fun()>
+local downloads = {}
+
+---Stop waiting for the download `winid` asked for last, if any
+---@param winid integer
+local function release_download(winid)
+  local release = downloads[winid]
+  downloads[winid] = nil
+  if release then
+    release()
+  end
 end
 
 ---@param winid integer
@@ -133,6 +160,17 @@ local function format_size(size)
   end
 end
 
+---Whether a picture of `kind` can be drawn (image.nvim, and the tool that makes its thumbnails)
+---@param kind coil.PreviewKind
+---@param opts coil.PreviewOpts
+---@return boolean
+local function can_draw(kind, opts)
+  return pictures[kind] ~= nil
+    and opts.images
+    and image.available()
+    and (kind == "image" or thumbnail.available(kind))
+end
+
 ---What the preview says for a file it shows neither text nor a picture of
 ---@param kind coil.PreviewKind
 ---@param info coil.ClassifyInfo
@@ -153,7 +191,7 @@ local function message_for(kind, info, opts)
   elseif kind == "unreadable" then
     return "Cannot read this file: " .. (info.err or "unknown error")
   elseif kind == "remote" then
-    return "Previews of remote files are not supported yet"
+    return "No downloader configured for remote files"
   elseif kind == "archive" then
     return "No preview for archives"
   end
@@ -208,6 +246,92 @@ local function show_picture(winid, gen, target, kind, info, opts)
   end, opts.image_delay_ms)
 end
 
+---Preview a local file
+---@param winid integer
+---@param gen integer
+---@param target coil.PreviewTarget
+---@param opts coil.PreviewOpts
+local function show_file(winid, gen, target, opts)
+  local kind, info = classify.classify(target, opts)
+  if kind == "directory" then
+    return show_directory(winid, gen, target, opts)
+  elseif kind == "text" then
+    return place(winid, gen, text.render(assert(target.path), opts))
+  elseif can_draw(kind, opts) then
+    ---@cast kind "image"|"video"|"pdf"
+    return show_picture(winid, gen, target, kind, info, opts)
+  end
+  place(winid, gen, buffer.message({ message_for(kind, info, opts) }))
+end
+
+---Preview a remote file from a local copy, downloaded once the cursor has rested on it
+---@param winid integer
+---@param gen integer
+---@param target coil.PreviewTarget
+---@param opts coil.PreviewOpts
+local function show_remote(winid, gen, target, opts)
+  if not opts.fetch then
+    release_download(winid)
+    return place(winid, gen, buffer.message({ message_for("remote", {}, opts) }))
+  end
+  -- Files whose extension alone decides their message: downloading them wouldn't change it
+  local kind = classify.kind_by_name(target.name)
+  local limit = kind and opts.remote_max_bytes or opts.max_bytes
+  local msg
+  if kind and not can_draw(kind, opts) then
+    msg = message_for(kind, {}, opts)
+  elseif target.size and target.size > limit then
+    msg = kind and string.format("Larger than %s, so it isn't downloaded", format_size(limit))
+      or message_for("too_large", {}, opts)
+  end
+  if msg then
+    release_download(winid)
+    return place(winid, gen, buffer.message({ msg }))
+  end
+
+  ---@param path string
+  local function show_copy(path)
+    show_file(
+      winid,
+      gen,
+      { name = target.name, url = target.url, path = path, is_dir = false },
+      opts
+    )
+  end
+  local cached = remote.cached(target)
+  if cached then
+    release_download(winid)
+    return show_copy(cached)
+  end
+  -- The window's previous download keeps going until this one starts, so showing the same file
+  -- again (a redraw) doesn't restart it
+  place(winid, gen, buffer.message({ "Downloading..." }))
+  vim.defer_fn(function()
+    if not is_latest(winid, gen) then
+      return
+    end
+    local done = false
+    local release = remote.download(target, opts.fetch, function(path, err)
+      done = true
+      if not is_latest(winid, gen) then
+        return
+      elseif path then
+        return show_copy(path)
+      end
+      local line = vim.trim(err or ""):match("^[^\n]*")
+      place(
+        winid,
+        gen,
+        buffer.message({ "Cannot download: " .. (line ~= "" and line or "unknown error") })
+      )
+    end)
+    release_download(winid)
+    if not done then
+      downloads[winid] = release
+    end
+  end, opts.remote_delay_ms)
+end
+
 ---The kind of preview `target` gets (text, image, binary, ...)
 ---@param target coil.PreviewTarget
 ---@return coil.PreviewKind
@@ -230,29 +354,21 @@ M.show = function(winid, target, opts)
       buffer.message({ "Not saved yet", "Write the oil buffer to create it" })
     )
   end
+  if not target.path and not target.is_dir then
+    return show_remote(winid, gen, target, o)
+  end
+  release_download(winid)
   if target.is_dir then
     return show_directory(winid, gen, target, o)
   end
-  local kind, info = classify.classify(target, o)
-  if kind == "directory" then
-    return show_directory(winid, gen, target, o)
-  elseif kind == "text" then
-    return place(winid, gen, text.render(assert(target.path), o))
-  elseif
-    pictures[kind]
-    and o.images
-    and image.available()
-    and (kind == "image" or thumbnail.available(kind))
-  then
-    return show_picture(winid, gen, target, kind, info, o)
-  end
-  place(winid, gen, buffer.message({ message_for(kind, info, o) }))
+  show_file(winid, gen, target, o)
 end
 
 ---Show an empty buffer (or a message) in `winid`
 ---@param winid integer
 ---@param lines? string[]
 M.clear = function(winid, lines)
+  release_download(winid)
   place(winid, next_generation(winid), buffer.message(lines or {}))
 end
 
