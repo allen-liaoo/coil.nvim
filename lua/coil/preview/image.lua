@@ -104,8 +104,9 @@ local function geometry(winid, row)
     return nil
   end
   local width = info.width - info.textoff
-  -- From the anchor line to the window's last row. `winrow` is the winbar's row when there is one
-  local height = info.winrow + info.winbar + info.height - pos.row
+  -- image.nvim draws below the anchor line: from the next row to the window's last row. `winrow`
+  -- is the winbar's row when there is one
+  local height = info.winrow + info.winbar + info.height - 1 - pos.row
   if width < 1 or height < MIN_HEIGHT then
     return nil
   end
@@ -159,14 +160,15 @@ end
 ---Like fitter(), for a preview buffer that isn't shown yet: assumes it is shown from its first
 ---line and its lines don't wrap
 ---@param winid integer
----@param row integer 0-based line of that buffer where the image would start
+---@param row integer 0-based line of that buffer the image would be drawn below
 ---@return nil|coil.ThumbnailFit
 M.estimated_fitter = function(winid, row)
   local info = image_api() and vim.fn.getwininfo(winid)[1]
-  if not info or info.height - row < MIN_HEIGHT then
+  local rows = info and info.height - row - 1
+  if not rows or rows < MIN_HEIGHT then
     return nil
   end
-  return fitter(info.width - info.textoff, info.height - row)
+  return fitter(info.width - info.textoff, rows)
 end
 
 ---@param winid integer

@@ -85,7 +85,7 @@ describe("image previews", function()
     return fake.created[n]
   end
 
-  it("draws the image alone, filling the window", function()
+  it("draws the image alone, filling the window below the first line", function()
     preview.show(win, target("pic.png"))
     local img = wait_drawn(1)
     local bufnr = vim.api.nvim_win_get_buf(win)
@@ -99,7 +99,8 @@ describe("image previews", function()
     assert.equals(0, geom.y)
     assert.equals(0, geom.x)
     assert.equals(vim.api.nvim_win_get_width(win), geom.width)
-    assert.equals(vim.api.nvim_win_get_height(win), geom.height)
+    -- image.nvim draws below line `y`, so the first row is left for "Loading image..."
+    assert.equals(vim.api.nvim_win_get_height(win) - 1, geom.height)
   end)
 
   it("draws a copy at the size image.nvim will draw it at", function()
