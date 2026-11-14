@@ -6,33 +6,41 @@ local M = {}
 
 ---@param arg string
 ---@return boolean
-local function is_dir(arg)
-  -- By now oil may have turned a directory argument into an oil URL ("oil:///path/")
-  return vim.fn.isdirectory(arg) == 1 or (arg:match("^[%w-]+://") ~= nil and vim.endswith(arg, "/"))
+local function is_url(arg)
+  return arg:match("^[%w-]+://") ~= nil
 end
 
 ---What the command line opens in the column view: the current directory without arguments, the
----arguments when they are all directories, otherwise nothing (Neovim opens them as usual)
+---arguments when they are all directories, otherwise nothing (Neovim opens them as usual).
+---A URL is a directory when it ends in a slash, as oil names them; one without (typed by hand, as
+---in `oil-ssh://host//path`) is first given to oil's adapter, which over SSH means waiting for the
+---host. Without such URLs `cb` is called right away.
 ---@param args string[]
----@return nil|string[]
-M.dirs_for = function(args)
+---@param cb fun(dirs?: string[])
+M.dirs_for = function(args, cb)
   if #args == 0 then
-    return { vim.fn.getcwd() }
-  elseif vim.iter(args):all(is_dir) then
-    return args
+    return cb({ vim.fn.getcwd() })
   end
+  ---@param arg string
+  ---@return boolean
+  local function is_dir(arg)
+    -- By now oil may have turned a directory argument into an oil URL ("oil:///path/")
+    return vim.fn.isdirectory(arg) == 1 or (is_url(arg) and vim.endswith(arg, "/"))
+  end
+  -- A plain file argument settles it without asking any host
+  if not vim.iter(args):all(function(arg)
+    return is_dir(arg) or is_url(arg)
+  end) then
+    return cb(nil)
+  end
+  require("coil.oil_bridge").normalize_urls(args, function(dirs)
+    cb(vim.iter(dirs):all(is_dir) and dirs or nil)
+  end)
 end
 
----Open the column view for the command line. The views are the only tabs: the tab Neovim started
----with (empty, or showing the first directory argument as an oil buffer) is closed, and files
----open in a new tab.
----@param args string[]
-M.open_args = function(args)
-  local dirs = M.dirs_for(args)
-  if not dirs then
-    return
-  end
-  local start_tab = vim.api.nvim_get_current_tabpage()
+---@param dirs string[]
+---@param start_tab integer
+local function open_dirs(dirs, start_tab)
   local start_bufs = vim.api.nvim_list_bufs()
   require("coil").open(dirs)
   if vim.api.nvim_tabpage_is_valid(start_tab) and #vim.api.nvim_list_tabpages() > 1 then
@@ -50,6 +58,19 @@ M.open_args = function(args)
       pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
     end
   end
+end
+
+---Open the column view for the command line. The views are the only tabs: the tab Neovim started
+---with (empty, or showing the first directory argument as an oil buffer) is closed, and files
+---open in a new tab.
+---@param args string[]
+M.open_args = function(args)
+  local start_tab = vim.api.nvim_get_current_tabpage()
+  M.dirs_for(args, function(dirs)
+    if dirs then
+      open_dirs(dirs, start_tab)
+    end
+  end)
 end
 
 -- The local directory last shown in a column view's middle pane

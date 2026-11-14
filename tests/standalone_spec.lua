@@ -31,11 +31,46 @@ describe("standalone startup", function()
       end
     end)
 
+    ---@param args string[]
+    ---@return nil|string[]
+    local function dirs_for(args)
+      local result, called = nil, false
+      startup.dirs_for(args, function(dirs)
+        result, called = dirs, true
+      end)
+      assert.is_true(h.wait(function()
+        return called
+      end))
+      return result
+    end
+
     it("opens the current directory, all-directory arguments, or nothing", function()
-      assert.same({ vim.fn.getcwd() }, startup.dirs_for({}))
+      assert.same({ vim.fn.getcwd() }, dirs_for({}))
       local dirs = { dir .. "/one", "oil://" .. dir .. "/two/" }
-      assert.same(dirs, startup.dirs_for(dirs))
-      assert.is_nil(startup.dirs_for({ dir .. "/one", dir .. "/file.txt" }))
+      assert.same(dirs, dirs_for(dirs))
+      assert.is_nil(dirs_for({ dir .. "/one", dir .. "/file.txt" }))
+    end)
+
+    it("asks oil about URLs without a trailing slash", function()
+      assert.same(
+        { dir .. "/one", "oil://" .. dir .. "/two/" },
+        dirs_for({ dir .. "/one", "oil://" .. dir .. "/two" })
+      )
+      assert.is_nil(dirs_for({ dir .. "/one", "oil://" .. dir .. "/file.txt" }))
+      -- Not oil's: Neovim opens it as usual
+      assert.is_nil(dirs_for({ "https://example.com/a" }))
+    end)
+
+    it("opens the view once a URL argument turns out to be a directory", function()
+      startup.open_args({ "oil://" .. dir .. "/two" })
+      assert.is_true(h.wait(function()
+        return state.get() ~= nil
+      end))
+      local view = assert(state.get())
+      assert.equals(
+        "oil://" .. dir .. "/two/",
+        vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.panes.current))
+      )
     end)
 
     it("writes the column view's directory to g:coil_cwd_file on exit", function()

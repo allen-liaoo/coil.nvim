@@ -209,6 +209,46 @@ M.url_for_path = function(dir)
   return require("oil").get_url_for_path(dir, false)
 end
 
+---Ask oil's adapter for the full form of a URL, as oil does before opening it. Directories come
+---back with a trailing slash; for SSH this means a round trip to the host.
+---@param url string
+---@param cb fun(url: string) Called on the main loop; gets `url` itself if no oil adapter handles it
+M.normalize_url = function(url, cb)
+  local ok, adapter = pcall(require("oil.config").get_adapter_by_scheme, url)
+  if not ok or not adapter then
+    return vim.schedule(function()
+      cb(url)
+    end)
+  end
+  adapter.normalize_url(url, vim.schedule_wrap(cb))
+end
+
+---Normalize the URLs in `items` that don't end in a slash (see normalize_url), keeping everything
+---else as it is: a URL typed by hand, like `oil-ssh://host//path`, may be a directory without
+---the trailing slash oil gives directories. Calls back right away if there are none.
+---@param items string[] Paths or URLs
+---@param cb fun(items: string[]) The same items, those URLs normalized
+M.normalize_urls = function(items, cb)
+  local result = vim.list_slice(items)
+  local pending = 0
+  for i, item in ipairs(items) do
+    if item:match("^[%w-]+://") and not vim.endswith(item, "/") then
+      pending = pending + 1
+      -- Always calls back later, so `pending` has counted every URL by then
+      M.normalize_url(item, function(url)
+        result[i] = url
+        pending = pending - 1
+        if pending == 0 then
+          cb(result)
+        end
+      end)
+    end
+  end
+  if pending == 0 then
+    cb(result)
+  end
+end
+
 ---The parent directory of an oil directory URL
 ---@param url string
 ---@return nil|string parent_url nil at the root
