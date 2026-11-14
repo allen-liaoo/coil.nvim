@@ -44,6 +44,37 @@ describe("column view", function()
     assert.equals(origin_buf, vim.api.nvim_win_get_buf(origin_win))
   end)
 
+  it("keeps a directory URL edited without its slash in the middle pane", function()
+    local origin_win = vim.api.nvim_get_current_win()
+    local origin_buf = vim.api.nvim_get_current_buf()
+    local view = open_view(dir)
+    vim.cmd.edit("oil://" .. dir .. "/sub")
+    assert.is_true(h.wait(function()
+      local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+      return vim.api.nvim_buf_get_name(bufnr) == "oil://" .. dir .. "/sub/"
+        and vim.b[bufnr].oil_ready == true
+    end))
+    assert.equals(origin_buf, vim.api.nvim_win_get_buf(origin_win))
+    assert.equals(view.panes.current, vim.api.nvim_get_current_win())
+    -- The side panes follow, as for any other directory
+    assert.is_true(h.wait(function()
+      return vim.tbl_contains(h.win_lines(view.panes.parent), "sub/")
+    end))
+  end)
+
+  it("still moves a file URL edited in the middle pane to the editing tab", function()
+    local origin_win = vim.api.nvim_get_current_win()
+    local view = open_view(dir)
+    vim.cmd.edit("oil://" .. dir .. "/a.txt")
+    assert.is_true(h.wait(function()
+      return vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(origin_win)) == dir .. "/a.txt"
+    end))
+    assert.equals(
+      "oil://" .. dir .. "/",
+      vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.panes.current))
+    )
+  end)
+
   ---@param view coil.View
   ---@return integer[]
   local function widths(view)
