@@ -106,7 +106,10 @@ which turns on coil's `standalone` options. Your config can check it with
 `require("coil").standalone()`, even while it loads:
 
 ```lua
-require("oil").setup({ delete_to_trash = require("coil").standalone() })
+require("oil").setup({
+  delete_to_trash = require("coil").standalone(),
+  watch_for_changes = true,
+})
 ```
 
 - **Don't lazy-load coil:** If using lazy.nvim,
