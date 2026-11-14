@@ -259,6 +259,21 @@ describe("column view keys", function()
     end))
   end)
 
+  it("L puts the cursor on the first entry's name in a directory the preview showed", function()
+    -- An editable column before the name, where oil's default constrain_cursor would stop
+    h.setup_oil({ columns = { "icon", "permissions" } })
+    local view = h.open_view(proj)
+    -- The preview pane renders sub/, so oil doesn't render it again when it moves to the middle
+    preview_entry(view, "sub/", "inner.txt")
+    h.press("L")
+    assert.is_true(h.wait(function()
+      return middle_name(view) == "oil://" .. proj .. "/sub/"
+    end))
+    local line =
+      vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(view.panes.current), 0, 1, true)[1]
+    assert.same({ 1, line:find("inner.txt", 1, true) - 1 }, vim.api.nvim_win_get_cursor(0))
+  end)
+
   it("q closes the view from the middle or the preview pane", function()
     h.open_view(proj)
     h.press("q")

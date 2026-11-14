@@ -194,6 +194,9 @@ M.attach = function(view)
       if bufnr then
         st.last_dir_buf = bufnr
         bridge.on_ready(bufnr, function()
+          if middle_oil_buffer(view) == bufnr then
+            bridge.cursor_to_name(view.panes.current)
+          end
           M.all(view)
         end)
       elseif vim.fn.isdirectory(vim.api.nvim_buf_get_name(args.buf)) == 0 then

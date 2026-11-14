@@ -345,6 +345,26 @@ M.focus_entry = function(url, name)
   require("oil.view").set_last_cursor(url, name)
 end
 
+---Move the cursor of `winid` right to the name of the entry on its line, as oil does when it
+---renders a directory (whatever its `constrain_cursor` option says). A directory a side pane
+---already rendered isn't rendered again, so it arrives with the cursor where that pane left it.
+---@param winid integer A window showing an oil directory
+M.cursor_to_name = function(winid)
+  local bufnr = vim.api.nvim_win_get_buf(winid)
+  local adapter = require("oil.util").get_adapter(bufnr, true)
+  if not adapter then
+    return
+  end
+  local cursor = vim.api.nvim_win_get_cursor(winid)
+  local line = vim.api.nvim_buf_get_lines(bufnr, cursor[1] - 1, cursor[1], true)[1]
+  local column_defs = require("oil.columns").get_supported_columns(adapter)
+  local ok, result = pcall(require("oil.mutator.parser").parse_line, adapter, line, column_defs)
+  local name = ok and result and result.ranges and result.ranges.name
+  if name and cursor[2] < name[1] then
+    vim.api.nvim_win_set_cursor(winid, { cursor[1], name[1] })
+  end
+end
+
 ---oil loads directories from its BufReadCmd autocmd, which doesn't fire inside another, non-nested
 ---autocmd (e.g. `autocmd VimEnter * Coil`). Load the buffer ourselves then, in `winid`, as oil
 ---does for its own preview window.

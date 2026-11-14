@@ -69,6 +69,18 @@ build (oil's default is the icon column only).
 
 ## Bugs
 
+- [x] **Cursor at column 0 after entering a subdirectory.** The preview pane had already rendered
+  the directory, so oil didn't render it again in the middle pane, and its rendering is what puts
+  the cursor on the name. coil now moves the cursor to the name when a directory enters the
+  middle pane.
+- [ ] On cursor over a symlinked directory in the middle pane, I get error:
+```
+vim.schedule callback: ...ir/pack/myNeovimPackages/start/oil.nvim/lua/oil/util.lua:199: Vim:E1513: Cannot switch buffer. 'winfixbuf' is enabled
+stack traceback:
+        [C]: in function 'nvim_win_set_buf'
+        ...ir/pack/myNeovimPackages/start/oil.nvim/lua/oil/util.lua:199: in function <...ir/pack/myNeovimPackages/start/oil.nvim/lua/oil/util.lua:194>
+```
+The directory preview still ends up loading.
 - [ ] **Images one column too far left with kitty placeholders.** With
   `kitty_method = "unicode-placeholders"`, image.nvim draws every image one column left of where
   it means to, covering the separator left of the preview. Its renderer passes a 0-based column;
@@ -77,6 +89,7 @@ build (oil's default is the icon column only).
   shift the image itself: the anchor line is empty and `screenpos` clamps to its end. Plan: patch
   image.nvim in the Nix builds (`nix/coil.nix`, the nixvim module) and send the fix upstream,
   along with resetting attributes before the placeholders (coil works around that one today).
+- [ ] Related to previous bug: Once a thumbnail is previewed with the bug above, text previews are also moved on column to the left (but not before).
 - [x] Something is drawn below the preview, causing background of terminal to leak through the neovim background. It happens when it isn't a text preview or a text preview with short enough text.
 
 ## Known gaps
