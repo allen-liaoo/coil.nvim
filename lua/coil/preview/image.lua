@@ -1,5 +1,6 @@
 -- Draws images into preview windows with image.nvim (https://github.com/3rd/image.nvim). Optional:
 -- without image.nvim, an image's preview says so.
+local buffer = require("coil.preview.buffer")
 local M = {}
 
 ---@class (exact) coil.DrawnImage
@@ -92,6 +93,7 @@ end
 ---@param winid integer
 ---@param row integer 0-based buffer line
 ---@return nil|{x: integer, y: integer, width: integer, height: integer}
+---@return nil|boolean too_small There is no geometry because the space is too small
 local function geometry(winid, row)
   local info = vim.fn.getwininfo(winid)[1]
   if not info then
@@ -108,7 +110,7 @@ local function geometry(winid, row)
   -- is the winbar's row when there is one
   local height = info.winrow + info.winbar + info.height - 1 - pos.row
   if width < 1 or height < MIN_HEIGHT then
-    return nil
+    return nil, true
   end
   return { x = 0, y = row, width = width, height = height }
 end
@@ -174,7 +176,8 @@ end
 ---@param winid integer
 ---@param entry coil.DrawnImage
 local function render(winid, entry)
-  local geom = geometry(winid, entry.row)
+  local geom, too_small = geometry(winid, entry.row)
+  buffer.set_status(entry.bufnr, too_small and "Window too small for the thumbnail" or nil)
   if not geom then
     pcall(entry.image.clear, entry.image)
     return
@@ -210,7 +213,8 @@ local function ensure_autocmds()
   })
 end
 
----Draw the image at `path` in `winid`, below line `row` of the buffer shown there
+---Draw the image at `path` in `winid`, below line `row` of the buffer shown there. While the
+---window is too small for it, the buffer's status line (see buffer.set_status) says so instead.
 ---@param winid integer
 ---@param bufnr integer
 ---@param row integer 0-based buffer line

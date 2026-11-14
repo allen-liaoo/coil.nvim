@@ -191,6 +191,25 @@ describe("image previews", function()
     assert.equals(0, #fake.created)
   end)
 
+  it("says when the window is too small for the image", function()
+    vim.cmd("split")
+    preview.show(win, target("pic.png"))
+    local img = wait_drawn(1)
+    assert.is_nil(status())
+    -- The first line and two rows below it: too few for an image
+    vim.api.nvim_win_set_height(win, 3)
+    vim.api.nvim_exec_autocmds("WinResized", {})
+    assert.is_true(h.wait(function()
+      return status() == "Window too small for the thumbnail"
+    end))
+    assert.is_true(img.cleared)
+    vim.api.nvim_win_set_height(win, 10)
+    vim.api.nvim_exec_autocmds("WinResized", {})
+    assert.is_true(h.wait(function()
+      return status() == nil and not img.cleared
+    end))
+  end)
+
   it("gives image.nvim the original without ImageMagick", function()
     local path = vim.env.PATH
     vim.env.PATH = ""
