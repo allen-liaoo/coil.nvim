@@ -33,13 +33,24 @@ describe("pane sync", function()
     h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
     assert.same({ 1 }, h.selected_lines(view.panes.parent))
     assert.equals(1, vim.api.nvim_win_get_cursor(view.panes.parent)[1])
-    assert.is_false(vim.bo[vim.api.nvim_win_get_buf(view.panes.parent)].modifiable)
+    -- oil's own buffer for the directory (the pane can't be entered, so it isn't edited)
+    assert.equals("oil", vim.bo[vim.api.nvim_win_get_buf(view.panes.parent)].filetype)
   end)
 
-  it("lists the current directory in the parent pane even when it is hidden", function()
+  it("selects a hidden current directory only while hidden files are shown", function()
     local view = h.open_view(root .. "/.hidden_dir")
-    h.wait_lines(view.panes.parent, { ".hidden_dir/", "proj/", "zdir/", "other.txt" })
-    assert.same({ 1 }, h.selected_lines(view.panes.parent))
+    -- oil's buffer leaves it out, like any hidden entry
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
+    assert.same({}, h.selected_lines(view.panes.parent))
+    h.press("g.")
+    h.wait_lines(
+      view.panes.parent,
+      { "../", ".hidden_dir/", "proj/", "zdir/", ".rootdot", "other.txt" }
+    )
+    assert.is_true(h.wait(function()
+      return vim.deep_equal({ 2 }, h.selected_lines(view.panes.parent))
+    end))
+    h.press("g.")
   end)
 
   it("previews the entry under the middle pane's cursor", function()
@@ -127,12 +138,17 @@ describe("pane sync", function()
     end))
   end)
 
-  it("greys out a hidden current directory in the parent pane", function()
-    local view = h.open_view(root .. "/.hidden_dir")
-    h.wait_lines(view.panes.parent, { ".hidden_dir/", "proj/", "zdir/", "other.txt" })
-    local hl = h.line_highlights(view.panes.parent)
-    assert.equals("CoilDirHidden", hl[".hidden_dir/"])
-    assert.equals("CoilDir", hl["proj/"])
+  it("shows only icons and names in the side panes, whatever oil's columns", function()
+    h.setup_oil({ columns = { "icon", "permissions", "size", "mtime" } })
+    local view = h.open_view(root .. "/proj")
+    h.wait_lines(view.panes.parent, { "proj/", "zdir/", "other.txt" })
+    -- The middle pane, the same kind of buffer, keeps every column
+    assert.is_true(h.wait(function()
+      local line =
+        vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(view.panes.current), 0, 1, false)[1]
+      return line ~= nil and line:find("rwx", 1, true) ~= nil
+    end))
+    h.setup_oil()
   end)
 
   ---@param winid integer

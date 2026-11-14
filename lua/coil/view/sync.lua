@@ -2,14 +2,13 @@
 -- the parent pane lists its parent directory, the preview pane shows the entry under its cursor.
 local bridge = require("coil.oil_bridge")
 local config = require("coil.config")
-local listing = require("coil.view.listing")
 local open = require("coil.view.open")
 local preview = require("coil.preview")
+local side = require("coil.view.side")
 local util = require("coil.util")
 local M = {}
 
 ---@class (exact) coil.SyncState
----@field parent_gen integer Bumped per parent listing; older listings are dropped
 ---@field preview_url? string What the preview pane shows
 ---@field last_dir_buf? integer The last oil directory in the middle pane
 ---@field signature? string oil's listing settings at the last parent refresh
@@ -21,7 +20,7 @@ local sync_state = {}
 
 ---@param view coil.View
 local function state_of(view)
-  sync_state[view.tab] = sync_state[view.tab] or { parent_gen = 0, watched = {} }
+  sync_state[view.tab] = sync_state[view.tab] or { watched = {} }
   return sync_state[view.tab]
 end
 
@@ -104,12 +103,10 @@ local function watch_listing_settings(view, bufnr)
   })
 end
 
----List the middle directory's parent into the parent pane
+---Show the middle directory's parent in the parent pane, as an oil buffer
 ---@param view coil.View
 M.parent = function(view)
   local st = state_of(view)
-  st.parent_gen = st.parent_gen + 1
-  local gen = st.parent_gen
   local winid = view.panes.parent
   st.signature = bridge.listing_signature()
 
@@ -125,23 +122,13 @@ M.parent = function(view)
   set_winbar(winid, parent_url and bridge.display_path(parent_url) or "")
   if not parent_url then
     -- At the root, or the middle pane isn't showing a directory
+    side.release(winid)
     preview.clear(winid)
-    -- Swaps made from inside an autocmd don't fire BufWinEnter, so re-title explicitly
-    return apply_title(winid)
+  else
+    side.show_dir(winid, parent_url, name)
   end
-
-  bridge.list_dir(parent_url, function(err, entries)
-    if st.parent_gen ~= gen or not vim.api.nvim_win_is_valid(winid) then
-      return
-    end
-    if err then
-      preview.clear(winid, { "Cannot list " .. parent_url, err })
-    else
-      listing.show(winid, entries or {}, name, parent_url)
-    end
-    apply_title(winid)
-    -- Always list the directory we're in, even if it is hidden, so it can be highlighted
-  end, { bufnr = bufnr, always_show = name })
+  -- Swaps made from inside an autocmd don't fire BufWinEnter, so re-title explicitly
+  apply_title(winid)
 end
 
 ---Preview the entry under the middle pane's cursor
@@ -156,12 +143,20 @@ M.preview = function(view, force)
     return
   end
   st.preview_url = url
-  if target then
+  if target and target.is_dir and not target.unsaved then
+    set_winbar(winid, target.name .. "/")
+    -- A directory is previewed as its oil buffer
+    preview.stop(winid)
+    side.show_dir(winid, target.url)
+    preview.prefetch(winid, bridge.targets_near(view.panes.current, preview.prefetch_distance()))
+  elseif target then
     set_winbar(winid, target.is_dir and (target.name .. "/") or target.name)
+    side.release(winid)
     preview.show(winid, target, { list_dir = bridge.list_dir, fetch = bridge.fetcher(target.url) })
     preview.prefetch(winid, bridge.targets_near(view.panes.current, preview.prefetch_distance()))
   else
     set_winbar(winid, "")
+    side.release(winid)
     preview.clear(winid)
   end
   -- Covers synchronous placements; directory listings land later and are re-titled by BufWinEnter

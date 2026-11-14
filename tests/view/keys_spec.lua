@@ -155,11 +155,14 @@ describe("column view keys", function()
   local function reload_middle(view, reload)
     local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
     local reloaded = false
+    -- The side panes' oil buffers fire it too
     vim.api.nvim_create_autocmd("User", {
       pattern = "OilEnter",
-      once = true,
       callback = function(args)
-        reloaded = args.data and args.data.buf == bufnr
+        if args.data and args.data.buf == bufnr then
+          reloaded = true
+          return true
+        end
       end,
     })
     reload()
@@ -226,12 +229,34 @@ describe("column view keys", function()
     end))
   end)
 
+  ---Put the middle pane's cursor on `name` and wait for the preview pane to show it
+  ---@param view coil.View
+  ---@param name string
+  ---@param first_line string What the preview shows on its first line
+  local function preview_entry(view, name, first_line)
+    h.cursor_to(view.panes.current, name)
+    vim.api.nvim_exec_autocmds("CursorMoved", {})
+    assert.is_true(h.wait(function()
+      return h.win_lines(view.panes.preview)[1] == first_line
+    end))
+  end
+
   it("<C-p> jumps into the preview pane and back", function()
     local view = h.open_view(proj)
+    preview_entry(view, "a.txt", "hello")
     h.press("<C-p>")
     assert.equals(view.panes.preview, vim.api.nvim_get_current_win())
     h.press("<C-p>")
     assert.equals(view.panes.current, vim.api.nvim_get_current_win())
+  end)
+
+  it("bounces back from a directory preview, which is display-only", function()
+    local view = h.open_view(proj)
+    preview_entry(view, "sub/", "inner.txt")
+    vim.api.nvim_set_current_win(view.panes.preview)
+    assert.is_true(h.wait(function()
+      return vim.api.nvim_get_current_win() == view.panes.current
+    end))
   end)
 
   it("q closes the view from the middle or the preview pane", function()
@@ -239,7 +264,8 @@ describe("column view keys", function()
     h.press("q")
     assert.is_nil(state.last())
 
-    h.open_view(proj)
+    local view = h.open_view(proj)
+    preview_entry(view, "a.txt", "hello")
     h.press("<C-p>")
     h.press("q")
     assert.is_nil(state.last())
@@ -278,7 +304,8 @@ describe("column view keys", function()
     local view = h.open_view(proj)
     h.wait_lines(view.panes.parent, { "proj/" })
     h.press("g.")
-    h.wait_lines(view.panes.parent, { "proj/", ".rootdot" })
+    -- oil lists ../ too while hidden files are shown
+    h.wait_lines(view.panes.parent, { "../", "proj/", ".rootdot" })
     -- The middle pane is oil's own buffer, so just look for the newly shown file
     assert.is_true(h.wait(function()
       for _, line in ipairs(h.win_lines(view.panes.current)) do

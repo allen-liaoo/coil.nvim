@@ -16,6 +16,9 @@ which the flake pins.
 | `is_oil_buffer(buf)` | Is this an oil buffer, loaded or not | `oil.util.is_oil_bufnr` |
 | `is_oil_dir(buf)` | An oil directory, as opposed to a remote file (which also has an oil URL) | name ends in `/` |
 | `on_ready(buf, cb)` | Run `cb` once oil has listed the buffer | `oil.util.run_after_load` |
+| `show_dir_in(win, url)` / `refresh_dir(buf)` | Show a directory's oil buffer in a window that needn't be current; list one again | `vim.fn.bufadd`, `oil.load_oil_buffer`, `oil.view.render_buffer_async` |
+| `column_positions(buf)` | Where each line shows a column other than icon and name | `oil.mutator.parser.parse_line`, `oil.columns.get_supported_columns` |
+| `line_of(buf, name)` / `name_on_line(buf, lnum)` | Find an entry's line, or a line's entry | `oil.get_entry_on_line` |
 | `list_dir(url, cb, opts)` | List a directory as plain entries, filtered and sorted like oil | adapter `list`, `oil.view.should_display`, `oil.columns` sort functions |
 | `entry_target(buf, entry)` / `cursor_target(win)` | Turn an oil entry into a preview target; remote entries carry the listing's size and modification time | `oil.get_entry_on_line`, `oil.util.is_directory`, entry `meta` (`size`, `link_stat`, `iso_modified_date`, `date`) |
 | `fetch_command(url, dest)` / `fetcher(url)` | The command that downloads a remote file (SSH: `scp`, S3: `aws s3 cp`), and a preview `fetch` running it; nothing for other adapters | adapter `parse_url`, `oil.util.url_escape`, `extra_scp_args`, `extra_s3_args` |
@@ -29,9 +32,22 @@ which the flake pins.
 | `toggle_hidden(win)` | Toggle hidden files, keeping the cursor on its entry | `oil.toggle_hidden`, `oil.view.set_last_cursor` |
 | `display_path(url)` | `~/path/` for local directories, the URL otherwise | `oil.util.parse_url`, `oil.fs` |
 
-## Listing directories for the side panes
+## Directories in the side panes
 
-The parent pane and directory previews are plain name lists, not oil buffers. `list_dir`:
+The column view's parent pane and directory previews are oil's own buffers, shown with only
+icons and names (see [Architecture](architecture.md#the-middle-pane-is-the-source-of-truth)):
+
+- `show_dir_in(win, url)` puts the directory's buffer in a window that needn't be current, and
+  loads it the way `open_dir` does when oil's `BufReadCmd` can't fire.
+- `column_positions(buf)` runs oil's line parser (`oil.mutator.parser.parse_line`) on each line,
+  for the byte ranges of every column but `icon` and `name`, plus a link's ` -> target`. The side
+  window conceals those.
+- `refresh_dir(buf)` has oil list a buffer it already has again
+  (`oil.view.render_buffer_async` with `refetch`), unless it has unsaved edits.
+
+## Listing directories for `:CoilPreview`
+
+`:CoilPreview`'s directory previews are plain name lists, not oil buffers. `list_dir`:
 
 - **Calls the URL's adapter directly** (`adapter.list(url, {}, cb)`), so local, SSH, S3 and trash
   directories all work. It requests only the oil columns your sort uses (for example `size` or
@@ -55,11 +71,12 @@ A missing directory lists as empty, as it does in oil.
 ### Following oil's listing settings
 
 oil applies a sort change (`gs`, `oil.set_sort()`), a hidden-files toggle or new hidden-file rules
-by re-rendering its own buffers, and fires no event. coil watches the middle buffer's lines
-(`nvim_buf_attach`). When they change, it compares `listing_signature()` — oil's sort, hidden-file
-settings, case and number handling — with the one the side panes were drawn with, and refreshes
-them if it differs. Ordinary edits in the middle pane leave the signature unchanged, so they cost
-one string comparison.
+by re-rendering its own buffers, and fires no event. The side panes' oil buffers are re-rendered
+with the rest, and coil watches their lines (`nvim_buf_attach`) to conceal the columns again and
+re-select the parent pane's entry. It also watches the middle buffer's lines: when they change,
+it compares `listing_signature()` — oil's sort, hidden-file settings, case and number handling —
+with the one the side panes were drawn with, and refreshes them if it differs. Ordinary edits in
+the middle pane leave the signature unchanged, so they cost one string comparison.
 
 ## Keymaps
 

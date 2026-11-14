@@ -69,10 +69,48 @@ M.cursor_to = function(winid, text)
   error(string.format("No line containing %q", text))
 end
 
+---Whether `winid` is a coil side pane showing an oil buffer (the parent pane, a directory preview)
+---@param winid integer
+---@return boolean
+local function side_oil_pane(winid)
+  local pane = vim.w[winid].coil_pane
+  return (pane == "parent" or pane == "preview")
+    and vim.bo[vim.api.nvim_win_get_buf(winid)].filetype == "oil"
+end
+
+---The lines a window shows. For an oil buffer in a side pane, that's without oil's line IDs and
+---without what coil conceals there (every column but icon and name).
 ---@param winid integer
 ---@return string[]
 M.win_lines = function(winid)
-  return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(winid), 0, -1, false)
+  local lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(winid), 0, -1, false)
+  if not side_oil_pane(winid) then
+    return lines
+  end
+  ---@type table<integer, integer[][]> lnum -> {col, len}
+  local hidden = {}
+  for _, match in ipairs(vim.fn.getmatches(winid)) do
+    if match.group == "Conceal" then
+      for key, pos in pairs(match) do
+        if key:match("^pos%d+$") then
+          hidden[pos[1]] = hidden[pos[1]] or {}
+          table.insert(hidden[pos[1]], { pos[2], pos[3] or 1 })
+        end
+      end
+    end
+  end
+  return vim.tbl_map(function(i)
+    local line = lines[i]
+    local ranges = hidden[i] or {}
+    -- Cut from the right, so earlier columns stay put
+    table.sort(ranges, function(a, b)
+      return a[1] > b[1]
+    end)
+    for _, r in ipairs(ranges) do
+      line = line:sub(1, r[1] - 1) .. line:sub(r[1] + r[2])
+    end
+    return (line:gsub("^/%d+ ", ""):gsub("^%s+", ""))
+  end, vim.fn.range(1, #lines))
 end
 
 ---Wait until a window shows exactly `expected`, then assert it
@@ -102,15 +140,11 @@ end
 ---@param winid integer
 ---@return integer[]
 M.selected_lines = function(winid)
-  local bufnr = vim.api.nvim_win_get_buf(winid)
-  local ns = vim.api.nvim_create_namespace("coil_listing")
-  local ret = {}
-  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })) do
-    if mark[4].line_hl_group == "CoilParentSelected" then
-      table.insert(ret, mark[2] + 1)
-    end
+  -- The cursorline, which the parent pane draws with CoilParentSelected
+  if side_oil_pane(winid) and vim.wo[winid].cursorline then
+    return { vim.api.nvim_win_get_cursor(winid)[1] }
   end
-  return ret
+  return {}
 end
 
 ---Highlight group of each line in a coil listing (parent pane or directory preview)

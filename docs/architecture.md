@@ -22,7 +22,7 @@ lua/coil/
     state.lua              the one open view: tab, pane windows, origin
     layout.lua             creates the side panes, sizes them by ratio
     sync.lua               keeps the side panes in step with the middle pane; titles
-    listing.lua            draws the parent pane's name list and its highlight
+    side.lua               oil buffers in the side panes, showing only icons and names
     keys.lua               coil's keys, the parent-pane focus bounce
     commands.lua           commands typed in the middle pane that open something run in the editing tab
     open.lua               opens files in the editing tab
@@ -62,9 +62,29 @@ pane drives the same refresh: coil's `L`/`H`, oil's own `-` or `<CR>`, `:e oil:/
 
 `view/sync.lua` does the refresh:
 
-- **Parent pane:** lists the middle directory's parent through oil's adapter, highlights the
-  middle directory's line, and scrolls it into view. At the root it is empty.
-- **Preview pane:** shows the entry under the middle pane's cursor.
+- **Parent pane:** shows the middle directory's parent as its oil buffer, with the cursorline on
+  the middle directory (drawn with `CoilParentSelected`), scrolled into view. At the root it is
+  empty.
+- **Preview pane:** shows the entry under the middle pane's cursor: a directory as its oil buffer,
+  anything else through the preview module.
+
+The side panes' directories are oil's own buffers (`view/side.lua`), so oil's hidden-file rules,
+sort, highlights and redraws apply to them as to any oil buffer, and `g.` shows or hides hidden
+files in all three panes at once. They show only each entry's icon and name. oil's columns are
+global, and oil keeps one buffer per directory, which the middle pane of this or another view may
+show at the same time, so the other columns can't be left out of the buffer. They are hidden in
+the side window only, by a conceal match (`matchaddpos`, which is per window) over the byte ranges
+oil's line parser reports for each column (`oil_bridge.column_positions`). It is recomputed
+whenever oil redraws the buffer. When a side pane shows a directory whose buffer oil already has,
+coil has oil list it again, since oil would otherwise show the listing from when it was last
+loaded.
+
+Differences from the plain name lists the side panes used to be:
+
+- A hidden current directory isn't in its parent's buffer while hidden files are hidden, so the
+  parent pane then has no selection.
+- With hidden files shown, oil lists `../` at the top of the side panes too.
+- An empty directory's preview is blank: oil shows nothing for it.
 
 It runs on these triggers:
 
@@ -164,7 +184,10 @@ See [oil.nvim integration](oil-integration.md#keymaps) for how wrapping survives
 buffer.
 
 The parent pane is display-only: entering it with `<C-w>h` bounces focus back to the middle pane
-with a message. The preview pane can be entered to scroll or copy, and its buffers are read-only.
+with a message. So is the preview pane while it shows a directory. Those are oil buffers, which
+`modifiable` can't protect per window: the same buffer may be the middle pane of another view,
+which must stay editable. So the panes can't be entered, and nothing can be edited in them.
+Otherwise the preview pane can be entered to scroll or copy, and its buffers are read-only.
 
 ### Clicking
 

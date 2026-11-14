@@ -206,8 +206,11 @@ describe("column view", function()
     assert.is_true(h.wait(function()
       return #h.selected_lines(view.panes.parent) == 1
     end))
+    -- The cursor is on sub/, previewed as its oil buffer
     assert.is_true(h.wait(function()
-      return h.win_lines(view.panes.preview)[1] ~= ""
+      local preview_buf = vim.api.nvim_win_get_buf(view.panes.preview)
+      return vim.api.nvim_buf_get_name(preview_buf) == "oil://" .. dir .. "/sub/"
+        and vim.b[preview_buf].oil_ready == true
     end))
     local map = vim.api.nvim_buf_call(bufnr, function()
       return vim.fn.maparg("L", "n", false, true)

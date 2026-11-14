@@ -4,6 +4,7 @@
 local bridge = require("coil.oil_bridge")
 local config = require("coil.config")
 local open = require("coil.view.open")
+local side = require("coil.view.side")
 local state = require("coil.view.state")
 local sync = require("coil.view.sync")
 local M = {}
@@ -232,7 +233,7 @@ end
 local LEFT_MOUSE = vim.keycode("<LeftMouse>")
 local click_ns = vim.api.nvim_create_namespace("coil_click")
 
----The listing entry at a mouse position, if it is in the parent pane or a directory preview
+---The entry at a mouse position, if it is in the parent pane or a directory preview
 ---@param view coil.View
 ---@param mouse {winid: integer, winrow: integer, line: integer} As from getmousepos()
 ---@return nil|string dir_url The listed directory
@@ -245,12 +246,11 @@ M.clicked_entry = function(view, mouse)
   if not vim.api.nvim_win_is_valid(winid) or mouse.line < 1 then
     return nil
   end
-  local bufnr = vim.api.nvim_win_get_buf(winid)
-  -- Only listings record the directory they list; text previews and messages don't
-  local dir_url = vim.b[bufnr].coil_dir_url
-  if not dir_url then
+  -- Only directories are oil buffers there; text previews and messages aren't
+  if not side.shows_dir(winid) then
     return nil
   end
+  local bufnr = vim.api.nvim_win_get_buf(winid)
   -- Only accept a click on a row that shows `line` (not the empty rows below the text)
   local top = vim.api.nvim_win_call(winid, function()
     return vim.fn.line("w0")
@@ -259,12 +259,11 @@ M.clicked_entry = function(view, mouse)
   if mouse.line ~= top + mouse.winrow - 1 - winbar then
     return nil
   end
-  local line = vim.api.nvim_buf_get_lines(bufnr, mouse.line - 1, mouse.line, false)[1]
-  if not line or line == "" then
+  local name = bridge.name_on_line(bufnr, mouse.line)
+  if not name then
     return nil
   end
-  -- Directories are listed as "name/"
-  return dir_url, (line:gsub("/$", ""))
+  return vim.api.nvim_buf_get_name(bufnr), name
 end
 
 ---Move the middle pane to the clicked entry's directory, with the cursor on the entry
@@ -306,7 +305,8 @@ M.attach = function(view)
         bridge.on_ready(args.buf, function()
           M.wrap_buffer(args.buf)
         end)
-      elseif winid == view.panes.preview then
+      elseif winid == view.panes.preview and not bridge.is_oil_buffer(args.buf) then
+        -- Not oil buffers: the middle pane may show the same buffer later
         map_preview_buffer(view, args.buf)
       end
     end,
@@ -330,27 +330,30 @@ M.attach = function(view)
   })
   vim.api.nvim_create_autocmd("WinEnter", {
     group = view.group,
-    desc = "Preview pane keys; the parent pane is display-only",
+    desc = "Preview pane keys; the parent pane and directory previews are display-only",
     callback = function()
       local winid = vim.api.nvim_get_current_win()
-      if winid == view.panes.preview then
+      local msg
+      if winid == view.panes.parent then
+        msg = "The parent pane is display-only"
+      elseif winid == view.panes.preview and side.shows_dir(winid) then
+        -- An oil buffer, which the middle pane of this or another view may show too: entering
+        -- it would let it be edited, and run oil's keys in the preview pane
+        msg = "Directory previews are display-only"
+      elseif winid == view.panes.preview then
         -- Covers buffers placed before these autocmds existed
         return map_preview_buffer(view, vim.api.nvim_get_current_buf())
-      elseif winid ~= view.panes.parent then
+      else
         return
       end
       vim.schedule(function()
         -- Coil itself may briefly enter the pane (e.g. to scroll it); only bounce real visits
         if
-          vim.api.nvim_get_current_win() == view.panes.parent
+          vim.api.nvim_get_current_win() == winid
           and vim.api.nvim_win_is_valid(view.panes.current)
         then
           vim.api.nvim_set_current_win(view.panes.current)
-          vim.api.nvim_echo(
-            { { "[coil] The parent pane is display-only", "WarningMsg" } },
-            false,
-            {}
-          )
+          vim.api.nvim_echo({ { "[coil] " .. msg, "WarningMsg" } }, false, {})
         end
       end)
     end,

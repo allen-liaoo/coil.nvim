@@ -17,7 +17,11 @@ local side_options = {
 
 ---@type table<coil.PaneRole, table<string, any>>
 local pane_options = {
-  parent = vim.tbl_extend("force", side_options, { winfixwidth = true }),
+  -- The directory the middle pane shows is marked by the cursorline (see side.lua)
+  parent = vim.tbl_extend("force", side_options, {
+    winfixwidth = true,
+    winhighlight = "CursorLine:CoilParentSelected",
+  }),
   -- oil applies its own window options to the middle pane
   current = { winfixwidth = true },
   -- The preview pane absorbs width changes, so it has no winfixwidth
