@@ -126,6 +126,23 @@ M.in_editing_tab = function(view, bufnr, how)
   view.origin = { tab = vim.api.nvim_get_current_tabpage(), win = vim.api.nvim_get_current_win() }
 end
 
+---Run `fn` in the editing window (a new tab if there is none), then remember the window it ends
+---in as the one files open in. The column view stays open.
+---@param view coil.View
+---@param fn fun()
+M.in_editing_window = function(view, fn)
+  local winid = editing_window(view)
+  if winid then
+    vim.api.nvim_set_current_win(winid)
+  else
+    vim.cmd.tabnew()
+    -- Wiped once something replaces it
+    vim.bo.bufhidden = "wipe"
+  end
+  fn()
+  view.origin = { tab = vim.api.nvim_get_current_tabpage(), win = vim.api.nvim_get_current_win() }
+end
+
 ---Something other than an oil directory ended up in the middle pane (e.g. `:edit file`). Move it
 ---to the editing tab and put the last directory back.
 ---@param view coil.View

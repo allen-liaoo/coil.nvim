@@ -195,47 +195,20 @@ M.attach = function(view)
         return
       end
       local st = state_of(view)
-      ---@param dir_buf integer
-      local function entered_dir(dir_buf)
-        st.last_dir_buf = dir_buf
-        bridge.on_ready(dir_buf, function()
+      local bufnr = middle_oil_buffer(view)
+      if bufnr then
+        st.last_dir_buf = bufnr
+        bridge.on_ready(bufnr, function()
           M.all(view)
         end)
-      end
-      -- A file (or anything else) landed in the middle pane: move it to the editing tab
-      local function redirect()
+      elseif vim.fn.isdirectory(vim.api.nvim_buf_get_name(args.buf)) == 0 then
+        -- A file (or anything else) landed in the middle pane: move it to the editing tab.
+        -- A plain directory path is left alone; oil is about to turn it into an oil buffer.
         vim.schedule(function()
           if vim.api.nvim_buf_is_valid(args.buf) then
             open.redirect_from_middle(view, args.buf, st.last_dir_buf)
           end
         end)
-      end
-
-      local name = vim.api.nvim_buf_get_name(args.buf)
-      local bufnr = middle_oil_buffer(view)
-      if bufnr then
-        entered_dir(bufnr)
-      elseif bridge.is_oil_buffer(args.buf) then
-        -- An oil URL oil hasn't resolved yet, which may be a directory typed without its trailing
-        -- slash (`:e oil-ssh://host//dir`). Ask oil's adapter before deciding.
-        bridge.normalize_url(name, function(url)
-          local middle = view.panes.current
-          if
-            not vim.api.nvim_buf_is_valid(args.buf)
-            or not vim.api.nvim_win_is_valid(middle)
-            or vim.api.nvim_win_get_buf(middle) ~= args.buf
-          then
-            -- Moved on, or oil swapped in a buffer of its own, which gets its own BufWinEnter
-            return
-          elseif vim.endswith(url, "/") then
-            entered_dir(args.buf)
-          else
-            redirect()
-          end
-        end)
-      elseif vim.fn.isdirectory(name) == 0 then
-        -- A plain directory path is left alone; oil is about to turn it into an oil buffer
-        redirect()
       end
     end,
   })

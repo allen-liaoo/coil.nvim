@@ -262,12 +262,19 @@ M.parent_of = function(url)
   return parent_url, name
 end
 
+---Put the cursor on `name` the next time oil renders `url`
+---@param url string A directory URL
+---@param name string
+M.focus_entry = function(url, name)
+  require("oil.view").set_last_cursor(url, name)
+end
+
 ---Open an oil directory in the current window
 ---@param url string
 ---@param focus_name? string Entry to put the cursor on once the listing renders
 M.open_dir = function(url, focus_name)
   if focus_name then
-    require("oil.view").set_last_cursor(url, focus_name)
+    M.focus_entry(url, focus_name)
   end
   require("oil").open(url)
   -- oil loads directories from its BufReadCmd autocmd, which doesn't fire when this runs inside

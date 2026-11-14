@@ -1,6 +1,7 @@
 -- The column view: a dedicated tab with parent | current | preview panes. Several can be open,
 -- one per tab.| current | preview panes.
 local bridge = require("coil.oil_bridge")
+local commands = require("coil.view.commands")
 local config = require("coil.config")
 local keys = require("coil.view.keys")
 local layout = require("coil.view.layout")
@@ -152,6 +153,7 @@ local function open_tab(dir)
   -- Attached before oil opens, so the first BufWinEnter in the middle pane fills the side panes
   table.insert(view.cleanup, sync.attach(view))
   table.insert(view.cleanup, keys.attach(view))
+  table.insert(view.cleanup, commands.attach(view))
 
   bridge.open_dir(url, focus_name)
   layout.reflow(panes, config.get().ratio)

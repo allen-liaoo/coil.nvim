@@ -148,6 +148,11 @@ coil adds its own keymaps, set with the `keymaps` option:
 | `q` | Close the column view |
 | (none) | Quit Neovim, asking about unsaved changes (`keymaps.quit`) |
 
+Commands typed in the middle pane that open something, such as `:Oil`, `:edit file`, `:buffer` or
+`:vsplit`, run in your editing tab instead, so plain oil is always one command away, even for the
+directory the middle pane shows. `:Coil dir` moves the column view, `:edit` on its own reloads the
+middle pane, and other commands (`:w`, `:s`, ...) run there as usual.
+
 
 ## Options
 
