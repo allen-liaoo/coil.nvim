@@ -7,15 +7,15 @@
   fetching what a size or time sort needs.
 - [x] **Click to jump.** Clicking an entry in the parent pane or in a directory preview moves the
   middle pane to that entry's directory, with the cursor on the entry.
-- [x] **Image previews.** With image.nvim installed and set up, the preview draws images below the
-  info card, from thumbnails made in the background and cached on disk. The standalone build
-  includes image.nvim and ImageMagick.
+- [x] **Image previews.** With image.nvim installed and set up, the preview draws images from
+  thumbnails made in the background and cached on disk. The standalone build includes image.nvim
+  and ImageMagick.
 - [x] **Video and PDF thumbnails.** A frame 10% into a video (ffprobe and ffmpeg) or a PDF's first
-  page (pdftoppm), drawn below the info card through the same thumbnail cache. Without the tool,
-  the card says what to install.
-- [ ] **Remote file previews** (SSH, S3). These show a "not supported yet" card. They need an
+  page (pdftoppm), drawn through the same thumbnail cache. Without the tool, the preview says
+  what to install.
+- [ ] **Remote file previews** (SSH, S3). These show "not supported yet". They need an
   asynchronous download (scp, `aws s3 cp`) to a temporary file with a size limit, then the normal
-  text or card preview.
+  text or picture preview.
 ~~- [ ] **Floating-window version of the column view.** `view/layout.lua` is the only module that
   knows the panes are splits. A floating version needs geometry on resize, its own keys to move
   between panes, and hiding and restoring when a file opens in the editing tab.~~
@@ -26,7 +26,9 @@
 - [x] **Delete to trash by default.** oil defaults to `delete_to_trash = false`, so deleting a line
 and saving removes files permanently. The standalone build should send them to the trash; oil's
 trash view (`g\`) can restore them.
-- [ ] Preview card should now show for any file type, which includes: file path first, directly, without a "file path" label; other metadatas, then a horizontal line, then the preview (thumbnail or text). Include a preview config like oil's that let you choose what (other) metadata to display, default to none.
+- [ ] **No file details in the preview.** A file's preview is its text or a picture of it
+  (filling the pane), and anything else gets one dimmed line saying why. The info cards are gone;
+  oil's columns show file details.
 - [ ] **`:help coil` docs**, a vimdoc version of the README.
 
 ## Standalone coil

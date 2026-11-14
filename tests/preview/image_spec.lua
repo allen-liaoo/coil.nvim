@@ -85,21 +85,21 @@ describe("image previews", function()
     return fake.created[n]
   end
 
-  it("draws the image below the card, filling the rest of the window", function()
+  it("draws the image alone, filling the window", function()
     preview.show(win, target("pic.png"))
     local img = wait_drawn(1)
     local bufnr = vim.api.nvim_win_get_buf(win)
-    local lines = h.win_lines(win)
+    assert.same({ "" }, h.win_lines(win))
     -- image.nvim gets the thumbnail, not the original
     assert.equals(thumb_of("pic.png"), img.path)
     assert.equals(cache, vim.fs.dirname(img.path))
     assert.equals(win, img.opts.window)
     assert.equals(bufnr, img.opts.buffer)
     local geom = img.renders[1]
-    assert.equals(#lines - 1, geom.y)
+    assert.equals(0, geom.y)
     assert.equals(0, geom.x)
     assert.equals(vim.api.nvim_win_get_width(win), geom.width)
-    assert.equals(vim.api.nvim_win_get_height(win) - #lines + 1, geom.height)
+    assert.equals(vim.api.nvim_win_get_height(win), geom.height)
   end)
 
   it("draws a copy at the size image.nvim will draw it at", function()
@@ -122,7 +122,7 @@ describe("image previews", function()
     package.loaded["image/utils/term"] = nil
     package.loaded["image/utils/math"] = nil
     local cols = vim.api.nvim_win_get_width(win)
-    -- Asked with the thumbnail's size (the 40x30 image keeps its size) and the space below the card
+    -- Asked with the thumbnail's size (the 40x30 image keeps its size) and the window's size
     assert.same({ 40, 30, cols, img.renders[1].height }, asked)
     assert.equals(
       thumb_of("pic.png"):gsub("%.png$", "") .. ("-%dx100.png"):format(cols * 10),
@@ -160,10 +160,10 @@ describe("image previews", function()
     end))
   end)
 
-  ---The dimmed note on an image card ("Loading image...")
+  ---The dimmed note on an image's preview ("Loading image...")
   ---@return nil|string
   local function status()
-    local ns = vim.api.nvim_get_namespaces()["coil_card_status"]
+    local ns = vim.api.nvim_get_namespaces()["coil_preview_status"]
     local marks =
       vim.api.nvim_buf_get_extmarks(vim.api.nvim_win_get_buf(win), ns, 0, -1, { details = true })
     return marks[1] and marks[1][4].virt_text[1][1]
@@ -199,7 +199,7 @@ describe("image previews", function()
     assert.equals(dir .. "/pic.png", img.path)
   end)
 
-  it("draws a frame below a video's card", function()
+  it("draws a frame of a video", function()
     local path = dir .. "/clip.mp4"
     vim.fn.system({
       "ffmpeg",
@@ -217,7 +217,6 @@ describe("image previews", function()
     assert.equals("Loading a frame...", status())
     local img = wait_drawn(1)
     assert.equals(thumb_of("clip.mp4"), img.path)
-    assert.equals("Kind         Video", h.win_lines(win)[3])
   end)
 
   it("says which tool to install when one is missing", function()
@@ -228,27 +227,22 @@ describe("image previews", function()
     end
     preview.show(win, target("doc.pdf"))
     vim.fn.executable = executable
-    local lines = h.win_lines(win)
-    assert.equals("Install poppler (pdftoppm) to see the first page.", lines[#lines])
+    assert.same({ "Install poppler (pdftoppm) to see the first page" }, h.win_lines(win))
     vim.wait(20)
     assert.equals(0, #fake.created)
   end)
 
-  it("shows the card alone when images are off", function()
+  it("says so when images are off", function()
     preview.show(win, target("pic.png"), { images = false })
-    local lines = h.win_lines(win)
-    assert.equals("Kind         Image", lines[3])
-    -- No room left for an image
-    assert.truthy(lines[#lines]:match("^Location"))
+    assert.same({ "Image previews are off" }, h.win_lines(win))
     vim.wait(20)
     assert.equals(0, #fake.created)
   end)
 
-  it("shows the card alone when image.nvim isn't set up", function()
+  it("says so when image.nvim isn't set up", function()
     vim.api.nvim_del_user_command("ImageReport")
     preview.show(win, target("pic.png"))
-    local lines = h.win_lines(win)
-    assert.truthy(lines[#lines]:match("^Location"))
+    assert.same({ "Set up image.nvim to see the image" }, h.win_lines(win))
     vim.wait(20)
     assert.equals(0, #fake.created)
   end)

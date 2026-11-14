@@ -1,10 +1,10 @@
 -- Draws images into preview windows with image.nvim (https://github.com/3rd/image.nvim). Optional:
--- without image.nvim, image cards show the file's details only.
+-- without image.nvim, an image's preview says so.
 local M = {}
 
 ---@class (exact) coil.DrawnImage
 ---@field image table image.nvim's Image
----@field bufnr integer The card buffer the image belongs to
+---@field bufnr integer The preview buffer the image belongs to
 ---@field row integer 0-based buffer line the image starts at
 
 -- The image drawn in each window, at most one per window
@@ -98,7 +98,7 @@ local function geometry(winid, row)
     return nil
   end
   -- Screen row of the anchor line (0 when it is scrolled out of view). Unlike counting buffer
-  -- lines, this accounts for wrapped card lines.
+  -- lines, this accounts for wrapped lines.
   local pos = vim.fn.screenpos(winid, row + 1, 1)
   if pos.row == 0 then
     return nil
@@ -156,10 +156,10 @@ M.fitter = function(winid, row)
   return geom and fitter(geom.width, geom.height) or nil
 end
 
----Like fitter(), for a card that isn't shown yet: assumes it is shown from its first line and its
----lines don't wrap
+---Like fitter(), for a preview buffer that isn't shown yet: assumes it is shown from its first
+---line and its lines don't wrap
 ---@param winid integer
----@param row integer 0-based line of that card where the image would start
+---@param row integer 0-based line of that buffer where the image would start
 ---@return nil|coil.ThumbnailFit
 M.estimated_fitter = function(winid, row)
   local info = image_api() and vim.fn.getwininfo(winid)[1]
@@ -208,7 +208,7 @@ local function ensure_autocmds()
   })
 end
 
----Draw the image at `path` in `winid`, below line `row` of the card buffer shown there
+---Draw the image at `path` in `winid`, below line `row` of the buffer shown there
 ---@param winid integer
 ---@param bufnr integer
 ---@param row integer 0-based buffer line
@@ -236,7 +236,7 @@ M.draw = function(winid, bufnr, row, path)
   drawn[winid] = entry
   ensure_autocmds()
   render(winid, entry)
-  -- The card buffer is wiped when the preview changes; take the image with it
+  -- The preview buffer is wiped when the preview changes; take the image with it
   vim.api.nvim_create_autocmd("BufWipeout", {
     buffer = bufnr,
     once = true,

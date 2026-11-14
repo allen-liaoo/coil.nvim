@@ -30,6 +30,22 @@ M.message = function(lines)
   return bufnr
 end
 
+local status_ns = vim.api.nvim_create_namespace("coil_preview_status")
+
+---Show a dimmed note on the first line ("Loading image..."), replacing any earlier one; nil
+---removes it
+---@param bufnr integer
+---@param msg? string
+M.set_status = function(bufnr, msg)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+  vim.api.nvim_buf_clear_namespace(bufnr, status_ns, 0, -1)
+  if msg then
+    vim.api.nvim_buf_set_extmark(bufnr, status_ns, 0, 0, { virt_text = { { msg, "Comment" } } })
+  end
+end
+
 ---Show a buffer in a window, even if the window has 'winfixbuf' set. Never moves focus.
 ---@param winid integer
 ---@param bufnr integer

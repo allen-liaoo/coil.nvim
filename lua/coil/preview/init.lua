@@ -1,7 +1,6 @@
 -- Standalone file preview: show a target (file or directory) in any window.
 -- Knows nothing about oil or coil's panes; directory listing is injected via `list_dir`.
 local buffer = require("coil.preview.buffer")
-local card = require("coil.preview.providers.card")
 local classify = require("coil.preview.classify")
 local directory = require("coil.preview.providers.directory")
 local image = require("coil.preview.image")
@@ -20,12 +19,12 @@ local M = {}
 ---@alias coil.ListDir fun(url: string, cb: fun(err?: string, entries?: coil.ListEntry[]))
 
 ---@class (exact) coil.PreviewOpts
----@field max_bytes integer Files larger than this get a card instead of text
+---@field max_bytes integer Files larger than this get no text preview
 ---@field max_lines integer Read at most this many lines of a text file
 ---@field sniff_bytes integer Bytes read to detect binary content
 ---@field loading_delay_ms integer Wait this long before showing "Loading..."
 ---@field images boolean Draw images with image.nvim when it is installed and set up
----@field image_delay_ms integer Wait this long after an image card is shown before working on the image
+---@field image_delay_ms integer Wait this long after an image's preview is shown before working on the image
 ---@field thumbnail_size integer[] Images are drawn from thumbnails at most {width, height} pixels (setup only)
 ---@field prefetch integer prefetch() prepares images up to this many entries from the cursor (0 for none)
 ---@field thumbnail_cache_mb number|false Size limit of the thumbnail cache in MiB (setup only; false for none)
@@ -113,17 +112,63 @@ local function show_directory(winid, gen, target, opts)
   end)
 end
 
--- Kinds whose preview is a picture drawn below the card, and what the card says meanwhile
+-- Kinds whose preview is a picture, what the preview says until it is drawn, and what it shows
 local loading = {
   image = "Loading image...",
   video = "Loading a frame...",
   pdf = "Loading the first page...",
 }
+local pictures = {
+  image = "the image",
+  video = "a frame from the video",
+  pdf = "the first page",
+}
 
----Show a card for an image, video or PDF, then draw a picture of it below once the cursor has
----rested on it. The picture is a thumbnail made in the background (see thumbnail.lua): the
----image itself, a frame of the video, the PDF's first page. For images without ImageMagick,
----image.nvim gets the original, which it converts and scales while Neovim waits.
+---@param size integer
+---@return string
+local function format_size(size)
+  if size >= 1e9 then
+    return string.format("%.1fG", size / 1e9)
+  elseif size >= 1e6 then
+    return string.format("%.1fM", size / 1e6)
+  elseif size >= 1e3 then
+    return string.format("%.1fk", size / 1e3)
+  else
+    return string.format("%d", size)
+  end
+end
+
+---What the preview says for a file it shows neither text nor a picture of
+---@param kind coil.PreviewKind
+---@param info coil.ClassifyInfo
+---@param opts coil.PreviewOpts
+---@return string
+local function message_for(kind, info, opts)
+  if pictures[kind] then
+    if not opts.images then
+      return "Image previews are off"
+    elseif not image.available() then
+      return "Set up image.nvim to see " .. pictures[kind]
+    end
+    return string.format("Install %s to see %s", thumbnail.tool_name(kind), pictures[kind])
+  elseif kind == "too_large" then
+    return string.format("Larger than %s, so the text isn't shown", format_size(opts.max_bytes))
+  elseif kind == "special" then
+    return string.format("Not a regular file (%s)", info.stat and info.stat.type or "unknown")
+  elseif kind == "unreadable" then
+    return "Cannot read this file: " .. (info.err or "unknown error")
+  elseif kind == "remote" then
+    return "Previews of remote files are not supported yet"
+  elseif kind == "archive" then
+    return "No preview for archives"
+  end
+  return string.format("No preview for %s files", kind)
+end
+
+---Draw a picture of an image, video or PDF once the cursor has rested on it. The picture is a
+---thumbnail made in the background (see thumbnail.lua): the image itself, a frame of the video,
+---the PDF's first page. For images without ImageMagick, image.nvim gets the original, which it
+---converts and scales while Neovim waits.
 ---@param winid integer
 ---@param gen integer
 ---@param target coil.PreviewTarget
@@ -132,11 +177,11 @@ local loading = {
 ---@param opts coil.PreviewOpts
 local function show_picture(winid, gen, target, kind, info, opts)
   local path, stat = assert(target.path), assert(info.stat)
-  local bufnr = card.render(target, kind, info, opts, true)
-  local row = card.image_row(bufnr)
+  -- The picture fills the window from the buffer's only line
+  local bufnr = buffer.scratch({ "" })
   local use_thumbnail = thumbnail.available(kind)
   if use_thumbnail and not thumbnail.cached(path, stat) then
-    card.set_status(bufnr, row, loading[kind])
+    buffer.set_status(bufnr, loading[kind])
   end
   place(winid, gen, bufnr)
 
@@ -146,8 +191,8 @@ local function show_picture(winid, gen, target, kind, info, opts)
   ---@param file string
   local function draw(file)
     if current() then
-      card.set_status(bufnr, row, nil)
-      image.draw(winid, bufnr, row, file)
+      buffer.set_status(bufnr, nil)
+      image.draw(winid, bufnr, 0, file)
     end
   end
   vim.defer_fn(function()
@@ -157,12 +202,12 @@ local function show_picture(winid, gen, target, kind, info, opts)
       return draw(path)
     end
     -- Made at the size image.nvim will draw it, so it doesn't scale it while Neovim waits
-    local fit = image.fitter(winid, row)
+    local fit = image.fitter(winid, 0)
     thumbnail.get(path, stat, function(thumb, err)
       if thumb then
         draw(thumb)
       elseif current() then
-        card.set_status(bufnr, row, "No preview: " .. (err or "unknown error"))
+        buffer.set_status(bufnr, "No preview: " .. (err or "unknown error"))
       end
     end, fit)
   end, opts.image_delay_ms)
@@ -198,16 +243,15 @@ M.show = function(winid, target, opts)
     return show_directory(winid, gen, target, o)
   elseif kind == "text" then
     return place(winid, gen, text.render(assert(target.path), o))
-  elseif loading[kind] and o.images and image.available() then
-    if kind == "image" or thumbnail.available(kind) then
-      return show_picture(winid, gen, target, kind, info, o)
-    end
-    local what = kind == "pdf" and "the first page" or "a frame from the video"
-    info = vim.tbl_extend("force", info, {
-      note = string.format("Install %s to see %s.", thumbnail.tool_name(kind), what),
-    })
+  elseif
+    pictures[kind]
+    and o.images
+    and image.available()
+    and (kind == "image" or thumbnail.available(kind))
+  then
+    return show_picture(winid, gen, target, kind, info, o)
   end
-  place(winid, gen, card.render(target, kind, info, o))
+  place(winid, gen, buffer.message({ message_for(kind, info, o) }))
 end
 
 ---Show an empty buffer (or a message) in `winid`
@@ -237,23 +281,18 @@ M.prefetch = function(winid, targets)
     if generations[winid] ~= gen then
       return
     end
-    local files, fit = {}, nil
+    local files = {}
     for _, target in ipairs(targets) do
       if target.path and not target.is_dir and not target.unsaved then
         local kind = classify.kind_by_name(target.name)
-        local stat = loading[kind] and thumbnail.available(kind) and uv.fs_stat(target.path)
+        local stat = pictures[kind] and thumbnail.available(kind) and uv.fs_stat(target.path)
         if stat and stat.type == "file" then
           table.insert(files, { path = target.path, stat = stat })
-          -- Cards of one kind have the same lines; for the others, the exact-size copy is made
-          -- when the cursor gets there
-          if not fit then
-            local lines = card.lines(target, kind, { stat = stat }, config, true)
-            fit = image.estimated_fitter(winid, #lines - 1)
-          end
         end
       end
     end
-    thumbnail.prefetch(files, fit)
+    -- Every picture fills the window from its first line
+    thumbnail.prefetch(files, image.estimated_fitter(winid, 0))
   end, config.image_delay_ms)
 end
 

@@ -180,7 +180,7 @@ require("coil").setup({
     quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
   },
   preview = {
-    -- Text files larger than this get an info card instead
+    -- Text files larger than this get no text preview
     max_bytes = 2 * 1024 * 1024,
     -- Read at most this many lines of a text file
     max_lines = 1000,
@@ -211,16 +211,13 @@ require("coil").setup({
 ```
 
 <!-- ### Highlights -->
-<!-- Metadata card uses these highlights: -->
+<!-- coil uses these highlights: -->
 <!---->
 <!-- | Group | Default link | Used for | -->
 <!-- |---|---|---| -->
 <!-- | `CoilParentSelected` | `Visual` | The current directory in the parent pane | -->
 <!-- | `CoilDir`, `CoilLink` | `OilDir`, `OilLink` | Directories and symlinks in the side panes | -->
 <!-- | `CoilDirHidden`, `CoilFileHidden`, `CoilLinkHidden` | `OilDirHidden`, `OilFileHidden`, `OilLinkHidden` | Hidden entries in the side panes | -->
-<!-- | `CoilCardTitle`, `CoilCardRule` | `Title`, `WinSeparator` | An info card's file name, and the line under it | -->
-<!-- | `CoilCardLabel`, `CoilCardValue` | `Identifier`, `Normal` | Its rows | -->
-<!-- | `CoilCardNote` | `Comment` | Its notes | -->
 <!---->
 <!-- ### Lua API -->
 <!---->

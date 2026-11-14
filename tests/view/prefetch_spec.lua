@@ -4,7 +4,7 @@ local thumbnail = require("coil.preview.thumbnail")
 local uv = vim.uv or vim.loop
 
 describe("thumbnail prefetch", function()
-  local dir
+  local dir, drawn
 
   ---@param opts? table coil's `preview` options
   local function setup(opts)
@@ -19,8 +19,10 @@ describe("thumbnail prefetch", function()
     h.setup_oil()
     setup()
     -- Stand in for image.nvim: prefetch only runs when images can be drawn
+    drawn = {}
     package.loaded["image"] = {
-      from_file = function()
+      from_file = function(path)
+        table.insert(drawn, path)
         return { render = function() end, clear = function() end }
       end,
     }
@@ -61,8 +63,9 @@ describe("thumbnail prefetch", function()
   ---@param view coil.View
   ---@param text string
   local function move_to(view, text)
+    -- a.png, the first entry, is drawn
     assert.is_true(h.wait(function()
-      return h.win_lines(view.panes.preview)[1] == "a.png"
+      return #drawn > 0
     end))
     -- The prefetch for a.png's neighbours starts after a zero-delay timer
     vim.wait(50)
