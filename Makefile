@@ -18,7 +18,7 @@ ARGS ?=
 # Standalone mode, set before scripts/dev.lua runs coil.setup()
 STANDALONE := --cmd "let g:coil_standalone = 1"
 
-## dev: open your editor (nvim on PATH) with this working copy of coil and oil loaded
+## dev: open your editor (nvim on PATH) with this working copy of coil, oil and image.nvim loaded
 .PHONY: dev
 dev:
 	nvim --cmd "luafile scripts/dev.lua" $(ARGS)
