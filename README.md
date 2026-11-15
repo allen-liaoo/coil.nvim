@@ -23,6 +23,8 @@ nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 - For git status (optional): supports [oil-git-status.nvim](https://github.com/refractalize/oil-git-status.nvim).
     The side panes are oil buffers, so its signs show in all three panes.
 
+`:checkhealth coil` checks these, and the [`coil` command](#bring-your-own-neovim) on your `PATH`.
+
 <details>
 <summary>Tmux Setup</summary>
 If you are using tmux, image.nvim need this setup:

@@ -10,16 +10,21 @@ M.launcher = function()
   return vim.fn.fnamemodify(source, ":p:h:h:h") .. "/bin/coil"
 end
 
+---Whether `path` is a copy of coil.nvim's launcher: bin/coil in a directory with coil's Lua
+---@param path string
+---@return boolean
+M.is_launcher = function(path)
+  return vim.fn.fnamemodify(path, ":t") == "coil"
+    and vim.fn.fnamemodify(path, ":h:t") == "bin"
+    and uv.fs_stat(vim.fn.fnamemodify(path, ":h:h") .. "/lua/coil/init.lua") ~= nil
+end
+
 ---Whether the link's target may be replaced: it's gone (the plugin moved, for example to another
 ---plugin manager), or it's another copy of coil.nvim's launcher
 ---@param target string
 ---@return boolean
 local function replaceable(target)
-  if not uv.fs_stat(target) then
-    return true
-  end
-  return vim.fn.fnamemodify(target, ":h:t") == "bin"
-    and uv.fs_stat(vim.fn.fnamemodify(target, ":h:h") .. "/lua/coil/init.lua") ~= nil
+  return not uv.fs_stat(target) or M.is_launcher(target)
 end
 
 ---Link `<dir>/coil` to the launcher, creating `dir` if needed. Replaces only a broken link or a
@@ -61,6 +66,20 @@ M.install = function(dir)
     return nil, err
   end
   return link, nil, replaced
+end
+
+---The `coil` links in PATH's directories whose target is gone, as { link, target } pairs
+---@return { [1]: string, [2]: string }[]
+M.broken_links = function()
+  local ret = {}
+  for _, dir in ipairs(vim.split(vim.env.PATH or "", ":", { trimempty = true })) do
+    local link = dir:gsub("/$", "") .. "/coil"
+    local target = uv.fs_readlink(link)
+    if target and not uv.fs_stat(link) then
+      table.insert(ret, { link, target })
+    end
+  end
+  return ret
 end
 
 ---Why `coil` in a shell wouldn't run the link: its directory isn't on PATH, or another `coil`

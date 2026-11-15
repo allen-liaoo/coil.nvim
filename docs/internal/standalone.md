@@ -76,6 +76,10 @@ arguments before Neovim can take `--cwd-file`.
 - **Checks `PATH` afterwards** with `exepath()`: `~/.local/bin` isn't on macOS's default `PATH`,
   and another `coil` may come first. Neovim's `PATH` is the shell's it started from, so this is
   what that shell would run.
+- **`:checkhealth coil` catches links that break later:** it warns about broken `coil` links in
+  any `PATH` directory (`exepath()` skips them, since they aren't executable). Another
+  coil.nvim's launcher or a different `coil` (the Nix one) is only info: either still starts
+  coil.
 
 ## The Nix `coil` (`nix/coil.nix`)
 
