@@ -26,7 +26,8 @@ vim.api.nvim_create_autocmd("VimEnter", {
         user_appname_env = vim.env.COIL_USER_NVIM_APPNAME or vim.NIL,
       }
       vim.fn.writefile({ vim.json.encode(report) }, vim.env.COIL_TEST_OUT)
-      vim.cmd("qa!")
+      -- COIL_TEST_QUIT: how to quit, e.g. "cq" to exit with an error code
+      vim.cmd(vim.env.COIL_TEST_QUIT or "qa!")
     end, 500)
   end,
 })

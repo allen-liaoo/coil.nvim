@@ -448,3 +448,36 @@ describe("the quit key", function()
     assert.same({ "confirm qall", "confirm qall" }, ran)
   end)
 end)
+
+describe("the cancel key", function()
+  local startup = require("coil.startup")
+  local quit_without_cwd
+
+  before_each(function()
+    pcall(coil.close)
+    h.reset_tab()
+    h.setup_oil()
+    coil.setup({ keymaps = { cancel = "Q" } })
+    quit_without_cwd = startup.quit_without_cwd
+  end)
+
+  after_each(function()
+    startup.quit_without_cwd = quit_without_cwd
+    pcall(coil.close)
+    coil.setup()
+  end)
+
+  it("quits without the cd-on-exit directory, from the middle or the preview pane", function()
+    local view = h.open_view(h.tmpdir())
+    local calls = 0
+    startup.quit_without_cwd = function()
+      calls = calls + 1
+    end
+    h.press("Q")
+    vim.wait(50)
+    vim.api.nvim_set_current_win(view.panes.preview)
+    h.press("Q")
+    vim.wait(50)
+    assert.equals(2, calls)
+  end)
+end)

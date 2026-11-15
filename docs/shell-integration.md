@@ -6,7 +6,8 @@ A program can't change its shell's working directory, so coil writes the directo
 in a file, and a shell function `cd`s there. On exit, coil writes the directory shown in the
 column view of the current tab (or the one used last, or the last directory any column view
 showed), without a trailing newline. It writes nothing if no column view showed a local
-directory, for example after only browsing over SSH.
+directory, for example after only browsing over SSH, or when you quit with `Q` (the `cancel` key)
+or `:cq`, so the shell stays where it was.
 
 Add one of these functions to your shell's config, and run `cl` instead of `coil`. The name is up
 to you. They pass the file to write to as `--cwd-file <path>`.

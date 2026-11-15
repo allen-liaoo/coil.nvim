@@ -117,6 +117,25 @@ describe("standalone startup", function()
       assert.equals(dir .. "/one", table.concat(vim.fn.readfile(cwd_file, "b"), "\n"))
     end)
 
+    it("writes no g:coil_cwd_file when quitting with the cancel key", function()
+      local cwd_file = dir .. "/cwd"
+      vim.g.coil_cwd_file = cwd_file
+      startup.write_cwd_on_exit()
+      h.open_view(dir .. "/one")
+      local cmd = vim.cmd
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      vim.cmd = function(c)
+        assert.equals("confirm qall", c)
+        vim.api.nvim_exec_autocmds("VimLeavePre", {})
+      end
+      startup.quit_without_cwd()
+      vim.cmd = cmd
+      assert.equals(0, vim.fn.filereadable(cwd_file))
+      -- Called off (the prompt was cancelled): a later quit writes it again
+      vim.api.nvim_exec_autocmds("VimLeavePre", {})
+      assert.equals(dir .. "/one", table.concat(vim.fn.readfile(cwd_file, "b"), "\n"))
+    end)
+
     it("remembers the last directory after the views are closed", function()
       local view = h.open_view(dir)
       h.cursor_to(view.panes.current, "two/")
@@ -157,8 +176,9 @@ describe("standalone mode", function()
   ---Start a Neovim with coil and oil set up, as from a shell, and report what it showed
   ---@param flags string[] Neovim's options
   ---@param args string[] File arguments
+  ---@param quit? string The command the child quits with (default: qa!)
   ---@return table report, string cwd_file
-  local function run(flags, args)
+  local function run(flags, args, quit)
     local out = dir .. "/report.json"
     local cwd_file = dir .. "/cwd"
     local cmd = { vim.v.progpath, "--headless", "--clean" }
@@ -167,8 +187,9 @@ describe("standalone mode", function()
     vim.list_extend(cmd, { "--cmd", string.format("let g:coil_cwd_file = '%s'", cwd_file) })
     vim.list_extend(cmd, { "-u", "tests/fixtures/standalone_init.lua", "--" })
     vim.list_extend(cmd, args)
-    local result = vim.system(cmd, { env = { COIL_TEST_OUT = out } }):wait(20000)
-    assert.equals(0, result.code, result.stderr)
+    local result =
+      vim.system(cmd, { env = { COIL_TEST_OUT = out, COIL_TEST_QUIT = quit } }):wait(20000)
+    assert.equals(quit == "cq" and 1 or 0, result.code, result.stderr)
     return vim.json.decode(table.concat(vim.fn.readfile(out), "\n")), cwd_file
   end
 
@@ -181,6 +202,11 @@ describe("standalone mode", function()
     assert.same({ "oil://" .. dir .. "/one/", "oil://" .. dir .. "/two/" }, report.tabs)
     assert.equals("q", report.quit)
     assert.equals(dir .. "/one", table.concat(vim.fn.readfile(cwd_file, "b"), "\n"))
+  end)
+
+  it("writes no g:coil_cwd_file when exiting with an error code (:cq)", function()
+    local _, cwd_file = run({ "--cmd", "let g:coil_standalone = 1" }, { dir .. "/one" }, "cq")
+    assert.equals(0, vim.fn.filereadable(cwd_file))
   end)
 
   it("leaves a plain Neovim alone", function()

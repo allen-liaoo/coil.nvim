@@ -129,12 +129,30 @@ M.exit_dir = function()
   return last_dir
 end
 
+-- Set while quit_without_cwd() quits
+local cancelling = false
+
+---Quit, asking about unsaved changes, without writing g:coil_cwd_file (the `cancel` key, like
+---yazi's Q)
+M.quit_without_cwd = function()
+  cancelling = true
+  -- Still running afterwards when the quit was called off at the prompt
+  pcall(vim.cmd, "confirm qall")
+  cancelling = false
+end
+
 ---On exit, write the directory to cd to to g:coil_cwd_file, for a shell function to cd there.
 ---Read at exit, so it can be set any time before (usually `--cmd "let g:coil_cwd_file = '…'"`).
+---Not written when cancelled: by quit_without_cwd(), or by exiting with an error code (`:cq`).
 M.write_cwd_on_exit = function()
   M.track_dir()
   vim.api.nvim_create_autocmd("VimLeavePre", {
     callback = function()
+      -- v:exiting is null when the event wasn't fired by exiting
+      local code = vim.v.exiting
+      if cancelling or (type(code) == "number" and code ~= 0) then
+        return
+      end
       local cwd_file = vim.g.coil_cwd_file
       local dir = M.exit_dir()
       if type(cwd_file) == "string" and cwd_file ~= "" and dir then

@@ -53,6 +53,9 @@ M.actions = {
   quit = function()
     vim.cmd("confirm qall")
   end,
+  cancel = function()
+    require("coil.startup").quit_without_cwd()
+  end,
 }
 
 ---What an oil action does instead in the middle pane, if coil changes it
@@ -229,12 +232,14 @@ local function map_preview_buffer(view, bufnr)
       desc = DESC_PREFIX .. "close",
     })
   end
-  if keymaps.quit then
-    vim.keymap.set("n", keymaps.quit, M.actions.quit, {
-      buffer = bufnr,
-      nowait = true,
-      desc = DESC_PREFIX .. "quit",
-    })
+  for _, action in ipairs({ "quit", "cancel" }) do
+    if keymaps[action] then
+      vim.keymap.set("n", keymaps[action], M.actions[action], {
+        buffer = bufnr,
+        nowait = true,
+        desc = DESC_PREFIX .. action,
+      })
+    end
   end
 end
 

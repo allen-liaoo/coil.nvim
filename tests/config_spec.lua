@@ -97,7 +97,7 @@ describe("config", function()
       assert.same({ 1, 1, 1 }, c.ratio)
       assert.is_true(c.winbar)
       -- From the options, from the standalone options, and the standalone defaults
-      assert.same({ go_in = "l", go_out = "h", close = false, quit = "q" }, c.keymaps)
+      assert.same({ go_in = "l", go_out = "h", close = false, quit = "q", cancel = "Q" }, c.keymaps)
     end)
 
     it("lets the options you set win over coil's standalone defaults", function()

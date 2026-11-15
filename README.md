@@ -23,8 +23,6 @@ nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 - For git status (optional): supports [oil-git-status.nvim](https://github.com/refractalize/oil-git-status.nvim).
     The side panes are oil buffers, so its signs show in all three panes.
 
-`:checkhealth coil` checks these, and the [`coil` command](#bring-your-own-neovim) on your `PATH`.
-
 <details>
 <summary>Tmux Setup</summary>
 If you are using tmux, image.nvim need this setup:
@@ -179,6 +177,7 @@ save_mode=suggested
 Then restart the portal (`systemctl --user restart xdg-desktop-portal-termfilechooser`). In the
 dialog, choose files as with `--chooser-file`. A save dialog starts on the suggested file: choose
 it, or another file. To choose a directory, choose it in a visual selection, or quit inside it.
+`Q` (or `:cq`) cancels.
 
 ## Usage
 
@@ -191,14 +190,16 @@ it, or another file. To choose a directory, choose it in a visual selection, or 
 | `:CoilInstallCli [dir]` | Link the [`coil` command](#bring-your-own-neovim) into `~/.local/bin` (or `dir`) |
 
 The middle pane is an oil buffer, and oil's keys work there as usual, except some behaviors are changed.
-coil adds its own keymaps, set with the `keymaps` option:
+coil adds its own keymaps, set with the `keymaps` option. Their defaults differ in
+[standalone mode](#as-standalone-file-manager); "off" means no key until you set one:
 
-| Key | Does |
-|---|---|
-| `L` | Enter a directory, or open a file in your editing tab |
-| `H` | Go to the parent directory |
-| `q` | Close the column view |
-| (none) | Quit Neovim, asking about unsaved changes (`keymaps.quit`) |
+| Option | Plugin | Standalone | Does |
+|---|---|---|---|
+| `go_in` | `L` | `L` | Enter a directory, or open a file in your editing tab |
+| `go_out` | `H` | `H` | Go to the parent directory |
+| `close` | `q` | off | Close the column view |
+| `quit` | off | `q` | Quit Neovim, asking about unsaved changes |
+| `cancel` | off | `Q` | Quit like `quit`, but write nothing to `--cwd-file`: the shell stays put, and a directory dialog is cancelled |
 
 Commands typed in the middle pane that open something, such as `:Oil`, `:edit file`, `:buffer` or
 `:vsplit`, run in your editing tab instead, so plain oil is always one command away, even for the
@@ -235,6 +236,7 @@ require("coil").setup({
     go_out = "H", -- Go to the parent directory
     close = "q", -- Close the column view (also in the preview pane)
     quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
+    cancel = false, -- Like quit, but writes no cd-on-exit directory (also in the preview pane)
   },
   preview = {
     -- Text files larger than this get no text preview
@@ -269,7 +271,7 @@ require("coil").setup({
   standalone = {
     open_external = true,
     edit_here = false,
-    keymaps = { close = false, quit = "q" },
+    keymaps = { close = false, quit = "q", cancel = "Q" },
   },
 })
 ```

@@ -35,6 +35,7 @@ local defaults = {
     go_out = "H", -- Go to the parent directory
     close = "q", -- Close the column view (also in the preview pane)
     quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
+    cancel = false, -- Like quit, but writes no cd-on-exit directory (also in the preview pane)
   },
   -- Options for when Neovim was started as a file manager (g:coil_standalone, set with
   -- `nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself. These defaults
@@ -42,7 +43,7 @@ local defaults = {
   standalone = {
     open_external = true,
     edit_here = false,
-    keymaps = { close = false, quit = "q" },
+    keymaps = { close = false, quit = "q", cancel = "Q" },
   },
 }
 
