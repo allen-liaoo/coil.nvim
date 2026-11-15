@@ -1,7 +1,8 @@
 # `coil`: coil.nvim as a terminal file manager, for people who don't use Neovim themselves. It is
 # a Neovim with coil.nvim, oil.nvim, image.nvim and mini.icons, started in coil's standalone mode by
-# the plugin's own ../bin/coil, installed as `bin/coil` only, so it never clashes with a Neovim of
-# your own. To add coil to your own Neovim, use ./coil-nvim.nix instead.
+# the plugin's own ../bin/coil. It installs only coil's commands (`bin/coil` and the file picker's
+# `bin/coil-termfilechooser`), so it never clashes with a Neovim of your own. To add coil to your
+# own Neovim, use ./coil-nvim.nix instead.
 #
 #   pkgs.callPackage ./nix/coil.nix { }
 #
@@ -57,8 +58,8 @@ let
     ];
   };
 in
-# Only bin/coil: the wrapped Neovim's own bin/nvim and share/ would collide with the user's Neovim
-# when installed into the same profile
+# Only coil's commands: the wrapped Neovim's own bin/nvim and share/ would collide with the user's
+# Neovim when installed into the same profile
 runCommandLocal "coil-${coil-nvim.version}"
   {
     nativeBuildInputs = [ makeWrapper ];
@@ -82,4 +83,8 @@ runCommandLocal "coil-${coil-nvim.version}"
     wrapProgram $out/bin/coil \
       --set COIL_NVIM '${lib.getExe nvim}' \
       --set COIL_APPNAME coil
+    # Runs the bin/coil next to it
+    substitute ${../bin/coil-termfilechooser} $out/bin/coil-termfilechooser \
+      --replace-fail '#!/usr/bin/env bash' '#!${runtimeShell}'
+    chmod +x $out/bin/coil-termfilechooser
   ''

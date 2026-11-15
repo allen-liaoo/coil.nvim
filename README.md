@@ -137,8 +137,9 @@ require("oil").setup({
 
 ### Without Neovim
 
-The flake's default package is a `coil` binary: Neovim with coil, plus all its plugin and binary dependencies necessary for preview. It installs only `bin/coil`, so it
-doesn't clash with a Neovim of your own.
+The flake's default package is a `coil` binary: Neovim with coil, plus all its plugin and binary dependencies necessary for preview. It installs only coil's commands
+(`bin/coil`), so it doesn't clash
+with a Neovim of your own.
 
 ```sh
 nix profile install github:allen-liaoo/coil.nvim
@@ -153,6 +154,30 @@ require("oil").setup({ view_options = { show_hidden = true } })
 require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
 vim.cmd.colorscheme("retrobox")
 ```
+
+### As your system's file picker
+
+On Linux, [xdg-desktop-portal-termfilechooser](https://github.com/hunkyburrito/xdg-desktop-portal-termfilechooser)
+makes apps' open and save dialogs run a terminal file manager. coil comes with a wrapper for it,
+`bin/coil-termfilechooser`, next to `bin/coil` (in the plugin and in the Nix `coil`). Set it as the
+portal's `cmd` in `~/.config/xdg-desktop-portal-termfilechooser/config`:
+
+```ini
+[filechooser]
+cmd=/path/to/coil.nvim/bin/coil-termfilechooser
+default_dir=$HOME
+open_mode=suggested
+save_mode=suggested
+; The terminal to run coil in, with any options it takes. Without it: xdg-terminal-exec, else
+; $TERMINAL -e
+; env=TERMCMD=<terminal> <options>
+; Any of coil's own settings, such as the Neovim to run
+; env=COIL_NVIM=nvim
+```
+
+Then restart the portal (`systemctl --user restart xdg-desktop-portal-termfilechooser`). In the
+dialog, choose files as with `--chooser-file`. A save dialog starts on the suggested file: choose
+it, or another file. To choose a directory, choose it in a visual selection, or quit inside it.
 
 ## Usage
 

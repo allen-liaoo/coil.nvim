@@ -57,6 +57,22 @@ Set with `nvim --cmd "let g:coil_standalone = 1"`, read by `require("coil").stan
   save dialogs (xdg-desktop-portal-termfilechooser) pass the suggested file, which may not exist
   yet. Choosing it, or another file, gives the path to save to.
 
+### The termfilechooser wrapper (`bin/coil-termfilechooser`)
+
+- **In coil, not the user's config:** it depends on how `--chooser-file`, `--cwd-file` and file
+  arguments behave, so it changes and is tested with them. termfilechooser ships its own wrappers
+  (yazi, lf, ...); coil's could go upstream once its flags settle.
+- **Follows those wrappers:** the portal's five arguments, `TERMCMD`, and in directory mode a
+  `--cwd-file` fallback, so quitting inside a directory chooses it.
+- **No terminal assumed:** those wrappers default to kitty; coil's falls back as it does for
+  terminal editors (`xdg-terminal-exec`, else `$TERMINAL -e`), and otherwise fails, saying to set
+  `TERMCMD`.
+- **`sh -c "$TERMCMD \"\$@\""` with coil's arguments as positional parameters,** where the
+  bundled wrappers escape each argument into the command string with `sed`. `TERMCMD` stays a
+  command line (it may quote its own arguments, like a title), and paths are never escaped.
+- **Runs the `coil` next to it,** resolved through links, so it works without the portal's `PATH`
+  and from a link in the portal's config directory.
+
 ## Data never goes into command strings
 
 The launcher (`bin/coil`) passes values through the environment and has Vim copy them out:

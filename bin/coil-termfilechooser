@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# coil-termfilechooser: coil as the file picker of xdg-desktop-portal-termfilechooser, like the
+# wrappers it ships for yazi and others. Set it as the portal's `cmd` (see the README).
+#
+#   coil-termfilechooser <multiple> <directory> <save> <path> <out> [<debug>]
+#
+# The arguments are described in xdg-desktop-portal-termfilechooser(5). TERMCMD is the terminal
+# to run coil in (default: xdg-terminal-exec, else `$TERMINAL -e`); the `coil` next to this script
+# runs, with its own environment (COIL_NVIM, COIL_APPNAME).
+set -euo pipefail
+
+directory="$2"
+path="$4"
+out="$5"
+if [ "${6:-0}" -ge 4 ]; then
+  set -x
+fi
+
+# Resolved, so a link to this script (in the portal's config directory) finds it too
+coil="$(dirname "$(readlink -f "$0")")/coil"
+
+# The terminal: TERMCMD, else the XDG way to start one, else $TERMINAL, as coil starts terminal
+# editors
+termcmd="${TERMCMD-}"
+if [ -z "$termcmd" ]; then
+  if command -v xdg-terminal-exec >/dev/null; then
+    termcmd=xdg-terminal-exec
+  elif [ -n "${TERMINAL-}" ]; then
+    termcmd="$TERMINAL -e"
+  else
+    echo "coil-termfilechooser: set TERMCMD to the terminal to run coil in" \
+      "(or install xdg-terminal-exec, or set TERMINAL)" >&2
+    exit 1
+  fi
+fi
+
+run_coil() {
+  # The terminal is a command line, which may quote its own arguments; coil's follow it as
+  # separate words, so no path is ever escaped into it
+  sh -c "$termcmd \"\$@\"" sh "$coil" "$@" ${path:+"$path"}
+}
+
+if [ "$directory" = 1 ]; then
+  # Without a chosen entry, the directory coil quits in
+  trap 'rm -f "$out.1"' EXIT
+  run_coil --chooser-file "$out" --cwd-file "$out.1"
+  if [ ! -s "$out" ] && [ -s "$out.1" ]; then
+    cat "$out.1" >"$out"
+  fi
+else
+  # Files to open, or the file to save to: the suggested one (coil starts on it) or another
+  run_coil --chooser-file "$out"
+fi
