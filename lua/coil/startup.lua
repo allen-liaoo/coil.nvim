@@ -60,11 +60,33 @@ local function open_dirs(dirs, start_tab)
   end
 end
 
+---When choosing files, a local file argument stands for its directory, with the cursor on it, as
+---in yazi. A file picker's save dialog passes the suggested file, which may not exist yet.
+---@param arg string
+---@return string
+local function reveal(arg)
+  if is_url(arg) or vim.fn.isdirectory(arg) == 1 then
+    return arg
+  end
+  local path = vim.fn.fnamemodify(arg, ":p")
+  local dir = vim.fn.fnamemodify(path, ":h")
+  if vim.fn.isdirectory(dir) == 0 then
+    return arg
+  end
+  local bridge = require("coil.oil_bridge")
+  local url = bridge.url_for_path((dir:gsub("/*$", "/")))
+  bridge.focus_entry(url, vim.fn.fnamemodify(path, ":t"))
+  return dir
+end
+
 ---Open the column view for the command line. The views are the only tabs: the tab Neovim started
 ---with (empty, or showing the first directory argument as an oil buffer) is closed, and files
 ---open in a new tab.
 ---@param args string[]
 M.open_args = function(args)
+  if require("coil.view.choose").file() then
+    args = vim.tbl_map(reveal, args)
+  end
   local start_tab = vim.api.nvim_get_current_tabpage()
   M.dirs_for(args, function(dirs)
     if dirs then

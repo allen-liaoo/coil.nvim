@@ -26,8 +26,9 @@ Set with `nvim --cmd "let g:coil_standalone = 1"`, read by `require("coil").stan
 ## Startup (`lua/coil/startup.lua`)
 
 - Opens one view per argument when every argument is a directory (or none: the cwd). Any file
-  among them leaves Neovim alone. URLs without a trailing slash are first given to oil's adapter
-  (see [oil.nvim](oil.md#oil-behaviours-coil-handles)).
+  among them leaves Neovim alone, except when choosing files: then a file stands for its
+  directory, with the cursor on it (see below). URLs without a trailing slash are first given to
+  oil's adapter (see [oil.nvim](oil.md#oil-behaviours-coil-handles)).
 - The views are the only tabs: the start tab is closed, files open in a new tab, the arglist is
   cleared, and only **listed** start buffers are deleted (oil's SSH login terminal is unlisted and
   must survive).
@@ -52,6 +53,9 @@ Set with `nvim --cmd "let g:coil_standalone = 1"`, read by `require("coil").stan
   one entry at a time, so coil's callback would enter each directory and quit after the first
   file.
 - **Local files only:** remote entries have no path another program could open.
+- **A file argument opens its directory with the cursor on it,** as in yazi: file pickers'
+  save dialogs (xdg-desktop-portal-termfilechooser) pass the suggested file, which may not exist
+  yet. Choosing it, or another file, gives the path to save to.
 
 ## Data never goes into command strings
 

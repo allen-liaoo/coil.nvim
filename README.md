@@ -101,7 +101,8 @@ coil [dir1] [dir2] ...
   `cd` there ([shell integration](docs/shell-integration.md)).
 - `--chooser-file <path>`: pick files for another program. Opening a file writes its path to
   `<path>` and quits; a visual selection picks all its entries, directories included. One path
-  per line. Directories still open as usual, and quitting without picking writes nothing.
+  per line. Directories still open as usual, and quitting without picking writes nothing. A file
+  argument opens its directory with the cursor on it, so a save dialog can suggest a file name.
 
 ### Bring Your Own Neovim
 

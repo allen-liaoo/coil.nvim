@@ -26,6 +26,7 @@ describe("standalone startup", function()
 
     after_each(function()
       vim.g.coil_cwd_file = nil
+      vim.g.coil_chooser_file = nil
       for _ = 1, 5 do
         pcall(coil.close)
       end
@@ -71,6 +72,39 @@ describe("standalone startup", function()
         "oil://" .. dir .. "/two/",
         vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.panes.current))
       )
+    end)
+
+    it("when choosing, opens a file argument's directory with the cursor on it", function()
+      vim.g.coil_chooser_file = dir .. "/chosen"
+      h.write(dir .. "/one/a.txt", { "" })
+      h.write(dir .. "/one/b.txt", { "" })
+      startup.open_args({ dir .. "/one/b.txt" })
+      assert.is_true(h.wait(function()
+        local view = state.get()
+        if not view then
+          return false
+        end
+        local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+        local entry = vim.b[bufnr].oil_ready
+          and require("oil").get_entry_on_line(
+            bufnr,
+            vim.api.nvim_win_get_cursor(view.panes.current)[1]
+          )
+        return vim.api.nvim_buf_get_name(bufnr) == "oil://" .. dir .. "/one/"
+          and entry
+          and entry.name == "b.txt"
+      end))
+    end)
+
+    it("when choosing, opens a new file's directory (a save dialog's suggestion)", function()
+      vim.g.coil_chooser_file = dir .. "/chosen"
+      startup.open_args({ dir .. "/two/new.txt" })
+      assert.is_true(h.wait(function()
+        local view = state.get()
+        return view ~= nil
+          and vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.panes.current))
+            == "oil://" .. dir .. "/two/"
+      end))
     end)
 
     it("writes the column view's directory to g:coil_cwd_file on exit", function()
