@@ -169,8 +169,9 @@ default_dir=$HOME
 open_mode=suggested
 save_mode=suggested
 ; The terminal to run coil in, with any options it takes. Without it: xdg-terminal-exec, else
-; $TERMINAL -e
-; env=TERMCMD=<terminal> <options>
+; $TERMINAL -e. The portal expands values like a shell would, so single-quote the whole value to
+; keep the quotes inside it.
+; env=TERMCMD='<terminal> <options>'
 ; Any of coil's own settings, such as the Neovim to run
 ; env=COIL_NVIM=nvim
 ```
