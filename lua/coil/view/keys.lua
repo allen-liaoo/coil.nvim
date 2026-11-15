@@ -2,6 +2,7 @@
 -- buffers it shows: in the middle pane a wrapper runs the coil action, and anywhere else it runs
 -- whatever the key did before (oil's mapping, a global mapping, or Vim's built-in key).
 local bridge = require("coil.oil_bridge")
+local choose = require("coil.view.choose")
 local config = require("coil.config")
 local open = require("coil.view.open")
 local side = require("coil.view.side")
@@ -14,10 +15,17 @@ local DESC_PREFIX = "coil: "
 ---@param view coil.View
 ---@param how coil.OpenHow
 local function select_entry(view, how)
+  local choosing = choose.file() ~= nil
+  if choosing and choose.visual() then
+    return choose.selection()
+  end
   bridge.select(function(bufnr, is_dir)
-    if is_dir and how == nil then
+    if is_dir and (how == nil or choosing) then
       -- Directories open in place; the middle pane's BufWinEnter re-syncs the side panes
       vim.api.nvim_win_set_buf(view.panes.current, bufnr)
+    elseif choosing then
+      -- Any open key chooses the file
+      choose.buffer(bufnr)
     elseif how == nil and open.elsewhere(bufnr) then
       -- Opened in another program. (Split and tab keys always open here.)
       return

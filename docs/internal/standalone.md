@@ -37,6 +37,22 @@ Set with `nvim --cmd "let g:coil_standalone = 1"`, read by `require("coil").stan
   directories are skipped. Written without trailing slash or newline, like yazi. The shell
   functions are in `docs/shell-integration.md`.
 
+## Choosing files (`lua/coil/view/choose.lua`)
+
+`--chooser-file` sets `g:coil_chooser_file`, which turns the middle pane's open keys into "choose":
+
+- **Like yazi's `--chooser-file`:** a file under the cursor, or every entry of a visual selection
+  (directories included), written one path per line, then `confirm qall`. A directory under the
+  cursor is still entered. Nothing is written on quitting without a choice.
+- **Every open key chooses**, the split and tab keys too: in a picker, opening a file anywhere
+  would be a surprise.
+- **Read when a key runs, not at startup,** so it works in any Neovim that sets the variable, and
+  needs no setup step.
+- **The visual selection is read from the lines,** not through oil's `select`: that hands over
+  one entry at a time, so coil's callback would enter each directory and quit after the first
+  file.
+- **Local files only:** remote entries have no path another program could open.
+
 ## Data never goes into command strings
 
 The launcher (`bin/coil`) passes values through the environment and has Vim copy them out:

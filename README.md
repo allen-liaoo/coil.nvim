@@ -95,6 +95,14 @@ Once setup:
 coil [dir1] [dir2] ...
 ```
 
+`coil --help` lists its options:
+
+- `--cwd-file <path>`: on exit, write the last directory to `<path>`, for a shell function to
+  `cd` there ([shell integration](docs/shell-integration.md)).
+- `--chooser-file <path>`: pick files for another program. Opening a file writes its path to
+  `<path>` and quits; a visual selection picks all its entries, directories included. One path
+  per line. Directories still open as usual, and quitting without picking writes nothing.
+
 ### Bring Your Own Neovim
 
 The plugin comes with a `coil` command, `bin/coil`. Run `:CoilInstallCli` to put it on your

@@ -16,7 +16,7 @@ describe("the launcher (bin/coil)", function()
       stub = dir .. "/nvim"
       h.write(stub, {
         "#!/usr/bin/env bash",
-        'echo "cwd_file=${COIL_CWD_FILE-unset}"',
+        'echo "cwd_file=${COIL_CWD_FILE-unset} chooser_file=${COIL_CHOOSER_FILE-unset}"',
         'echo "appname=${NVIM_APPNAME-unset} user_appname=${COIL_USER_NVIM_APPNAME-unset}"',
         'echo "launcher_env=${COIL_NVIM-unset} ${COIL_APPNAME-unset}"',
         'printf "%s\\n" "$@"',
@@ -60,16 +60,20 @@ describe("the launcher (bin/coil)", function()
 
     it("starts Neovim in standalone mode with the other arguments", function()
       assert.same(
-        concat({ "cwd_file=unset" }, env, standalone, { "a dir", "-R" }),
+        concat({ "cwd_file=unset chooser_file=unset" }, env, standalone, { "a dir", "-R" }),
         lines(run({ "a dir", "-R" }))
       )
-      assert.same(concat({ "cwd_file=unset" }, env, standalone), lines(run({})))
+      assert.same(concat({ "cwd_file=unset chooser_file=unset" }, env, standalone), lines(run({})))
     end)
 
     it("runs as COIL_APPNAME, keeping the user's NVIM_APPNAME for editors", function()
       assert.same(
         concat(
-          { "cwd_file=unset", "appname=coil user_appname=mine", "launcher_env=unset unset" },
+          {
+            "cwd_file=unset chooser_file=unset",
+            "appname=coil user_appname=mine",
+            "launcher_env=unset unset",
+          },
           standalone,
           {
             "--cmd",
@@ -82,31 +86,67 @@ describe("the launcher (bin/coil)", function()
     end)
 
     it("passes --cwd-file on through the environment, never in a command", function()
-      local expected = concat({ "cwd_file=/tmp/it's x" }, env, standalone, cwd, { "a" })
+      local expected = concat(
+        { "cwd_file=/tmp/it's x chooser_file=unset" },
+        env,
+        standalone,
+        cwd,
+        { "a" }
+      )
       assert.same(expected, lines(run({ "--cwd-file", "/tmp/it's x", "a" })))
       assert.same(expected, lines(run({ "a", "--cwd-file=/tmp/it's x" })))
     end)
 
-    it("makes a relative --cwd-file absolute", function()
-      local cwd_file = vim.uv.fs_realpath(dir) .. "/it's x"
+    it("passes --chooser-file on the same way", function()
+      local chooser = {
+        "--cmd",
+        "let g:coil_chooser_file = $COIL_CHOOSER_FILE | unlet $COIL_CHOOSER_FILE",
+      }
+      local expected = concat(
+        { "cwd_file=/tmp/c chooser_file=/tmp/it's x" },
+        env,
+        standalone,
+        chooser,
+        cwd,
+        { "a" }
+      )
+      assert.same(
+        expected,
+        lines(run({ "--chooser-file", "/tmp/it's x", "--cwd-file=/tmp/c", "a" }))
+      )
+      assert.same(
+        expected,
+        lines(run({ "--chooser-file=/tmp/it's x", "--cwd-file", "/tmp/c", "a" }))
+      )
+    end)
+
+    it("makes a relative --cwd-file and --chooser-file absolute", function()
+      local real = vim.uv.fs_realpath(dir)
       assert.equals(
-        "cwd_file=" .. cwd_file,
-        lines(run({ "--cwd-file", "it's x" }, { cwd = dir }))[1]
+        string.format("cwd_file=%s/it's x chooser_file=%s/chosen", real, real),
+        lines(run({ "--cwd-file", "it's x", "--chooser-file=chosen" }, { cwd = dir }))[1]
       )
     end)
 
     it("leaves everything after -- to Neovim", function()
       assert.same(
-        concat({ "cwd_file=unset" }, env, standalone, { "--", "--cwd-file", "--help" }),
+        concat(
+          { "cwd_file=unset chooser_file=unset" },
+          env,
+          standalone,
+          { "--", "--cwd-file", "--help" }
+        ),
         lines(run({ "--", "--cwd-file", "--help" }))
       )
     end)
 
-    it("fails without a path after --cwd-file", function()
-      for _, args in ipairs({ { "--cwd-file" }, { "--cwd-file=" }, { "--cwd-file", "" } }) do
-        local result = run(args)
-        assert.equals(2, result.code)
-        assert.truthy(result.stderr:find("--cwd-file needs a path", 1, true))
+    it("fails without a path after --cwd-file or --chooser-file", function()
+      for _, flag in ipairs({ "--cwd-file", "--chooser-file" }) do
+        for _, args in ipairs({ { flag }, { flag .. "=" }, { flag, "" } }) do
+          local result = run(args)
+          assert.equals(2, result.code)
+          assert.truthy(result.stderr:find(flag .. " needs a path", 1, true))
+        end
       end
     end)
 

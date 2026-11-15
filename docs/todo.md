@@ -62,10 +62,10 @@ build (oil's default is the icon column only).
 - [x] **Notice outside changes.** The standalone build turns on oil's `watch_for_changes`. The side
   panes are oil buffers, so oil's file watchers redraw them like any oil buffer, in any build that
   turns it on (local directories only).
-- [ ] **Picker mode.** A `--chooser-file <path>` argument that writes the picked path(s), including
+- [x] **Picker mode.** A `--chooser-file <path>` argument that writes the picked path(s), including
   a visual selection, and exits, so other programs can use coil as a file picker.
-- [ ] **Other arguments:** `--hidden`, `--ratio`, `--help`, `--version`. Today `coil [dir]` opens the
-  column view and anything else is passed to Neovim.
+- [ ] **Other arguments:** `--hidden`, `--ratio` (`--help` and `--version` are done). Today
+  `coil [dir]` opens the column view and anything else is passed to Neovim.
 
 ## Bugs
 

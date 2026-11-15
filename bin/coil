@@ -19,9 +19,11 @@ Usage: coil [options] [directory...]
 Opens the directories (the current one by default) in coil's column view.
 
 Options:
-  --cwd-file <path>  On exit, write the last directory to <path>
-  -h, --help         Show this help and exit
-  -v, --version      Show coil's version and exit
+  --cwd-file <path>      On exit, write the last directory to <path>
+  --chooser-file <path>  Choose files instead of opening them: write their paths to <path>, one
+                         per line, and quit. A visual selection chooses all its entries.
+  -h, --help             Show this help and exit
+  -v, --version          Show coil's version and exit
 
 Other arguments go to Neovim. After --, all arguments are file names.
 EOF
@@ -54,31 +56,37 @@ while [ $# -gt 0 ]; do
       echo "coil $version"
       exit 0
       ;;
-    --cwd-file | --cwd-file=*)
-      if [ "$1" = --cwd-file ]; then
+    --cwd-file | --cwd-file=* | --chooser-file | --chooser-file=*)
+      flag="${1%%=*}"
+      if [ "$1" = "$flag" ]; then
         if [ $# -lt 2 ]; then
-          echo "coil: --cwd-file needs a path" >&2
+          echo "coil: $flag needs a path" >&2
           exit 2
         fi
-        cwd_file="$2"
+        file="$2"
         shift 2
       else
-        cwd_file="${1#*=}"
+        file="${1#*=}"
         shift
       fi
-      if [ -z "$cwd_file" ]; then
-        echo "coil: --cwd-file needs a path" >&2
+      if [ -z "$file" ]; then
+        echo "coil: $flag needs a path" >&2
         exit 2
       fi
-      # Neovim writes it on exit, when its directory may have changed
-      case "$cwd_file" in
+      # Neovim writes it later, when its directory may have changed
+      case "$file" in
         /*) ;;
-        *) cwd_file="$PWD/$cwd_file" ;;
+        *) file="$PWD/$file" ;;
       esac
       # The path goes through the environment, so it never has to be escaped into a Vim string,
       # and is removed again as soon as it's copied, so child processes don't inherit it
-      export COIL_CWD_FILE="$cwd_file"
-      nvim_args+=(--cmd 'let g:coil_cwd_file = $COIL_CWD_FILE | unlet $COIL_CWD_FILE')
+      if [ "$flag" = --cwd-file ]; then
+        export COIL_CWD_FILE="$file"
+        nvim_args+=(--cmd 'let g:coil_cwd_file = $COIL_CWD_FILE | unlet $COIL_CWD_FILE')
+      else
+        export COIL_CHOOSER_FILE="$file"
+        nvim_args+=(--cmd 'let g:coil_chooser_file = $COIL_CHOOSER_FILE | unlet $COIL_CHOOSER_FILE')
+      fi
       ;;
     --)
       args+=("$@")
