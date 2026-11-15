@@ -54,7 +54,7 @@ build (oil's default is the icon column only).
   `--cmd`) in any Neovim, with a `standalone` option for mode-specific settings, and
   `g:coil_cwd_file` for cd on exit. The Nix build uses the same mode and the same launcher
   (`bin/coil`, with `--cwd-file`).
-- [x] **Open non-text files in other programs.** `<CR>`/`L` on a file the preview classifies as not
+- [x] **Open non-text files in other programs.** `<CR>` on a file the preview classifies as not
   text (image, video, PDF, archive, binary) should open it with oil's `actions.open_external`, which
   uses `vim.ui.open` (xdg-open / open / explorer). Text files keep opening in the editor. Limits:
   `open_external` only works for local files (`oil.get_current_dir()` is nil for SSH and S3), and it

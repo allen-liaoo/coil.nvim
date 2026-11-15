@@ -31,7 +31,7 @@ local defaults = {
   -- coil's own keys in the middle pane; set one to false to disable it. Coil make change oil's keymap
   -- behaviors when you're using coil's panes (as opposed to ordinary oil buffers)
   keymaps = {
-    go_in = "L", -- Enter a directory; files open in the editing tab
+    go_in = "L", -- Enter a directory
     go_out = "H", -- Go to the parent directory
     close = "q", -- Close the column view (also in the preview pane)
     quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)

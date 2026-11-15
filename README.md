@@ -195,7 +195,7 @@ coil adds its own keymaps, set with the `keymaps` option. Their defaults differ 
 
 | Option | Plugin | Standalone | Does |
 |---|---|---|---|
-| `go_in` | `L` | `L` | Enter a directory, or open a file in your editing tab |
+| `go_in` | `L` | `L` | Enter a directory. |
 | `go_out` | `H` | `H` | Go to the parent directory |
 | `close` | `q` | off | Close the column view |
 | `quit` | off | `q` | Quit Neovim, asking about unsaved changes |
@@ -232,7 +232,7 @@ require("coil").setup({
   -- coil's own keys in the middle pane; set one to false to disable it. Coil make change oil's keymap
   -- behaviors when you're using coil's panes (as opposed to ordinary oil buffers)
   keymaps = {
-    go_in = "L", -- Enter a directory; files open in the editing tab
+    go_in = "L", -- Enter a directory
     go_out = "H", -- Go to the parent directory
     close = "q", -- Close the column view (also in the preview pane)
     quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)

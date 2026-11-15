@@ -35,6 +35,20 @@ local function select_entry(view, how)
   end)
 end
 
+---Enter the directory under the cursor. Files are for oil's select key, so moving around can't
+---open (or, when choosing, pick) one by accident.
+---@param view coil.View
+local function enter_dir(view)
+  bridge.select(function(bufnr, is_dir)
+    if is_dir then
+      vim.api.nvim_win_set_buf(view.panes.current, bufnr)
+    elseif vim.fn.bufloaded(bufnr) == 0 then
+      -- oil added a buffer for the file
+      pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
+    end
+  end)
+end
+
 ---@param view coil.View
 local function close()
   require("coil.view").close()
@@ -43,9 +57,7 @@ end
 ---coil's own keys (the `keymaps` option)
 ---@type table<string, fun(view: coil.View)>
 M.actions = {
-  go_in = function(view)
-    select_entry(view, nil)
-  end,
+  go_in = enter_dir,
   go_out = function()
     bridge.open_parent()
   end,

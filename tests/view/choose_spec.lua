@@ -43,7 +43,7 @@ describe("choosing files (g:coil_chooser_file)", function()
     return vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.panes.current))
   end
 
-  for _, key in ipairs({ "L", "<CR>", "<C-s>" }) do
+  for _, key in ipairs({ "<CR>", "<C-s>" }) do
     it(key .. " writes the file under the cursor and quits", function()
       local view = h.open_view(root .. "/proj")
       h.cursor_to(view.panes.current, "b.txt")
@@ -57,6 +57,15 @@ describe("choosing files (g:coil_chooser_file)", function()
       assert.equals(0, vim.fn.bufloaded(root .. "/proj/b.txt"))
     end)
   end
+
+  it("L doesn't choose a file", function()
+    local view = h.open_view(root .. "/proj")
+    h.cursor_to(view.panes.current, "b.txt")
+    h.press("L")
+    vim.wait(100)
+    assert.equals(0, quits)
+    assert.is_nil(chosen())
+  end)
 
   it("enters a directory under the cursor", function()
     local view = h.open_view(root .. "/proj")

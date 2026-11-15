@@ -170,7 +170,7 @@ describe("the system's text editor", function()
     local function select_notes()
       local view = h.open_view(proj)
       h.cursor_to(view.panes.current, "notes.txt")
-      h.press("L")
+      h.press("<CR>")
       return view
     end
 

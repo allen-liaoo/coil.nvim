@@ -39,7 +39,7 @@ describe("open_external", function()
 
   it("opens files that aren't text in another program", function()
     local view = h.open_view(proj)
-    for _, case in ipairs({ { "photo.png", "L" }, { "data.bin", "<CR>" } }) do
+    for _, case in ipairs({ { "photo.png", "<CR>" }, { "data.bin", "<CR>" } }) do
       local name, key = case[1], case[2]
       h.cursor_to(view.panes.current, name)
       h.press(key)
@@ -56,7 +56,7 @@ describe("open_external", function()
   it("opens text files in the editor", function()
     local view = h.open_view(proj)
     h.cursor_to(view.panes.current, "notes.txt")
-    h.press("L")
+    h.press("<CR>")
     assert.is_true(h.wait(function()
       return vim.api.nvim_get_current_tabpage() == origin_tab
     end))
@@ -90,7 +90,7 @@ describe("open_external", function()
     coil.setup()
     local view = h.open_view(proj)
     h.cursor_to(view.panes.current, "photo.png")
-    h.press("L")
+    h.press("<CR>")
     assert.is_true(h.wait(function()
       return vim.api.nvim_buf_get_name(0) == proj .. "/photo.png"
     end))
