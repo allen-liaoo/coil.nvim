@@ -24,6 +24,27 @@ vim.api.nvim_create_user_command("CoilClearCache", function()
   vim.notify(string.format("[coil] Deleted %d thumbnails (%.1f MiB)", count, bytes / 1024 / 1024))
 end, { desc = "Delete coil's cached image thumbnails" })
 
+vim.api.nvim_create_user_command("CoilInstallCli", function(args)
+  local cli = require("coil.cli")
+  local link, err, replaced = cli.install(args.fargs[1])
+  if not link then
+    return vim.notify("[coil] " .. err, vim.log.levels.ERROR)
+  end
+  local msg = string.format("[coil] %s links to %s", link, cli.launcher())
+  if replaced then
+    msg = msg .. string.format(" (it linked to %s)", replaced)
+  end
+  local problem = cli.path_problem(link)
+  if problem then
+    msg = msg .. ", but " .. problem
+  end
+  vim.notify(msg, problem and vim.log.levels.WARN or vim.log.levels.INFO)
+end, {
+  nargs = "?",
+  complete = "dir",
+  desc = "Put the `coil` command on PATH: a link to it in ~/.local/bin (or the given directory)",
+})
+
 -- Started as a file manager (`nvim --cmd "let g:coil_standalone = 1"`)
 if require("coil.config").standalone() then
   require("coil.startup").init()

@@ -95,10 +95,12 @@ coil [dir1] [dir2] ...
 
 ### Bring Your Own Neovim
 
-The plugin comes with a `coil` command, `bin/coil`. Put it on your `PATH`, for example (with
-lazy.nvim's default install directory):
+The plugin comes with a `coil` command, `bin/coil`. Run `:CoilInstallCli` to put it on your
+`PATH`: it links `~/.local/bin/coil` (or `:CoilInstallCli <dir>` for `<dir>/coil`) to the
+plugin's copy, so updating the plugin updates the command too. A link of your own works the same:
 
 ```sh
+# With lazy.nvim's default install directory
 ln -s ~/.local/share/nvim/lazy/coil.nvim/bin/coil ~/.local/bin/coil
 ```
 
@@ -149,6 +151,7 @@ vim.cmd.colorscheme("retrobox")
 | `:CoilClose` | Close the column view |
 | `:CoilPreview` | In a plain oil window, toggle a preview split that follows the cursor |
 | `:CoilClearCache` | Delete the cached image thumbnails |
+| `:CoilInstallCli [dir]` | Link the [`coil` command](#bring-your-own-neovim) into `~/.local/bin` (or `dir`) |
 
 The middle pane is an oil buffer, and oil's keys work there as usual, except some behaviors are changed.
 coil adds its own keymaps, set with the `keymaps` option:

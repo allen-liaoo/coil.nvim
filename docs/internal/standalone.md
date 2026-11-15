@@ -62,6 +62,21 @@ arguments before Neovim can take `--cwd-file`.
 - `${args[@]+"${args[@]}"}` is for bash 3.2 (macOS), which treats an empty array as unset under
   `set -u`.
 
+### `:CoilInstallCli` (`lua/coil/cli.lua`)
+
+- **A symlink, not a copy,** so the command changes with the plugin. Plugin managers can't add to
+  `PATH` themselves (a lazy.nvim `build` step runs inside Neovim).
+- **Its own command, not `:Coil install-cli`:** `:Coil` takes directories, so the subcommand
+  would shadow a directory of that name.
+- **Replaces only a broken link or a link to another coil.nvim's `bin/coil`** (a directory with
+  `lua/coil/init.lua`): what a plugin moving to another manager or `NVIM_APPNAME` leaves behind.
+  Anything else named `coil` is left alone.
+- **Refuses a plugin in `/nix/store`:** its path changes with every update, so the link would
+  break after garbage collection.
+- **Checks `PATH` afterwards** with `exepath()`: `~/.local/bin` isn't on macOS's default `PATH`,
+  and another `coil` may come first. Neovim's `PATH` is the shell's it started from, so this is
+  what that shell would run.
+
 ## The Nix `coil` (`nix/coil.nix`)
 
 - **Installs only `bin/coil`**, so it can't collide with the user's own Neovim in one profile.
