@@ -1,7 +1,7 @@
 # `coil`: coil.nvim as a terminal file manager, for people who don't use Neovim themselves. It is
 # a Neovim with coil.nvim, oil.nvim, image.nvim and mini.icons, started in coil's standalone mode by
-# ./coil.sh, installed as `bin/coil` only, so it never clashes with a Neovim of your own. To add
-# coil to your own Neovim, use ./coil-nvim.nix instead.
+# the plugin's own ../bin/coil, installed as `bin/coil` only, so it never clashes with a Neovim of
+# your own. To add coil to your own Neovim, use ./coil-nvim.nix instead.
 #
 #   pkgs.callPackage ./nix/coil.nix { }
 #
@@ -11,6 +11,7 @@
   callPackage,
   runCommandLocal,
   runtimeShell,
+  makeWrapper,
   vimPlugins,
   vimUtils,
   neovim-unwrapped,
@@ -39,8 +40,8 @@ let
       vimPlugins.oil-git-status-nvim
       defaults
     ];
-    # No init of its own: Neovim reads ~/.config/coil/init.lua (./coil.sh sets NVIM_APPNAME), a config
-    # like any other
+    # No init of its own: Neovim reads ~/.config/coil/init.lua (COIL_APPNAME below), a config like
+    # any other
     wrapRc = false;
     wrapperArgs = [
       # Thumbnails for previews: ImageMagick for images (image.nvim uses it too), ffmpeg for video
@@ -60,6 +61,7 @@ in
 # when installed into the same profile
 runCommandLocal "coil-${coil-nvim.version}"
   {
+    nativeBuildInputs = [ makeWrapper ];
     passthru = {
       inherit coil-nvim oil-nvim nvim;
     };
@@ -72,8 +74,12 @@ runCommandLocal "coil-${coil-nvim.version}"
   }
   ''
     mkdir -p $out/bin
-    substitute ${./coil.sh} $out/bin/coil \
-      --replace-fail '@shell@' '${runtimeShell}' \
-      --replace-fail '@nvim@' '${lib.getExe nvim}'
+    substitute ${../bin/coil} $out/bin/coil \
+      --replace-fail '#!/usr/bin/env bash' '#!${runtimeShell}' \
+      --replace-fail 'version=0-unstable' 'version=${coil-nvim.version}'
     chmod +x $out/bin/coil
+    # The bundled Neovim, run as its own Neovim app
+    wrapProgram $out/bin/coil \
+      --set COIL_NVIM '${lib.getExe nvim}' \
+      --set COIL_APPNAME coil
   ''

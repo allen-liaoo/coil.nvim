@@ -95,14 +95,18 @@ coil [dir1] [dir2] ...
 
 ### Bring Your Own Neovim
 
-Add an alias to your shell's config:
+The plugin comes with a `coil` command, `bin/coil`. Put it on your `PATH`, for example (with
+lazy.nvim's default install directory):
 
 ```sh
-alias coil='nvim --cmd "let g:coil_standalone = 1"'
+ln -s ~/.local/share/nvim/lazy/coil.nvim/bin/coil ~/.local/bin/coil
 ```
 
-That starts your Neovim, with your config, plugins and colour scheme, in coil's standalone mode,
-which turns on coil's `standalone` options. Your config can check it with
+It starts your Neovim (`nvim`, or `$COIL_NVIM`), with your config, plugins and colour scheme, in
+coil's standalone mode, which turns on coil's `standalone` options. `coil --help` lists its
+options. Without the command, `nvim --cmd "let g:coil_standalone = 1"` starts the same mode.
+
+Your config can check the mode with
 `require("coil").standalone()`, even while it loads:
 
 ```lua
@@ -115,8 +119,8 @@ require("oil").setup({
 - **Don't lazy-load coil:** If using lazy.nvim,
   `lazy = not vim.g.coil_standalone`.
 - **For a separate config,** history and state, run it as another Neovim app:
-  Setting `NVIM_APPNAME=coil nvim` make it read `~/.config/coil/init.lua` (which then has to install and set
-  up oil.nvim and coil itself).
+  `COIL_APPNAME=coil coil` makes it read `~/.config/coil/init.lua` (which then has to install and
+  set up oil.nvim and coil itself). Editors coil starts still get your own `NVIM_APPNAME`.
 
 ### Without Neovim
 

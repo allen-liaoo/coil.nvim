@@ -4,8 +4,9 @@ The Makefile (`make help`) and `scripts/dev.lua`'s header cover the targets. Wha
 
 ## Dev shell
 
-- `nvim` on the dev shell's `PATH` is the maintainer's nvimx editor. Tests run on `COIL_NVIM`, a
-  clean `neovim-unwrapped`, so no editor config affects results.
+- `nvim` on the dev shell's `PATH` is the maintainer's nvimx editor. Tests run on
+  `COIL_TEST_NVIM`, a clean `neovim-unwrapped`, so no editor config affects results. (Not
+  `COIL_NVIM`: `bin/coil` reads that, and a `coil` run in the dev shell would get the clean one.)
 - Plugins come in through `COIL_*_PATH` variables (oil, plenary, image.nvim, oil-git-status), all
   from nixpkgs. A shell entered before a flake change lacks newer variables, and their specs then
   fail with "… is not set" (for example `git_status_spec.lua` without

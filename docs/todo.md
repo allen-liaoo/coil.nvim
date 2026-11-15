@@ -52,8 +52,8 @@ build (oil's default is the icon column only).
   exit, plus a documented shell function (like yazi's `y`) that `cd`s there (link to the doc in readme, dont write directly in readme).
 - [x] **Your own Neovim as a file manager.** Standalone mode (`g:coil_standalone`, set with
   `--cmd`) in any Neovim, with a `standalone` option for mode-specific settings, and
-  `g:coil_cwd_file` for cd on exit. The Nix build uses the same mode; only its launcher has
-  `--cwd-file`.
+  `g:coil_cwd_file` for cd on exit. The Nix build uses the same mode and the same launcher
+  (`bin/coil`, with `--cwd-file`).
 - [x] **Open non-text files in other programs.** `<CR>`/`L` on a file the preview classifies as not
   text (image, video, PDF, archive, binary) should open it with oil's `actions.open_external`, which
   uses `vim.ui.open` (xdg-open / open / explorer). Text files keep opening in the editor. Limits:

@@ -1,4 +1,4 @@
-NVIM ?= $(if $(COIL_NVIM),$(COIL_NVIM),nvim)
+NVIM ?= $(if $(COIL_TEST_NVIM),$(COIL_TEST_NVIM),nvim)
 LUA_DIRS := lua plugin scripts tests
 
 ## help: print this help message

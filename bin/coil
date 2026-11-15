@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# coil: Neovim as a terminal file manager, started in coil's standalone mode. The plugin ships it,
+# and the Nix `coil` (nix/coil.nix) wraps it, so both take the same arguments.
+#
+#   coil [options] [directory...]
+#
+# Environment, read here and not passed on to Neovim:
+#   COIL_NVIM     the Neovim to run (default: nvim)
+#   COIL_APPNAME  if set, the NVIM_APPNAME Neovim runs as. Editors coil starts get the user's back.
+set -euo pipefail
+
+# nix/coil.nix replaces it with the package's version
+version=0-unstable
+
+usage() {
+  cat <<'EOF'
+Usage: coil [options] [directory...]
+
+Opens the directories (the current one by default) in coil's column view.
+
+Options:
+  --cwd-file <path>  On exit, write the last directory to <path>
+  -h, --help         Show this help and exit
+  -v, --version      Show coil's version and exit
+
+Other arguments go to Neovim. After --, all arguments are file names.
+EOF
+}
+
+nvim="${COIL_NVIM:-nvim}"
+appname="${COIL_APPNAME-}"
+unset COIL_NVIM COIL_APPNAME
+
+nvim_args=(--cmd "let g:coil_standalone = 1")
+
+# Its own config and state (~/.config/<appname>, ...), whatever NVIM_APPNAME the user has.
+# Editors coil starts get the user's value back (g:coil_editor_env; empty means Neovim's default),
+# so a Neovim editor loads the user's own config. Copied out of the environment, like --cwd-file.
+if [ -n "$appname" ]; then
+  export COIL_USER_NVIM_APPNAME="${NVIM_APPNAME-}"
+  export NVIM_APPNAME="$appname"
+  nvim_args+=(--cmd 'let g:coil_editor_env = {"NVIM_APPNAME": $COIL_USER_NVIM_APPNAME}'\
+' | unlet $COIL_USER_NVIM_APPNAME')
+fi
+
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -v | --version)
+      echo "coil $version"
+      exit 0
+      ;;
+    --cwd-file | --cwd-file=*)
+      if [ "$1" = --cwd-file ]; then
+        if [ $# -lt 2 ]; then
+          echo "coil: --cwd-file needs a path" >&2
+          exit 2
+        fi
+        cwd_file="$2"
+        shift 2
+      else
+        cwd_file="${1#*=}"
+        shift
+      fi
+      if [ -z "$cwd_file" ]; then
+        echo "coil: --cwd-file needs a path" >&2
+        exit 2
+      fi
+      # Neovim writes it on exit, when its directory may have changed
+      case "$cwd_file" in
+        /*) ;;
+        *) cwd_file="$PWD/$cwd_file" ;;
+      esac
+      # The path goes through the environment, so it never has to be escaped into a Vim string,
+      # and is removed again as soon as it's copied, so child processes don't inherit it
+      export COIL_CWD_FILE="$cwd_file"
+      nvim_args+=(--cmd 'let g:coil_cwd_file = $COIL_CWD_FILE | unlet $COIL_CWD_FILE')
+      ;;
+    --)
+      args+=("$@")
+      break
+      ;;
+    *)
+      args+=("$1")
+      shift
+      ;;
+  esac
+done
+
+exec "$nvim" "${nvim_args[@]}" ${args[@]+"${args[@]}"}

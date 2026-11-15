@@ -15,6 +15,7 @@ vimUtils.buildVimPlugin {
   src = lib.fileset.toSource {
     root = ../.;
     fileset = lib.fileset.unions [
+      ../bin
       ../lua
       ../plugin
       ../LICENSE

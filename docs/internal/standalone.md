@@ -39,24 +39,35 @@ Set with `nvim --cmd "let g:coil_standalone = 1"`, read by `require("coil").stan
 
 ## Data never goes into command strings
 
-The launcher (`nix/coil.sh`) passes values through the environment and has Vim copy them out:
+The launcher (`bin/coil`) passes values through the environment and has Vim copy them out:
 `let g:coil_cwd_file = $COIL_CWD_FILE | unlet $COIL_CWD_FILE`. Vim reads the value as data, so no
 path is ever escaped, and the variable is gone before any child process could inherit it.
 kitty-scrollback.nvim's issue #377 shows what interpolating paths into `--cmd` breaks. Global
 variables aren't inherited by `:terminal` children, which is why the cwd file is a variable, not
 an environment variable.
 
+## The launcher (`bin/coil`)
+
 Neovim refuses unknown options (`Unknown option argument`), so only a script that parses
-arguments before Neovim can take `--cwd-file`. The plugin ships no launcher; users of their own
-Neovim pass `--cmd "let g:coil_cwd_file = '…'"` (the shell functions use `mktemp`, whose names
-contain no `'`). `${args[@]+"${args[@]}"}` in the launcher is for bash 3.2 (macOS), which treats
-an empty array as unset under `set -u`.
+arguments before Neovim can take `--cwd-file`.
+
+- **One launcher:** the plugin ships `bin/coil`, and the Nix `coil` wraps the same script, so
+  arguments are parsed in one place. What differs is set through the environment: `COIL_NVIM`
+  (which Neovim; default `nvim`) and `COIL_APPNAME` (run as that Neovim app). The launcher unsets
+  both before starting Neovim, so a `coil` run from its `:terminal` uses the user's own settings.
+- **Parsed in bash, not Lua:** the launcher is a shell script anyway, and a Lua parser would cost a
+  second Neovim start (`nvim -l`) before the real one.
+- **A relative `--cwd-file` is made absolute** against the shell's directory: Neovim writes it at
+  exit, after any `:cd`.
+- `${args[@]+"${args[@]}"}` is for bash 3.2 (macOS), which treats an empty array as unset under
+  `set -u`.
 
 ## The Nix `coil` (`nix/coil.nix`)
 
 - **Installs only `bin/coil`**, so it can't collide with the user's own Neovim in one profile.
-- **No init of its own** (`wrapRc = false`): `nix/coil.sh` sets `NVIM_APPNAME=coil`, so Neovim
-  reads `~/.config/coil/init.lua` as an ordinary config. (An earlier design returned a table of
+- **No init of its own** (`wrapRc = false`): `COIL_APPNAME=coil` makes the launcher set
+  `NVIM_APPNAME=coil`, so Neovim reads `~/.config/coil/init.lua` as an ordinary config. (An
+  earlier design returned a table of
   setup options merged into the build's defaults; dropped, since setup calls work like anywhere
   else this way. It also stopped `VIMINIT` leaking into Neovims started from `:terminal`.)
 - **Fallback setups, not merged defaults:** `nix/defaults/plugin/coil_defaults.lua` runs after

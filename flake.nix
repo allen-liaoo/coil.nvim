@@ -43,9 +43,9 @@
               })
             ];
 
-            # Neovim is exposed through COIL_NVIM instead of PATH so the shell does not
+            # Neovim is exposed through COIL_TEST_NVIM instead of PATH so the shell does not
             # shadow your own configured `nvim`. Tests run this clean, unconfigured build.
-            COIL_NVIM = "${pkgs.neovim-unwrapped}/bin/nvim";
+            COIL_TEST_NVIM = "${pkgs.neovim-unwrapped}/bin/nvim";
             COIL_OIL_PATH = "${pkgs.vimPlugins.oil-nvim}";
             COIL_PLENARY_PATH = "${pkgs.vimPlugins.plenary-nvim}";
             # Optional dependency, for drawing images in previews
