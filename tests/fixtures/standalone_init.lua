@@ -19,7 +19,7 @@ vim.api.nvim_create_autocmd("VimEnter", {
       end
       local report = {
         tabs = tabs,
-        quit = require("coil.config").get().keymaps.quit,
+        quit = require("coil.config").get().keymaps.q,
         cwd_file = vim.g.coil_cwd_file or vim.NIL,
         cwd_file_env = vim.env.COIL_CWD_FILE or vim.NIL,
         editor_env = vim.g.coil_editor_env or vim.NIL,

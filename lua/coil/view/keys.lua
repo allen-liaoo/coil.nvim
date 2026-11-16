@@ -1,6 +1,7 @@
 -- Keymaps for the column view. Neovim has no window-local keymaps, so coil wraps keys in the oil
 -- buffers it shows: in the middle pane a wrapper runs the coil action, and anywhere else it runs
 -- whatever the key did before (oil's mapping, a global mapping, or Vim's built-in key).
+local actions = require("coil.view.actions")
 local bridge = require("coil.oil_bridge")
 local choose = require("coil.view.choose")
 local config = require("coil.config")
@@ -35,40 +36,7 @@ local function select_entry(view, how)
   end)
 end
 
----Enter the directory under the cursor. Files are for oil's select key, so moving around can't
----open (or, when choosing, pick) one by accident.
----@param view coil.View
-local function enter_dir(view)
-  bridge.select(function(bufnr, is_dir)
-    if is_dir then
-      vim.api.nvim_win_set_buf(view.panes.current, bufnr)
-    elseif vim.fn.bufloaded(bufnr) == 0 then
-      -- oil added a buffer for the file
-      pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
-    end
-  end)
-end
-
----@param view coil.View
-local function close()
-  require("coil.view").close()
-end
-
----coil's own keys (the `keymaps` option)
----@type table<string, fun(view: coil.View)>
-M.actions = {
-  go_in = enter_dir,
-  go_out = function()
-    bridge.open_parent()
-  end,
-  close = close,
-  quit = function()
-    vim.cmd("confirm qall")
-  end,
-  cancel = function()
-    require("coil.startup").quit_without_cwd()
-  end,
-}
+local close = actions.list.close.callback
 
 ---What an oil action does instead in the middle pane, if coil changes it
 ---@param keymap coil.OilKeymap
@@ -135,9 +103,10 @@ end
 ---@return coil.KeyBinding[]
 local function bindings()
   local list = {}
-  for action, lhs in pairs(config.get().keymaps) do
-    if lhs and M.actions[action] then
-      table.insert(list, { lhs = lhs, modes = { "n" }, name = action, run = M.actions[action] })
+  for lhs, rhs in pairs(config.get().keymaps) do
+    local keymap = actions.resolve(rhs)
+    if keymap then
+      table.insert(list, { lhs = lhs, modes = keymap.modes, name = keymap.desc, run = keymap.run })
     end
   end
   for _, keymap in ipairs(bridge.oil_keymaps()) do
@@ -232,25 +201,24 @@ local function map_preview_buffer(view, bufnr)
       vim.api.nvim_set_current_win(view.panes.current)
     end, { buffer = bufnr, nowait = true, desc = DESC_PREFIX .. "back to the middle pane" })
   end
-  local close_keys = oil_keys("close")
-  local keymaps = config.get().keymaps
-  if keymaps.close then
-    table.insert(close_keys, keymaps.close)
+  for _, lhs in ipairs(oil_keys("close")) do
+    vim.keymap.set(
+      "n",
+      lhs,
+      close,
+      { buffer = bufnr, nowait = true, desc = DESC_PREFIX .. "close" }
+    )
   end
-  for _, lhs in ipairs(close_keys) do
-    vim.keymap.set("n", lhs, close, {
-      buffer = bufnr,
-      nowait = true,
-      desc = DESC_PREFIX .. "close",
-    })
-  end
-  for _, action in ipairs({ "quit", "cancel" }) do
-    if keymaps[action] then
-      vim.keymap.set("n", keymaps[action], M.actions[action], {
-        buffer = bufnr,
-        nowait = true,
-        desc = DESC_PREFIX .. action,
-      })
+  for lhs, rhs in pairs(config.get().keymaps) do
+    local keymap = actions.resolve(rhs)
+    local action = keymap and keymap.action
+    if
+      (action == "close" or action == "quit" or action == "cancel")
+      and vim.tbl_contains(keymap.modes, "n")
+    then
+      vim.keymap.set("n", lhs, function()
+        keymap.run(view)
+      end, { buffer = bufnr, nowait = true, desc = DESC_PREFIX .. action })
     end
   end
 end

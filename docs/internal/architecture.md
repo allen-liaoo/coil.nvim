@@ -93,7 +93,9 @@ left alone, so wrapping is idempotent.
   commands are left alone. A key that is both coil's and oil's gets coil's action. Modes follow
   oil's mapping (oil's default mode `""` covers normal and visual).
 - **`L` and `H` aren't wrapped in visual mode**, so they stay motions for extending a selection.
-  The open keys are, because oil's versions act on a selection.
+  The open keys are, because oil's versions act on a selection. `keymaps` values are read like
+  oil's (an action name, function, keys or table; `view/actions.lua`); each action has its own
+  default mode.
 - **`g.` keeps the cursor on its entry.** oil's toggle keeps the line number, which lands on
   another entry once hidden entries appear above. coil hands the entry to oil's "last cursor"
   before toggling; if the entry is about to be hidden, the nearest one that stays (below, then

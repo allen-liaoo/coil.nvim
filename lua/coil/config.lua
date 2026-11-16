@@ -8,7 +8,7 @@ local M = {}
 ---@field open_external boolean Open files that aren't text in the system's default program
 ---@field edit_here boolean Open text files in this Neovim (otherwise in the system's text editor)
 ---@field preview table Options for the preview module (see coil.PreviewOpts)
----@field keymaps table<string, string|false> Keys for coil actions in the middle pane (false disables)
+---@field keymaps table<string, any> Keys in the middle pane, set like oil's `keymaps`
 ---@field standalone table Options that replace the others when Neovim runs as a file manager
 
 ---@type coil.Config
@@ -28,14 +28,15 @@ local defaults = {
   -- files only; the split and tab keys still open them here.
   edit_here = true,
   preview = {},
-  -- coil's own keys in the middle pane; set one to false to disable it. Coil make change oil's keymap
-  -- behaviors when you're using coil's panes (as opposed to ordinary oil buffers)
+  -- coil's keys in the middle pane, set like oil's `keymaps`: a key maps to one of coil's actions
+  -- ("actions.<name>"), a function, keys to type, or a table with one of those and `mode`, `desc`
+  -- or `opts`; false removes a default. Several keys can share an action.
   keymaps = {
-    go_in = "L", -- Enter a directory
-    go_out = "H", -- Go to the parent directory
-    close = "q", -- Close the column view (also in the preview pane)
-    quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
-    cancel = false, -- Like quit, but writes no cd-on-exit directory (also in the preview pane)
+    ["L"] = "actions.go_in",
+    ["<Right>"] = "actions.go_in",
+    ["H"] = "actions.go_out",
+    ["<Left>"] = "actions.go_out",
+    ["q"] = "actions.close",
   },
   -- Options for when Neovim was started as a file manager (g:coil_standalone, set with
   -- `nvim --cmd "let g:coil_standalone = 1"`). Takes any option except itself. These defaults
@@ -43,7 +44,7 @@ local defaults = {
   standalone = {
     open_external = true,
     edit_here = false,
-    keymaps = { close = false, quit = "q", cancel = "Q" },
+    keymaps = { ["q"] = "actions.quit", ["Q"] = "actions.cancel" },
   },
 }
 
@@ -127,9 +128,14 @@ local function check_types(new, prefix)
   if type(new.keymaps) ~= "table" then
     fail("%skeymaps must be a table, got %s", prefix, vim.inspect(new.keymaps))
   end
-  for action, lhs in pairs(new.keymaps) do
-    if lhs ~= false and (type(lhs) ~= "string" or lhs == "") then
-      fail("%skeymaps.%s must be a key (string) or false, got %s", prefix, action, vim.inspect(lhs))
+  local actions = require("coil.view.actions")
+  for lhs, rhs in pairs(new.keymaps) do
+    if type(lhs) ~= "string" or lhs == "" then
+      fail("%skeymaps must have keys (strings) as keys, got %s", prefix, vim.inspect(lhs))
+    end
+    local _, err = actions.resolve(rhs)
+    if err then
+      fail('%skeymaps["%s"]: %s, got %s', prefix, lhs, err, vim.inspect(rhs))
     end
   end
 end
@@ -142,11 +148,6 @@ local function find_unknown(opts, prefix, unknown)
   for key in pairs(opts) do
     if defaults[key] == nil or (prefix ~= "" and key == "standalone") then
       table.insert(unknown, prefix .. key)
-    end
-  end
-  for action in pairs(type(opts.keymaps) == "table" and opts.keymaps or {}) do
-    if defaults.keymaps[action] == nil then
-      table.insert(unknown, prefix .. "keymaps." .. action)
     end
   end
 end

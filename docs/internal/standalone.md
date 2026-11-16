@@ -18,7 +18,7 @@ Set with `nvim --cmd "let g:coil_standalone = 1"`, read by `require("coil").stan
 - **Option layers**, later wins: coil's defaults, coil's `standalone` defaults (`open_external`,
   `edit_here = false`, `q` quits instead of closing), the user's options, the user's
   `standalone` options. The user's plain options beat coil's standalone defaults, so a config can
-  set `keymaps.quit` without knowing about `standalone`. `standalone`'s types are checked in
+  map `q` to `actions.quit` without knowing about `standalone`. `standalone`'s types are checked in
   either mode, so mistakes show before the first file-manager start.
 - **Startup only** (`coil.startup`): it does nothing after `VimEnter`, so a lazily loaded coil
   doesn't open views mid-session. The README tells lazy.nvim users not to lazy-load it.

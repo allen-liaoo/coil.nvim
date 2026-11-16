@@ -190,16 +190,22 @@ it, or another file. To choose a directory, choose it in a visual selection, or 
 | `:CoilInstallCli [dir]` | Link the [`coil` command](#bring-your-own-neovim) into `~/.local/bin` (or `dir`) |
 
 The middle pane is an oil buffer, and oil's keys work there as usual, except some behaviors are changed.
-coil adds its own keymaps, set with the `keymaps` option. Their defaults differ in
-[standalone mode](#as-standalone-file-manager); "off" means no key until you set one:
+coil adds its own keys, set with the `keymaps` option the way oil's `keymaps` is set. Their
+defaults differ in [standalone mode](#as-standalone-file-manager); "off" means no key until you
+map one:
 
-| Option | Plugin | Standalone | Does |
+| Action | Plugin | Standalone | Does |
 |---|---|---|---|
-| `go_in` | `L` | `L` | Enter a directory. |
-| `go_out` | `H` | `H` | Go to the parent directory |
-| `close` | `q` | off | Close the column view |
-| `quit` | off | `q` | Quit Neovim, asking about unsaved changes |
-| `cancel` | off | `Q` | Quit like `quit`, but write nothing to `--cwd-file`: the shell stays put, and a directory dialog is cancelled |
+| `actions.go_in` | `L`, `<Right>` | `L`, `<Right>` | Enter a directory |
+| `actions.go_out` | `H`, `<Left>` | `H`, `<Left>` | Go to the parent directory |
+| `actions.close` | `q` | off | Close the column view |
+| `actions.quit` | off | `q` | Quit Neovim, asking about unsaved changes |
+| `actions.cancel` | off | `Q` | Quit like `quit`, but write nothing to `--cwd-file`: the shell stays put, and a directory dialog is cancelled |
+
+A key maps to an action, a function, keys to type (such as `"<Cmd>...<CR>"`), or a table with one
+of those (first item or `callback`) and `mode`, `desc` or `opts` (passed to a function); `false`
+removes a default. Keys are for normal mode unless `mode` says otherwise (`"n"`, `"x"`, `"v"` or
+`""`, or a list).
 
 Commands typed in the middle pane that open something, such as `:Oil`, `:edit file`, `:buffer` or
 `:vsplit`, run in your editing tab instead, so plain oil is always one command away, even for the
@@ -229,14 +235,14 @@ require("coil").setup({
   edit_here = true,
   -- Show each pane's path in a title line (winbar) above it
   winbar = false,
-  -- coil's own keys in the middle pane; set one to false to disable it. Coil make change oil's keymap
-  -- behaviors when you're using coil's panes (as opposed to ordinary oil buffers)
+  -- coil's keys in the middle pane, set like oil's `keymaps` (see Usage). The close, quit and
+  -- cancel keys work in the preview pane too.
   keymaps = {
-    go_in = "L", -- Enter a directory
-    go_out = "H", -- Go to the parent directory
-    close = "q", -- Close the column view (also in the preview pane)
-    quit = false, -- Quit Neovim, asking about unsaved changes (also in the preview pane)
-    cancel = false, -- Like quit, but writes no cd-on-exit directory (also in the preview pane)
+    ["L"] = "actions.go_in",
+    ["<Right>"] = "actions.go_in",
+    ["H"] = "actions.go_out",
+    ["<Left>"] = "actions.go_out",
+    ["q"] = "actions.close",
   },
   preview = {
     -- Text files larger than this get no text preview
@@ -271,7 +277,7 @@ require("coil").setup({
   standalone = {
     open_external = true,
     edit_here = false,
-    keymaps = { close = false, quit = "q", cancel = "Q" },
+    keymaps = { ["q"] = "actions.quit", ["Q"] = "actions.cancel" },
   },
 })
 ```

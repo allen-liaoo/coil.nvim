@@ -17,14 +17,18 @@ describe("config", function()
     assert.equals(30, config.get().debounce_ms)
     assert.is_false(config.get().winbar)
     assert.is_true(config.get().tab_title)
-    assert.equals("L", config.get().keymaps.go_in)
+    assert.equals("actions.go_in", config.get().keymaps.L)
   end)
 
   it("merges keymaps, keeping the ones not mentioned", function()
-    config.setup({ keymaps = { go_in = "l", close = false } })
-    assert.equals("l", config.get().keymaps.go_in)
-    assert.is_false(config.get().keymaps.close)
-    assert.equals("H", config.get().keymaps.go_out)
+    local fn = function() end
+    config.setup({ keymaps = { l = "actions.go_in", q = false, gf = fn } })
+    local keymaps = config.get().keymaps
+    assert.equals("actions.go_in", keymaps.l)
+    assert.equals("actions.go_in", keymaps.L)
+    assert.is_false(keymaps.q)
+    assert.equals(fn, keymaps.gf)
+    assert.equals("actions.go_out", keymaps.H)
   end)
 
   it("rejects options of the wrong type with a clear message", function()
@@ -38,8 +42,12 @@ describe("config", function()
       { opts = { open_external = "yes" }, match = "open_external" },
       { opts = { edit_here = 1 }, match = "edit_here" },
       { opts = { preview = false }, match = "preview" },
-      { opts = { keymaps = { go_in = 1 } }, match = "keymaps.go_in" },
-      { opts = { keymaps = { go_in = "" } }, match = "keymaps.go_in" },
+      { opts = { keymaps = { L = 1 } }, match = 'keymaps["L"]' },
+      { opts = { keymaps = { L = "actions.go_inn" } }, match = "cancel, close, go_in" },
+      { opts = { keymaps = { L = { "actions.go_in", mode = "i" } } }, match = "mode must be" },
+      { opts = { keymaps = { L = { "actions.go_in", opts = 1 } } }, match = "opts must be" },
+      { opts = { keymaps = { L = { desc = "no rhs" } } }, match = 'keymaps["L"]' },
+      { opts = { keymaps = { "actions.go_in" } }, match = "keymaps must have keys" },
     }) do
       local ok, err = pcall(config.setup, case.opts)
       assert.is_false(ok, vim.inspect(case.opts))
@@ -54,10 +62,10 @@ describe("config", function()
   end)
 
   it("warns about unknown options instead of failing", function()
-    config.setup({ ratoi = { 1, 1, 1 }, keymaps = { go_inn = "l" } })
+    config.setup({ ratoi = { 1, 1, 1 }, winbr = true })
     assert.equals(1, #notifications)
     assert.equals(vim.log.levels.WARN, notifications[1].level)
-    assert.truthy(notifications[1].msg:find("keymaps.go_inn, ratoi", 1, true))
+    assert.truthy(notifications[1].msg:find("ratoi, winbr", 1, true))
   end)
 
   describe("standalone mode", function()
@@ -82,51 +90,56 @@ describe("config", function()
     it("ignores the standalone options otherwise", function()
       config.setup({ standalone = { ratio = { 1, 1, 1 } } })
       assert.same({ 1, 4, 3 }, config.get().ratio)
-      assert.equals("q", config.get().keymaps.close)
-      assert.is_false(config.get().keymaps.quit)
+      assert.equals("actions.close", config.get().keymaps.q)
+      assert.is_nil(config.get().keymaps.Q)
     end)
 
     it("merges the standalone options over the rest", function()
       vim.g.coil_standalone = 1
       config.setup({
         winbar = true,
-        keymaps = { go_in = "l" },
-        standalone = { ratio = { 1, 1, 1 }, keymaps = { go_out = "h" } },
+        keymaps = { l = "actions.go_in" },
+        standalone = { ratio = { 1, 1, 1 }, keymaps = { h = "actions.go_out" } },
       })
       local c = config.get()
       assert.same({ 1, 1, 1 }, c.ratio)
       assert.is_true(c.winbar)
       -- From the options, from the standalone options, and the standalone defaults
-      assert.same({ go_in = "l", go_out = "h", close = false, quit = "q", cancel = "Q" }, c.keymaps)
+      assert.same({
+        L = "actions.go_in",
+        ["<Right>"] = "actions.go_in",
+        H = "actions.go_out",
+        ["<Left>"] = "actions.go_out",
+        l = "actions.go_in",
+        h = "actions.go_out",
+        q = "actions.quit",
+        Q = "actions.cancel",
+      }, c.keymaps)
     end)
 
     it("lets the options you set win over coil's standalone defaults", function()
       vim.g.coil_standalone = 1
-      config.setup({ keymaps = { quit = "Q" } })
-      assert.equals("Q", config.get().keymaps.quit)
-      assert.is_false(config.get().keymaps.close)
-      config.setup({ keymaps = { quit = "Q" }, standalone = { keymaps = { quit = "<C-q>" } } })
-      assert.equals("<C-q>", config.get().keymaps.quit)
+      config.setup({ keymaps = { q = "actions.close" } })
+      assert.equals("actions.close", config.get().keymaps.q)
+      config.setup({
+        keymaps = { q = "actions.close" },
+        standalone = { keymaps = { q = "actions.quit" } },
+      })
+      assert.equals("actions.quit", config.get().keymaps.q)
     end)
 
     it("checks the standalone options in either mode", function()
       for _, case in ipairs({
         { opts = { standalone = false }, match = "standalone must be a table" },
         { opts = { standalone = { ratio = { 1 } } }, match = "standalone.ratio" },
-        { opts = { standalone = { keymaps = { quit = 1 } } }, match = "standalone.keymaps.quit" },
+        { opts = { standalone = { keymaps = { q = 1 } } }, match = 'standalone.keymaps["q"]' },
       }) do
         local ok, err = pcall(config.setup, case.opts)
         assert.is_false(ok, vim.inspect(case.opts))
         assert.truthy(err:find(case.match, 1, true), err)
       end
-      config.setup({ standalone = { winbr = true, standalone = {}, keymaps = { qiut = "q" } } })
-      assert.truthy(
-        notifications[1].msg:find(
-          "standalone.keymaps.qiut, standalone.standalone, standalone.winbr",
-          1,
-          true
-        )
-      )
+      config.setup({ standalone = { winbr = true, standalone = {} } })
+      assert.truthy(notifications[1].msg:find("standalone.standalone, standalone.winbr", 1, true))
     end)
   end)
 end)

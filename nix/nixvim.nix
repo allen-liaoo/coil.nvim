@@ -40,8 +40,8 @@ packages:
           4
         ];
         keymaps = {
-          go_in = "l";
-          go_out = "h";
+          "l" = "actions.go_in";
+          "h" = "actions.go_out";
         };
         preview.thumbnail_cache_mb = 500;
         standalone.edit_here = true;

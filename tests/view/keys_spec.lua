@@ -65,6 +65,86 @@ describe("column view keys", function()
     end))
   end)
 
+  it("<Right> and <Left> enter a directory and leave it, like L and H", function()
+    local view = h.open_view(proj)
+    h.cursor_to(view.panes.current, "sub/")
+    h.press("<Right>")
+    assert.is_true(h.wait(function()
+      return middle_name(view) == "oil://" .. proj .. "/sub/"
+    end))
+    -- Keys are wrapped once oil has listed the new directory
+    assert.is_true(h.wait(function()
+      return vim.fn.maparg("<Left>", "n", false, true).desc ~= nil
+    end))
+    h.press("<Left>")
+    assert.is_true(h.wait(function()
+      return middle_name(view) == "oil://" .. proj .. "/"
+    end))
+  end)
+
+  it("maps keys to your functions and removes defaults set to false", function()
+    local calls = 0
+    coil.setup({
+      keymaps = {
+        gz = function()
+          calls = calls + 1
+        end,
+        L = false,
+      },
+    })
+    local view = h.open_view(proj)
+    h.press("gz")
+    h.wait(function()
+      return calls == 1
+    end)
+    assert.equals(1, calls)
+    local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+    local desc = vim.api.nvim_buf_call(bufnr, function()
+      return vim.fn.maparg("L", "n", false, true).desc
+    end)
+    assert.is_nil(desc)
+    coil.setup()
+  end)
+
+  it("takes oil's other keymap forms: tables with mode, desc and opts, and keys to type", function()
+    local got
+    coil.setup({
+      keymaps = {
+        gz = {
+          callback = function(opts)
+            got = opts
+          end,
+          opts = { n = 1 },
+          desc = "mine",
+          mode = { "n", "x" },
+        },
+        gy = { "actions.go_out", mode = "n" },
+        gw = "<Cmd>let g:coil_test_typed = 1<CR>",
+      },
+    })
+    local view = h.open_view(proj .. "/sub")
+    h.press("gz")
+    assert.is_true(h.wait(function()
+      return got ~= nil
+    end))
+    assert.same({ n = 1 }, got)
+    local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+    local x_desc = vim.api.nvim_buf_call(bufnr, function()
+      return vim.fn.maparg("gz", "x", false, true).desc
+    end)
+    assert.equals("coil: mine (column view only)", x_desc)
+    h.press("gw")
+    assert.is_true(h.wait(function()
+      return vim.g.coil_test_typed == 1
+    end))
+    vim.g.coil_test_typed = nil
+    h.press("gy")
+    assert.is_true(h.wait(function()
+      return middle_name(view) == "oil://" .. proj .. "/"
+    end))
+    coil.setup()
+  end)
+
   it("<CR> on a file opens it in the editing window and keeps the view", function()
     local view = h.open_view(proj)
     h.cursor_to(view.panes.current, "a.txt")
@@ -432,7 +512,7 @@ describe("the quit key", function()
     pcall(coil.close)
     h.reset_tab()
     h.setup_oil()
-    coil.setup({ keymaps = { quit = "Q" } })
+    coil.setup({ keymaps = { Q = "actions.quit" } })
   end)
 
   after_each(function()
@@ -470,7 +550,7 @@ describe("the cancel key", function()
     pcall(coil.close)
     h.reset_tab()
     h.setup_oil()
-    coil.setup({ keymaps = { cancel = "Q" } })
+    coil.setup({ keymaps = { Q = "actions.cancel" } })
     quit_without_cwd = startup.quit_without_cwd
   end)
 

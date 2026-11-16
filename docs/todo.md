@@ -32,6 +32,7 @@ trash view (`g\`) can restore them.
 - [x] **Git status from oil-git-status.nvim in every pane.** The side panes are oil buffers, so its
   signs show there too; coil fires `TextChanged` for them after oil redraws them, as Neovim does
   for the current buffer, so the signs come back. `make dev` and the `coil` binary include it.
+- [x] Refactor keybinds to use actions so I can map HL and < > to the same action.
 - [ ] **`:help coil` docs**, a vimdoc version of the README.
 
 ## Standalone coil
