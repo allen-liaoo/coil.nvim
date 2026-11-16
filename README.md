@@ -2,6 +2,8 @@
 
 Column view with file previews for [oil.nvim](https://github.com/stevearc/oil.nvim), in your Neovim or as a terminal file manager.
 
+![coil-nvim](https://github.com/user-attachments/assets/41a8f2af-3c78-440b-9443-e136d56e3453)
+
 ## Try it
 
 With [Nix](https://nixos.org/download) (flakes enabled):
