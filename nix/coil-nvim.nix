@@ -17,7 +17,7 @@ vimUtils.buildVimPlugin {
     fileset = lib.fileset.unions [
       ../bin
       ../lua
-      ../doc
+      ../doc/coil.txt
       ../plugin
       ../LICENSE
     ];

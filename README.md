@@ -86,7 +86,7 @@ For [nixvim](https://github.com/nix-community/nixvim), the flake has a module,
 
 You can either use your neovim + coil.nvim as a standalone file manager, or use our (nix) distributed `coil` binary.
 Standalone coil differs from coil-as-a-plugin: everything opens in system's default programs, `q` quits neovim,
-and you can setup [shell integration](docs/shell-integration.md) so it will automatically `cd` to the last directory on exit.
+and you can setup [shell integration](doc/shell-integration.md) so it will automatically `cd` to the last directory on exit.
 
 Once setup:
 ```sh
@@ -96,7 +96,7 @@ coil [dir1] [dir2] ...
 `coil --help` lists its options:
 
 - `--cwd-file <path>`: on exit, write the last directory to `<path>`, for a shell function to
-  `cd` there ([shell integration](docs/shell-integration.md)).
+  `cd` there ([shell integration](doc/shell-integration.md)).
 - `--chooser-file <path>`: pick files for another program. Opening a file writes its path to
   `<path>` and quits; a visual selection picks all its entries, directories included. One path
   per line. Directories still open as usual, and quitting without picking writes nothing. A file

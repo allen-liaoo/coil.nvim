@@ -36,7 +36,7 @@ Set with `nvim --cmd "let g:coil_standalone = 1"`, read by `require("coil").stan
 - **cd on exit:** `g:coil_cwd_file`, read at `VimLeavePre`, gets the current tab's view's directory,
   else the one used last, else the last local directory any middle pane showed. Remote
   directories are skipped. Written without trailing slash or newline, like yazi. The shell
-  functions are in `docs/shell-integration.md`.
+  functions are in `doc/shell-integration.md`.
 - **Cancelling skips it:** the `cancel` key (`Q` in standalone mode, like yazi's) and any exit
   with an error code (`:cq`, seen as `v:exiting` at `VimLeavePre`). `:q!` can't: it exits with 0,
   and Neovim doesn't tell autocmds about the `!` (`v:cmdbang` is for reads and writes only).
