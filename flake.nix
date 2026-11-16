@@ -3,8 +3,8 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nvimx = {
-      url = "github:allen-liaoo/nvimx";
+    nixvim = {
+      url = "github:nix-community/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -13,7 +13,7 @@
     {
       self,
       nixpkgs,
-      nvimx,
+      nixvim,
       ...
     }:
     let
@@ -38,9 +38,6 @@
               # Video frames and PDF pages for previews
               pkgs.ffmpeg-headless
               pkgs.poppler-utils
-              (nvimx.makeNvimxWithModule system {
-                nvimx.preset.lua.enable = true;
-              })
             ];
 
             # Neovim is exposed through COIL_TEST_NVIM instead of PATH so the shell does not
@@ -84,7 +81,7 @@
         let
           nixvimCheck =
             name: module:
-            nvimx.inputs.nixvim.lib.${system}.check.mkTestDerivationFromNixvimModule {
+            nixvim.lib.${system}.check.mkTestDerivationFromNixvimModule {
               inherit name pkgs;
               module = {
                 imports = [ self.nixvimModules.default ];
