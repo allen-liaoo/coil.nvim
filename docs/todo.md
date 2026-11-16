@@ -34,7 +34,7 @@ trash view (`g\`) can restore them.
   for the current buffer, so the signs come back. `make dev` and the `coil` binary include it.
 - [x] jk wraps around to start/end of entry list in directory.
 - [x] Refactor keybinds to use actions so I can map HL and < > to the same action.
-- [ ] **`:help coil` docs**, a vimdoc version of the README.
+- [x] **`:help coil` docs**, a vimdoc version of the README.
 
 ## Standalone coil
 
