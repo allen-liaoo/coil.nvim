@@ -80,7 +80,8 @@ other windows can show. So `view/keys.lua` wraps keys in each oil buffer that en
 pane. A wrapper checks the window it runs in: in a view's middle pane it runs coil's action,
 anywhere else what the key did before (oil's mapping, a global one, or the built-in key with its
 count). The original is saved with `maparg()`; a key already wrapped (`desc` starts `coil: `) is
-left alone, so wrapping is idempotent.
+left alone, so wrapping is idempotent. The fallback inserts its keys at the front of the typeahead
+(`nvim_feedkeys` with `i`), so in a macro or `:normal` they run before the keys typed after them.
 
 - **Wrap after oil, every time.** oil sets its keymaps when it sets a buffer up, and a reload
   (`<C-l>`, `:edit`, `:Coil` on the same directory) sets them up again over coil's. So keys are
@@ -93,9 +94,9 @@ left alone, so wrapping is idempotent.
   commands are left alone. A key that is both coil's and oil's gets coil's action. Modes follow
   oil's mapping (oil's default mode `""` covers normal and visual).
 - **`L` and `H` aren't wrapped in visual mode**, so they stay motions for extending a selection.
-  The open keys are, because oil's versions act on a selection. `keymaps` values are read like
-  oil's (an action name, function, keys or table; `view/actions.lua`); each action has its own
-  default mode.
+  The open keys are, because oil's versions act on a selection, and so are `j`/`k` (coil's `up`
+  and `down` actions), which still extend it. `keymaps` values are read like oil's (an action
+  name, function, keys or table; `view/actions.lua`); each action has its own default mode.
 - **`g.` keeps the cursor on its entry.** oil's toggle keeps the line number, which lands on
   another entry once hidden entries appear above. coil hands the entry to oil's "last cursor"
   before toggling; if the entry is about to be hidden, the nearest one that stays (below, then

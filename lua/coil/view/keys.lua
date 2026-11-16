@@ -145,7 +145,7 @@ local function fallback(lhs, original)
   if vim.tbl_isempty(original) then
     -- No mapping: Vim's built-in key, keeping any count (e.g. 5L)
     local count = vim.v.count > 0 and tostring(vim.v.count) or ""
-    vim.api.nvim_feedkeys(count .. vim.keycode(lhs), "n", false)
+    vim.api.nvim_feedkeys(count .. vim.keycode(lhs), "ni", false)
     return
   end
   local keys
@@ -160,7 +160,7 @@ local function fallback(lhs, original)
     keys = original.rhs
   end
   if type(keys) == "string" and keys ~= "" then
-    vim.api.nvim_feedkeys(vim.keycode(keys), original.noremap == 1 and "n" or "m", false)
+    vim.api.nvim_feedkeys(vim.keycode(keys), (original.noremap == 1 and "n" or "m") .. "i", false)
   end
 end
 

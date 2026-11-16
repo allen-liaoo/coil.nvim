@@ -8,6 +8,20 @@ local M = {}
 ---@field mode? string|string[] Default "n"
 ---@field callback fun(view: coil.View, opts: table)
 
+---Move the cursor `delta` entries (times the count), wrapping around the ends of the listing
+---@param view coil.View
+---@param delta integer
+local function move(view, delta)
+  local winid = view.panes.current
+  local lines = vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(winid))
+  local row = vim.api.nvim_win_get_cursor(winid)[1]
+  local distance = (row - 1 + delta * vim.v.count1) % lines + 1 - row
+  if distance ~= 0 then
+    -- j and k keep the column the cursor wants (and work in visual mode)
+    vim.cmd("normal! " .. math.abs(distance) .. (distance > 0 and "j" or "k"))
+  end
+end
+
 ---@type table<string, coil.Action>
 M.list = {
   go_in = {
@@ -29,6 +43,20 @@ M.list = {
     desc = "Go to the parent directory",
     callback = function()
       require("coil.oil_bridge").open_parent()
+    end,
+  },
+  down = {
+    desc = "Move down, from the last entry to the first",
+    mode = { "n", "x" },
+    callback = function(view)
+      move(view, 1)
+    end,
+  },
+  up = {
+    desc = "Move up, from the first entry to the last",
+    mode = { "n", "x" },
+    callback = function(view)
+      move(view, -1)
     end,
   },
   close = {

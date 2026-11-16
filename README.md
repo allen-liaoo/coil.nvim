@@ -198,6 +198,8 @@ map one:
 |---|---|---|---|
 | `actions.go_in` | `L`, `<Right>` | `L`, `<Right>` | Enter a directory |
 | `actions.go_out` | `H`, `<Left>` | `H`, `<Left>` | Go to the parent directory |
+| `actions.down` | `j`, `<Down>` | `j`, `<Down>` | Move down, from the last entry to the first (also in visual mode) |
+| `actions.up` | `k`, `<Up>` | `k`, `<Up>` | Move up, from the first entry to the last (also in visual mode) |
 | `actions.close` | `q` | off | Close the column view |
 | `actions.quit` | off | `q` | Quit Neovim, asking about unsaved changes |
 | `actions.cancel` | off | `Q` | Quit like `quit`, but write nothing to `--cwd-file`: the shell stays put, and a directory dialog is cancelled |
@@ -242,6 +244,10 @@ require("coil").setup({
     ["<Right>"] = "actions.go_in",
     ["H"] = "actions.go_out",
     ["<Left>"] = "actions.go_out",
+    ["j"] = "actions.down",
+    ["<Down>"] = "actions.down",
+    ["k"] = "actions.up",
+    ["<Up>"] = "actions.up",
     ["q"] = "actions.close",
   },
   preview = {

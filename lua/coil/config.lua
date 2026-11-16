@@ -36,6 +36,10 @@ local defaults = {
     ["<Right>"] = "actions.go_in",
     ["H"] = "actions.go_out",
     ["<Left>"] = "actions.go_out",
+    ["j"] = "actions.down",
+    ["<Down>"] = "actions.down",
+    ["k"] = "actions.up",
+    ["<Up>"] = "actions.up",
     ["q"] = "actions.close",
   },
   -- Options for when Neovim was started as a file manager (g:coil_standalone, set with

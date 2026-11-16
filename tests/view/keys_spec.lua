@@ -145,6 +145,75 @@ describe("column view keys", function()
     coil.setup()
   end)
 
+  ---@param winid integer
+  ---@return string|nil
+  local function cursor_name(winid)
+    local row = vim.api.nvim_win_get_cursor(winid)[1]
+    local entry = require("oil").get_entry_on_line(vim.api.nvim_win_get_buf(winid), row)
+    return entry and entry.name
+  end
+
+  it("j and k wrap around the ends of the listing, with a count", function()
+    local view = h.open_view(proj)
+    -- Listed: sub/, a.txt
+    h.cursor_to(view.panes.current, "a.txt")
+    h.press("j")
+    assert.is_true(h.wait(function()
+      return cursor_name(view.panes.current) == "sub"
+    end))
+    h.press("k")
+    assert.is_true(h.wait(function()
+      return cursor_name(view.panes.current) == "a.txt"
+    end))
+    h.press("<Down>")
+    assert.is_true(h.wait(function()
+      return cursor_name(view.panes.current) == "sub"
+    end))
+    h.press("3j")
+    assert.is_true(h.wait(function()
+      return cursor_name(view.panes.current) == "a.txt"
+    end))
+  end)
+
+  it("j and k keep the cursor's column, and extend a visual selection", function()
+    h.setup_oil({ columns = { "permissions" } })
+    local view = h.open_view(proj)
+    local winid = view.panes.current
+    h.cursor_to(winid, "a.txt")
+    local line = vim.api.nvim_get_current_line()
+    vim.api.nvim_win_set_cursor(winid, { vim.fn.line("."), line:find("a.txt", 1, true) - 1 })
+    local col = vim.api.nvim_win_get_cursor(winid)[2]
+    h.press("j")
+    assert.is_true(h.wait(function()
+      return cursor_name(winid) == "sub"
+    end))
+    -- On the name, not moved to the start of the permissions column
+    assert.equals(col, vim.api.nvim_win_get_cursor(winid)[2])
+    h.press("vk")
+    assert.is_true(h.wait(function()
+      return cursor_name(winid) == "a.txt"
+    end))
+    assert.equals("v", vim.fn.mode())
+    assert.same({ 1, 2 }, { vim.fn.line("v"), vim.fn.line(".") })
+    h.press("<Esc>")
+  end)
+
+  it("keeps plain j and k in other windows, in the order typed", function()
+    local view = h.open_view(proj)
+    local bufnr = vim.api.nvim_win_get_buf(view.panes.current)
+    -- The middle buffer in a plain window: a macro moves, then runs the next key in order
+    vim.cmd.split()
+    local winid = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_buf(winid, bufnr)
+    h.cursor_to(winid, "sub/")
+    vim.fn.setreg("a", "jma")
+    h.press("@a")
+    vim.wait(50)
+    assert.equals("a.txt", cursor_name(winid))
+    assert.equals(vim.api.nvim_win_get_cursor(winid)[1], vim.api.nvim_buf_get_mark(bufnr, "a")[1])
+    vim.cmd.close()
+  end)
+
   it("<CR> on a file opens it in the editing window and keeps the view", function()
     local view = h.open_view(proj)
     h.cursor_to(view.panes.current, "a.txt")
