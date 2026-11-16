@@ -4,7 +4,10 @@ Notes for whoever changes coil, human or agent. They hold what reading the code 
 why things are the way they are, the Neovim, oil.nvim and image.nvim behaviours coil works
 around, alternatives that were tried or turned down, and measurements. Each module's header
 comment and docstrings say what it does; these pages don't repeat them. User-facing behaviour
-is in the [README](../../README.md); options and their defaults are in `lua/coil/config.lua`.
+is in the [README](../../README.md); options and their defaults are in `lua/coil/config.lua`;
+the Lua API and highlight groups are in [`doc/api.md`](../api.md) and
+[`doc/highlights.md`](../highlights.md). `:help coil` (`doc/coil.txt`) is a copy of these
+for reading in Neovim: change the source first, then the help.
 
 | Page | Read it before changing |
 |---|---|

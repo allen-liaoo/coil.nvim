@@ -1,6 +1,6 @@
 # coil.nvim
 
-A column view with file previews for [oil.nvim](https://github.com/stevearc/oil.nvim), in your Neovim or as a terminal file manager.
+Column view with file previews for [oil.nvim](https://github.com/stevearc/oil.nvim), in your Neovim or as a terminal file manager.
 
 ## Try it
 
@@ -15,35 +15,26 @@ nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 
 - Neovim 0.10 or newer (developed and tested on 0.12)
 - [oil.nvim](https://github.com/stevearc/oil.nvim). coil uses some of oil's internals.
-- For images in the preview (optional): [image.nvim](https://github.com/3rd/image.nvim). Install [ImageMagick](https://github.com/ImageMagick/ImageMagick), and use a terminal it can draw in.
+- For images in the preview (optional): [image.nvim](https://github.com/3rd/image.nvim) (requires [ImageMagick](https://github.com/ImageMagick/ImageMagick)).
     Video thumbnails need [ffmpeg](https://ffmpeg.org), and PDFs need [poppler](https://poppler.freedesktop.org)'s `pdftoppm`.
-- For previews of remote files: what oil uses for them, `scp` for SSH and the `aws` CLI for S3.
-    Previews never ask for a password, so SSH hosts need key or agent authentication (or an open
-    `ControlMaster` connection); otherwise the preview says why it can't download the file.
+- For previews of remote files: `scp` for SSH and the `aws` CLI for S3 (same requirements as oil).
 - For git status (optional): supports [oil-git-status.nvim](https://github.com/refractalize/oil-git-status.nvim).
-    The side panes are oil buffers, so its signs show in all three panes.
 
 <details>
-<summary>Tmux Setup</summary>
+<summary>Preview Under Tmux</summary>
 If you are using tmux, image.nvim need this setup:
 
 ```lua
 require("image").setup({
-  -- The default, cursor-based kitty method puts images at the cursor in tmux
-  kitty_method = "unicode-placeholders",
-  -- Show images only in the active tmux window
-  tmux_show_only_in_active_window = true,
+-- The default, cursor-based kitty method puts images at the cursor in tmux
+kitty_method = "unicode-placeholders",
+-- Show images only in the active tmux window
+tmux_show_only_in_active_window = true,
 })
-```
-Tmux needs this config:
-```tmux
-set -gq allow-passthrough on
-set -g visual-activity off
-set -g focus-events on
 ```
 </details>
 
-## Installation (As Neovim Plugin)
+## As Neovim Plugin
 
 Set up oil.nvim as usual, then coil. `require("coil").setup()` is optional; call it to change
 the defaults.
@@ -76,35 +67,32 @@ require("coil").setup()
 
 ### Nix
 
-The flake has the plugin as `packages.<system>.coil-nvim` (`nix/coil-nvim.nix` without flakes).
-It doesn't bring oil.nvim along: add oil.nvim the way you normally would.
-
-For [nixvim](https://github.com/nix-community/nixvim), the flake has a module,
-`nixvimModules.default`, with `plugins.coil` like nixvim's own plugins. 
+The flake has the plugin as `packages.<system>.coil-nvim` (`nix/coil-nvim.nix` without flakes). You still need to install its dependencies (oil.nvim, image.nvim) separately.
+For [nixvim](https://github.com/nix-community/nixvim), the flake has a module, `nixvimModules.default`, adding options under `plugins.coil`.
 
 ## As Standalone File Manager
 
 You can either use your neovim + coil.nvim as a standalone file manager, or use our (nix) distributed `coil` binary.
 Standalone coil differs from coil-as-a-plugin: everything opens in system's default programs, `q` quits neovim,
 and you can setup [shell integration](doc/shell-integration.md) so it will automatically `cd` to the last directory on exit.
-
-Once setup:
-```sh
-coil [dir1] [dir2] ...
 ```
+Usage: coil [options] [directory...]
 
-`coil --help` lists its options:
+Opens the directories (the current one by default) in coil's column view.
 
-- `--cwd-file <path>`: on exit, write the last directory to `<path>`, for a shell function to
-  `cd` there ([shell integration](doc/shell-integration.md)).
-- `--chooser-file <path>`: pick files for another program. Opening a file writes its path to
-  `<path>` and quits; a visual selection picks all its entries, directories included. One path
-  per line. Directories still open as usual, and quitting without picking writes nothing. A file
-  argument opens its directory with the cursor on it, so a save dialog can suggest a file name.
+Options:
+  --cwd-file <path>      On exit, write the last directory to <path>
+  --chooser-file <path>  Choose files instead of opening them: write their paths to <path>, one
+                         per line, and quit. A visual selection chooses all its entries.
+  -h, --help             Show this help and exit
+  -v, --version          Show coil's version and exit
+
+Other arguments go to Neovim. After --, all arguments are file names.
+```
 
 ### Bring Your Own Neovim
 
-The plugin comes with a `coil` command, `bin/coil`. Run `:CoilInstallCli` to put it on your
+The plugin comes with a `coil` command in `bin/coil`. Run `:CoilInstallCli` to put it on your
 `PATH`: it links `~/.local/bin/coil` (or `:CoilInstallCli <dir>` for `<dir>/coil`) to the
 plugin's copy, so updating the plugin updates the command too. A link of your own works the same:
 
@@ -113,13 +101,11 @@ plugin's copy, so updating the plugin updates the command too. A link of your ow
 ln -s ~/.local/share/nvim/lazy/coil.nvim/bin/coil ~/.local/bin/coil
 ```
 
-It starts your Neovim (`nvim`, or `$COIL_NVIM`), with your config, plugins and colour scheme, in
-coil's standalone mode, which turns on coil's `standalone` options. `coil --help` lists its
-options. Without the command, `nvim --cmd "let g:coil_standalone = 1"` starts the same mode.
+ starts your Neovim (`nvim`, or `$COIL_NVIM`), with your config in
+coil's standalone mode, which turns on coil's `standalone` options. 
 
-Your config can check the mode with
-`require("coil").standalone()`, even while it loads:
-
+Your config can check the mode with `require("coil").standalone()`, 
+which you can choose to conditionally enable behavior only in standalone mode:
 ```lua
 require("oil").setup({
   delete_to_trash = require("coil").standalone(),
@@ -130,15 +116,11 @@ require("oil").setup({
 - **Don't lazy-load coil:** If using lazy.nvim,
   `lazy = not vim.g.coil_standalone`.
 - **For a separate config,** history and state, run it as another Neovim app:
-  `COIL_APPNAME=coil coil` makes it read `~/.config/coil/init.lua` (which then has to install and
-  set up oil.nvim and coil itself). Editors coil starts still get your own `NVIM_APPNAME`.
+  `COIL_APPNAME=coil` makes it read `~/.config/coil/init.lua` (which then has to install and
+  set up oil.nvim and coil itself).
 
-### Without Neovim
-
-The flake's default package is a `coil` binary: Neovim with coil, plus all its plugin and binary dependencies necessary for preview. It installs only coil's commands
-(`bin/coil`), so it doesn't clash
-with a Neovim of your own.
-
+### Use Distributed Binary (Nix)
+The flake's default package is a `coil` binary: Neovim with coil, plus all its plugin and binary dependencies necessary for file preview. 
 ```sh
 nix profile install github:allen-liaoo/coil.nvim
 ```
@@ -153,11 +135,11 @@ require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
 vim.cmd.colorscheme("retrobox")
 ```
 
-### As your system's file picker
+### As System's File Chooser
 
 On Linux, [xdg-desktop-portal-termfilechooser](https://github.com/hunkyburrito/xdg-desktop-portal-termfilechooser)
 makes apps' open and save dialogs run a terminal file manager. coil comes with a wrapper for it,
-`bin/coil-termfilechooser`, next to `bin/coil` (in the plugin and in the Nix `coil`). Set it as the
+`bin/coil-termfilechooser` (both in the plugin and in the Nix `coil`). Set it as the
 portal's `cmd` in `~/.config/xdg-desktop-portal-termfilechooser/config`:
 
 ```ini
@@ -166,18 +148,15 @@ cmd=/path/to/coil.nvim/bin/coil-termfilechooser
 default_dir=$HOME
 open_mode=suggested
 save_mode=suggested
-; The terminal to run coil in, with any options it takes. Without it: xdg-terminal-exec, else
-; $TERMINAL -e. The portal expands values like a shell would, so single-quote the whole value to
-; keep the quotes inside it.
+; Set TERMCMD to set the terminal to run coil in, with any options it takes. 
+; Otherwise it falls back to xdg-terminal-exec, else $TERMINAL -e. 
 ; env=TERMCMD='<terminal> <options>'
 ; Any of coil's own settings, such as the Neovim to run
 ; env=COIL_NVIM=nvim
 ```
 
-Then restart the portal (`systemctl --user restart xdg-desktop-portal-termfilechooser`). In the
-dialog, choose files as with `--chooser-file`. A save dialog starts on the suggested file: choose
-it, or another file. To choose a directory, choose it in a visual selection, or quit inside it.
-`Q` (or `:cq`) cancels.
+To choose a file, open it. To choose a directory, open it during a visual selection, or quit inside it.
+`Q` (or `:cq`) cancels without choosing any file/directory. 
 
 ## Usage
 
@@ -189,9 +168,9 @@ it, or another file. To choose a directory, choose it in a visual selection, or 
 | `:CoilClearCache` | Delete the cached image thumbnails |
 | `:CoilInstallCli [dir]` | Link the [`coil` command](#bring-your-own-neovim) into `~/.local/bin` (or `dir`) |
 
-The middle pane is an oil buffer, and oil's keys work there as usual, except some behaviors are changed.
+The middle pane is an oil buffer, and oil's keys work there as usual, except some behaviors are changed (i.e. `<C-h>` opens horizontal split in the editor tab, not the tab showing coil).
 coil adds its own keys, set with the `keymaps` option the way oil's `keymaps` is set. Their
-defaults differ in [standalone mode](#as-standalone-file-manager); "off" means no key until you
+defaults differ in [standalone mode](#as-standalone-file-manager); "none" means no key until you
 map one:
 
 | Action | Plugin | Standalone | Does |
@@ -200,9 +179,9 @@ map one:
 | `actions.go_out` | `H`, `<Left>` | `H`, `<Left>` | Go to the parent directory |
 | `actions.down` | `j`, `<Down>` | `j`, `<Down>` | Move down, from the last entry to the first (also in visual mode) |
 | `actions.up` | `k`, `<Up>` | `k`, `<Up>` | Move up, from the first entry to the last (also in visual mode) |
-| `actions.close` | `q` | off | Close the column view |
-| `actions.quit` | off | `q` | Quit Neovim, asking about unsaved changes |
-| `actions.cancel` | off | `Q` | Quit like `quit`, but write nothing to `--cwd-file`: the shell stays put, and a directory dialog is cancelled |
+| `actions.close` | `q` | none | Close coil tab (the column view) |
+| `actions.quit` | none | `q` | Quit Neovim, asking about unsaved changes |
+| `actions.cancel` | none | `Q` | Quit like `quit`, but write nothing to `--cwd-file` or `--chooser-file`. |
 
 A key maps to an action, a function, keys to type (such as `"<Cmd>...<CR>"`), or a table with one
 of those (first item or `callback`) and `mode`, `desc` or `opts` (passed to a function); `false`
@@ -214,6 +193,7 @@ Commands typed in the middle pane that open something, such as `:Oil`, `:edit fi
 directory the middle pane shows. `:Coil dir` moves the column view, `:edit` on its own reloads the
 middle pane, and other commands (`:w`, `:s`, ...) run there as usual.
 
+See also: [Lua API](doc/api.md), [highlight groups](doc/highlights.md), and `:help coil` inside Neovim.
 
 ## Options
 
@@ -287,24 +267,6 @@ require("coil").setup({
   },
 })
 ```
-
-<!-- ### Highlights -->
-<!-- coil uses these highlights: -->
-<!---->
-<!-- | Group | Default link | Used for | -->
-<!-- |---|---|---| -->
-<!-- | `CoilParentSelected` | `Visual` | The current directory in the parent pane | -->
-<!-- | `CoilDir`, `CoilLink` | `OilDir`, `OilLink` | Directories and symlinks in the side panes | -->
-<!-- | `CoilDirHidden`, `CoilFileHidden`, `CoilLinkHidden` | `OilDirHidden`, `OilFileHidden`, `OilLinkHidden` | Hidden entries in the side panes | -->
-<!---->
-<!-- ### Lua API -->
-<!---->
-<!-- ```lua -->
-<!-- require("coil").open(dir)            -- like :Coil; a path or oil URL, nil for the current buffer's -->
-<!-- require("coil").open({ dir1, dir2 }) -- like :Coil dir1 dir2 -->
-<!-- require("coil").close()              -- like :CoilClose -->
-<!-- require("coil").standalone()         -- whether Neovim was started as a file manager -->
-<!-- ``` -->
 
 ## Development
 
