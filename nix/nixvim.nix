@@ -74,7 +74,7 @@ packages:
           type = lib.types.package;
           readOnly = true;
           default = pkgs.callPackage ./coil-termfilechooser.nix {
-            coil = config.plugins.coil.cli.package;
+            coil-cli = config.plugins.coil.cli.package;
           };
           defaultText = lib.literalMD "`coil-termfilechooser`, running `plugins.coil.cli.package`";
           description = ''

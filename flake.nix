@@ -20,10 +20,24 @@
       systems = [
         "x86_64-linux"
         "aarch64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
       ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system nixpkgs.legacyPackages.${system});
+      coilPackages = pkgs: rec {
+        # nvim plugin
+        coil-nvim = pkgs.callPackage ./nix/coil-nvim.nix {
+          version = "0-unstable-${self.shortRev or self.dirtyShortRev or "dirty"}";
+        };
+        # standalone coil from your neovim, given with `.override { nvim = ...; }`
+        coil-cli = pkgs.callPackage ./nix/coil-cli.nix { inherit (coil-nvim) version; };
+        # Distributed standalone file manager
+        coil-standalone = pkgs.callPackage ./nix/coil-standalone.nix { inherit coil-nvim; };
+        # the file picker wrapper for xdg-desktop-portal-termfilechooser,
+        # running the standalone coil unless given another `coil` with `.override { coil-cli = ...; }`
+        coil-termfilechooser = pkgs.callPackage ./nix/coil-termfilechooser.nix {
+          coil-cli = coil-standalone;
+        };
+      };
     in
     {
       devShells = forAllSystems (
@@ -53,25 +67,19 @@
         }
       );
 
+      # Without coil-cli, which has no Neovim to run until given one
       packages = forAllSystems (
         system: pkgs:
         let
-          # The plugin, for adding to your own Neovim next to oil.nvim
-          coil-nvim = pkgs.callPackage ./nix/coil-nvim.nix {
-            version = "0-unstable-${self.shortRev or self.dirtyShortRev or "dirty"}";
-          };
-          # The standalone file manager
-          coil-standalone = pkgs.callPackage ./nix/coil-standalone.nix { inherit coil-nvim; };
-          # Only the file picker for xdg-desktop-portal-termfilechooser, running the standalone coil
-          coil-termfilechooser = pkgs.callPackage ./nix/coil-termfilechooser.nix { coil = coil-standalone; };
+          coil = removeAttrs (coilPackages pkgs) [ "coil-cli" ];
         in
-        {
-          default = coil-nvim;
-          inherit coil-standalone coil-nvim coil-termfilechooser;
-        }
+        coil // { default = coil.coil-nvim; }
       );
 
-      # `plugins.coil` for nixvim (./nix/nixvim.nix)
+      # coil's packages in `pkgs`, with coil-cli, for a `coil` running a Neovim of your own (such as
+      # Home Manager's programs.neovim.finalPackage)
+      overlays.default = final: _prev: coilPackages final;
+
       nixvimModules = rec {
         coil = import ./nix/nixvim.nix self.packages;
         default = coil;
@@ -98,6 +106,36 @@
             };
           };
           inherit (nixvimWithCoil.config.plugins.coil) cli termfilechooser;
+          # A Neovim of your own with coil, as Home Manager's programs.neovim builds one, given to the
+          # overlay's coil-cli
+          withOverlay = pkgs.extend self.overlays.default;
+          ownNvim = withOverlay.wrapNeovimUnstable withOverlay.neovim-unwrapped {
+            plugins = [
+              withOverlay.coil-nvim
+              withOverlay.vimPlugins.oil-nvim
+            ];
+          };
+          ownCoil = withOverlay.coil-cli.override { nvim = ownNvim; };
+          # `coil` runs `nvim`, with coil in it, and `picker` runs that `coil`
+          cliCheck =
+            name: nvim: coil: picker:
+            pkgs.runCommandLocal name { } ''
+              coil=${nixpkgs.lib.getExe coil}
+              $coil --version
+              grep -qF "COIL_NVIM='${nixpkgs.lib.getExe nvim}'" $coil
+              HOME=$TMPDIR $coil --headless \
+                -c 'lua if not pcall(require, "coil") then vim.cmd.cquit() end' -c qa
+              # A stand-in terminal, which logs the command it would run
+              cat >term <<'EOF'
+              #!${pkgs.runtimeShell}
+              printf '%s\n' "$@" >"$LOG"
+              EOF
+              chmod +x term
+              LOG=$PWD/log TERMCMD=$PWD/term \
+                ${nixpkgs.lib.getExe picker} 0 0 0 "$PWD" "$PWD/out"
+              grep -qxF "$coil" log
+              touch $out
+            '';
         in
         {
           nixvim-module = nixvimCheck "coil-nixvim-module" {
@@ -123,21 +161,11 @@
             };
           };
           # The module's `coil` runs nixvim's Neovim, and its file picker runs that `coil`
-          nixvim-cli = pkgs.runCommandLocal "coil-nixvim-cli" { } ''
-            coil=${nixpkgs.lib.getExe cli.package}
-            $coil --version
-            grep -qF "COIL_NVIM='${nixpkgs.lib.getExe nixvimWithCoil}'" $coil
-            # A stand-in terminal, which logs the command it would run
-            cat >term <<'EOF'
-            #!${pkgs.runtimeShell}
-            printf '%s\n' "$@" >"$LOG"
-            EOF
-            chmod +x term
-            LOG=$PWD/log TERMCMD=$PWD/term \
-              ${nixpkgs.lib.getExe termfilechooser.package} 0 0 0 "$PWD" "$PWD/out"
-            grep -qxF "$coil" log
-            touch $out
-          '';
+          nixvim-cli = cliCheck "coil-nixvim-cli" nixvimWithCoil cli.package termfilechooser.package;
+          # The overlay's, given a Neovim of your own
+          overlay-cli = cliCheck "coil-overlay-cli" ownNvim ownCoil (
+            withOverlay.coil-termfilechooser.override { coil-cli = ownCoil; }
+          );
         }
       );
 

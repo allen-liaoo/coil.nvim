@@ -72,17 +72,6 @@ require("coil").setup()
 The flake has the plugin as `packages.<system>.coil-nvim` (`nix/coil-nvim.nix` without flakes). You still need to install its dependencies (oil.nvim, image.nvim) separately.
 For [nixvim](https://github.com/nix-community/nixvim), the flake has a module, `nixvimModules.default`, adding options under `plugins.coil`.
 
-The Nix plugin has no `bin/`: its `coil` would run whatever `nvim` is on `PATH`. With nixvim, the
-module builds the [`coil` command](#as-standalone-file-manager) and the
-[file chooser](#as-systems-file-chooser) for your nixvim's Neovim, as packages to install:
-
-```nix
-# Home Manager
-home.packages = [ config.programs.nixvim.plugins.coil.cli.package ];
-# The file chooser's `cmd`:
-# ${config.programs.nixvim.plugins.coil.termfilechooser.package}/bin/coil-termfilechooser
-```
-
 ## As Standalone File Manager
 
 You can either use your neovim + coil.nvim as a standalone file manager, or use our (nix) distributed `coil` binary.

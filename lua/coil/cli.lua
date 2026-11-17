@@ -12,8 +12,8 @@ end
 
 ---Where Nix users get the `coil` command: the plugin's Nix build has no bin/, since its `coil`
 ---would run whatever `nvim` is on PATH
-M.nix_advice =
-  "Install coil.nvim's Nix `coil-standalone` package, or with nixvim, plugins.coil.cli.package"
+M.nix_advice = "Install coil.nvim's Nix `coil-standalone` package, or a `coil` for your own Neovim: "
+  .. "plugins.coil.cli.package with nixvim, otherwise the overlay's coil-cli"
 
 ---Whether `path` is a copy of coil.nvim's launcher: bin/coil in a directory with coil's Lua
 ---@param path string

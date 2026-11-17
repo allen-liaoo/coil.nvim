@@ -10,7 +10,7 @@
   runCommandLocal,
   runtimeShell,
   makeWrapper,
-  nvim, # required
+  nvim ? throw "coil-cli runs a Neovim you give it: coil-cli.override { nvim = <your Neovim>; }", # required
   appname ? null,
   version ? "0-unstable",
 }:
