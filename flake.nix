@@ -62,10 +62,12 @@
           };
           # The standalone file manager
           coil-standalone = pkgs.callPackage ./nix/coil-standalone.nix { inherit coil-nvim; };
+          # Only the file picker for xdg-desktop-portal-termfilechooser, running the standalone coil
+          coil-termfilechooser = pkgs.callPackage ./nix/coil-termfilechooser.nix { coil = coil-standalone; };
         in
         {
           default = coil-nvim;
-          inherit coil-standalone coil-nvim;
+          inherit coil-standalone coil-nvim coil-termfilechooser;
         }
       );
 

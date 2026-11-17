@@ -121,9 +121,22 @@ arguments before Neovim can take `--cwd-file`.
   coil.nvim's launcher or a different `coil` (the Nix one) is only info: either still starts
   coil.
 
+## Nix's commands (`nix/coil-cli.nix`, `nix/coil-termfilechooser.nix`)
+
+- **`coil-cli.nix` wraps `bin/coil` for a given Neovim** (`nvim`, with no default, and an
+  optional `appname`) and installs only `bin/coil`, so it can't collide with the user's own
+  Neovim in one profile. The standalone `coil` is built with it.
+- **`coil-termfilechooser.nix` replaces the wrapper's `coil` with a store path** to a coil-cli
+  package (the standalone `coil` by default), so the portal finds it whatever its `PATH`, and
+  `coil` itself needn't be installed. The `coil-standalone` package doesn't install the picker.
+- **The picker's own tools (`sh`, `rm`, `cat`) are appended to its `PATH`,** so it runs under a
+  portal with an empty `PATH`, while the terminal (`xdg-terminal-exec`, `$TERMINAL`) and the
+  user's tools still come from the portal's.
+
 ## The Nix `coil-standalone` (`nix/coil-standalone.nix`)
 
-- **Installs only `bin/coil`**, so it can't collide with the user's own Neovim in one profile.
+- **coil-cli with a bundled Neovim** and `appname = "coil"`. The file is named apart from
+  `coil-cli.nix` to avoid confusion; the flake's package is `coil-standalone` too.
 - **No init of its own** (`wrapRc = false`): `COIL_APPNAME=coil` makes the launcher set
   `NVIM_APPNAME=coil`, so Neovim reads `~/.config/coil/init.lua` as an ordinary config. (An
   earlier design returned a table of

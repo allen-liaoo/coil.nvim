@@ -6,7 +6,8 @@
 #
 # The arguments are described in xdg-desktop-portal-termfilechooser(5). TERMCMD is the terminal
 # to run coil in (default: xdg-terminal-exec, else `$TERMINAL -e`); the `coil` next to this script
-# runs, with its own environment (COIL_NVIM, COIL_APPNAME).
+# runs, with its own environment (COIL_NVIM, COIL_APPNAME). Nix builds
+# (nix/coil-termfilechooser.nix) replace it with the `coil` they were built with.
 set -euo pipefail
 
 directory="$2"

@@ -141,8 +141,9 @@ vim.cmd.colorscheme("retrobox")
 
 On Linux, [xdg-desktop-portal-termfilechooser](https://github.com/hunkyburrito/xdg-desktop-portal-termfilechooser)
 makes apps' open and save dialogs run a terminal file manager. coil comes with a wrapper for it,
-`bin/coil-termfilechooser` (both in the plugin and in the Nix `coil-standalone`). Set it as the
-portal's `cmd` in `~/.config/xdg-desktop-portal-termfilechooser/config`:
+`bin/coil-termfilechooser`, which runs the `coil` next to it. With Nix, the flake's
+`coil-termfilechooser` package runs the flake's `coil-standalone` (without installing it). Set
+it as the portal's `cmd` in `~/.config/xdg-desktop-portal-termfilechooser/config`:
 
 ```ini
 [filechooser]

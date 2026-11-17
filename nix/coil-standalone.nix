@@ -1,8 +1,8 @@
 # `coil`: coil.nvim as a terminal file manager, for people who don't use Neovim themselves. It is
 # a Neovim with coil.nvim, oil.nvim, image.nvim and mini.icons, started in coil's standalone mode by
-# the plugin's own ../bin/coil. It installs only coil's commands (`bin/coil` and the file picker's
-# `bin/coil-termfilechooser`), so it never clashes with a Neovim of your own. To add coil to your
-# own Neovim, use ./coil-nvim.nix instead.
+# the plugin's own ../bin/coil (through ./coil-cli.nix). It installs only `bin/coil`, so it never
+# clashes with a Neovim of your own. The file picker is ./coil-termfilechooser.nix. To add coil to
+# your own Neovim, use ./coil-nvim.nix instead.
 #
 #   pkgs.callPackage ./nix/coil-standalone.nix { }
 #
@@ -10,9 +10,6 @@
 {
   lib,
   callPackage,
-  runCommandLocal,
-  runtimeShell,
-  makeWrapper,
   vimPlugins,
   vimUtils,
   neovim-unwrapped,
@@ -25,7 +22,7 @@
 }:
 let
   # Sets up the bundled plugins that ~/.config/coil/init.lua doesn't (./defaults)
-  defaults = vimUtils.buildVimPlugin {
+  coil-defaults = vimUtils.buildVimPlugin {
     pname = "coil-defaults";
     inherit (coil-nvim) version;
     src = ./defaults;
@@ -39,10 +36,10 @@ let
       vimPlugins.mini-icons
       # Git status signs next to each entry, in every pane
       vimPlugins.oil-git-status-nvim
-      defaults
+      coil-defaults
     ];
-    # No init of its own: Neovim reads ~/.config/coil/init.lua (COIL_APPNAME below), a config like
-    # any other
+    # No init of its own: Neovim reads ~/.config/coil/init.lua (the `coil` app name below), a
+    # config like any other
     wrapRc = false;
     wrapperArgs = [
       # Thumbnails for previews: ImageMagick for images (image.nvim uses it too), ffmpeg for video
@@ -58,33 +55,9 @@ let
     ];
   };
 in
-# Only coil's commands: the wrapped Neovim's own bin/nvim and share/ would collide with the user's
-# Neovim when installed into the same profile
-runCommandLocal "coil-${coil-nvim.version}"
-  {
-    nativeBuildInputs = [ makeWrapper ];
-    passthru = {
-      inherit coil-nvim oil-nvim nvim;
-    };
-    meta = {
-      description = "Terminal file manager built on Neovim, oil.nvim and coil.nvim";
-      inherit (coil-nvim.meta) homepage license;
-      inherit (nvim.meta) platforms;
-      mainProgram = "coil";
-    };
-  }
-  ''
-    mkdir -p $out/bin
-    substitute ${../bin/coil} $out/bin/coil \
-      --replace-fail '#!/usr/bin/env bash' '#!${runtimeShell}' \
-      --replace-fail 'version=0-unstable' 'version=${coil-nvim.version}'
-    chmod +x $out/bin/coil
-    # The bundled Neovim, run as its own Neovim app
-    wrapProgram $out/bin/coil \
-      --set COIL_NVIM '${lib.getExe nvim}' \
-      --set COIL_APPNAME coil
-    # Runs the bin/coil next to it
-    substitute ${../bin/coil-termfilechooser} $out/bin/coil-termfilechooser \
-      --replace-fail '#!/usr/bin/env bash' '#!${runtimeShell}'
-    chmod +x $out/bin/coil-termfilechooser
-  ''
+# The bundled Neovim, run as its own Neovim app
+callPackage ./coil-cli.nix {
+  inherit nvim;
+  appname = "coil";
+  inherit (coil-nvim) version;
+}
