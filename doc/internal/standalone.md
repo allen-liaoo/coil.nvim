@@ -132,14 +132,19 @@ arguments before Neovim can take `--cwd-file`.
   with it.
 - **The overlay (`overlays.default`) has coil-cli for any other Neovim,** such as Home Manager's
   `programs.neovim.finalPackage`: `pkgs.coil-cli.override { nvim = ...; }`, and
-  `pkgs.coil-termfilechooser.override { coil-cli = ...; }` for its picker. Its `nvim` is a `throw`
-  saying to override it, since a default Neovim wouldn't have coil, and an argument without a
-  default would fail as soon as `pkgs.coil-cli` is evaluated, before `.override` could replace it.
-  So it's in the overlay and not in `packages`. The overlay and `packages` come from one function
-  (`coilPackages` in `flake.nix`), and the `overlay-cli` check builds the Home Manager case.
+  `pkgs.coil-filechooser.override { coil-cli = ...; }` for its picker. Their `nvim` and
+  `coil-cli` default to a `throw` in the package files, saying to override them: a default Neovim
+  wouldn't have coil, and an argument without a default would fail as soon as the package is
+  evaluated, before `.override` could replace it. So they're in the overlay and not in `packages`,
+  where the standalone picker is `coil-standalone-filechooser`. In the overlay, `callPackage` fills
+  coil-filechooser's `coil-cli` in from `pkgs.coil-cli` (an argument named like a package gets it,
+  default or not), so it follows an overlay that overrides coil-cli, and without one it fails with
+  coil-cli's error. The overlay and `packages` come from one function (`coilPackages` in
+  `flake.nix`), and the `overlay-cli` check builds the Home Manager case.
 - **`coil-termfilechooser.nix` replaces the wrapper's `coil` with a store path** to a coil-cli
-  package (the flake's gets the standalone `coil`), so the portal finds it whatever its `PATH`, and
-  `coil` itself needn't be installed. The `coil-standalone` package doesn't install the picker.
+  package (`coil-standalone-filechooser` gets the standalone `coil`), so the portal finds it
+  whatever its `PATH`, and `coil` itself needn't be installed. The `coil-standalone` package
+  doesn't install the picker.
 - **The picker's own tools (`sh`, `rm`, `cat`) are appended to its `PATH`,** so it runs under a
   portal with an empty `PATH`, while the terminal (`xdg-terminal-exec`, `$TERMINAL`) and the
   user's tools still come from the portal's.

@@ -30,11 +30,14 @@
         };
         # standalone coil from your neovim, given with `.override { nvim = ...; }`
         coil-cli = pkgs.callPackage ./nix/coil-cli.nix { inherit (coil-nvim) version; };
+        # the file picker wrapper for your coil-cli: in the overlay, callPackage fills in
+        # pkgs.coil-cli, so it follows an overlay of yours that overrides coil-cli. Or
+        # `.override { coil-cli = ...; }`
+        coil-filechooser = pkgs.callPackage ./nix/coil-termfilechooser.nix { };
         # Distributed standalone file manager
         coil-standalone = pkgs.callPackage ./nix/coil-standalone.nix { inherit coil-nvim; };
-        # the file picker wrapper for xdg-desktop-portal-termfilechooser,
-        # running the standalone coil unless given another `coil` with `.override { coil-cli = ...; }`
-        coil-termfilechooser = pkgs.callPackage ./nix/coil-termfilechooser.nix {
+        # the file picker wrapper for xdg-desktop-portal-termfilechooser, running the standalone coil
+        coil-standalone-filechooser = pkgs.callPackage ./nix/coil-termfilechooser.nix {
           coil-cli = coil-standalone;
         };
       };
@@ -67,17 +70,20 @@
         }
       );
 
-      # Without coil-cli, which has no Neovim to run until given one
+      # Without coil-cli and coil-filechooser, which have nothing to run until given it
       packages = forAllSystems (
         system: pkgs:
         let
-          coil = removeAttrs (coilPackages pkgs) [ "coil-cli" ];
+          coil = removeAttrs (coilPackages pkgs) [
+            "coil-cli"
+            "coil-filechooser"
+          ];
         in
         coil // { default = coil.coil-nvim; }
       );
 
-      # coil's packages in `pkgs`, with coil-cli, for a `coil` running a Neovim of your own (such as
-      # Home Manager's programs.neovim.finalPackage)
+      # coil's packages in `pkgs`, with coil-cli and coil-filechooser, for a `coil` running a Neovim
+      # of your own (such as Home Manager's programs.neovim.finalPackage)
       overlays.default = final: _prev: coilPackages final;
 
       nixvimModules = rec {
@@ -164,7 +170,7 @@
           nixvim-cli = cliCheck "coil-nixvim-cli" nixvimWithCoil cli.package termfilechooser.package;
           # The overlay's, given a Neovim of your own
           overlay-cli = cliCheck "coil-overlay-cli" ownNvim ownCoil (
-            withOverlay.coil-termfilechooser.override { coil-cli = ownCoil; }
+            withOverlay.coil-filechooser.override { coil-cli = ownCoil; }
           );
         }
       );

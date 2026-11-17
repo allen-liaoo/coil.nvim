@@ -1,11 +1,11 @@
-# `coil-termfilechooser`: a `coil` command as the file picker of xdg-desktop-portal-termfilechooser
-# (../bin/coil-termfilechooser), running that `coil` by its store path, so the portal finds it
-# whatever its `PATH`. It installs only the picker, not `coil`.
+# The `coil-termfilechooser` wrapper (../bin/coil-termfilechooser): a `coil` command as the file
+# picker of xdg-desktop-portal-termfilechooser, running that `coil` by its store path, so the portal
+# finds it whatever its `PATH`. It installs only the picker, not `coil`.
 #
 #   pkgs.callPackage ./nix/coil-termfilechooser.nix { coil-cli = <a coil-cli package>; }
 #
 # `coil-cli` is the `coil` it runs: any ./coil-cli.nix package, such as ./coil-standalone.nix (the
-# flake's default) or nixvim's `plugins.coil.cli.package`.
+# flake's coil-standalone-filechooser) or nixvim's `plugins.coil.cli.package`.
 {
   lib,
   runCommandLocal,
@@ -13,7 +13,7 @@
   runtimeShellPackage,
   coreutils,
   makeWrapper,
-  coil-cli,
+  coil-cli ? throw "coil-filechooser runs a coil-cli you give it: coil-filechooser.override { coil-cli = <your coil-cli>; }",
 }:
 runCommandLocal "coil-termfilechooser-${coil-cli.version}"
   {
