@@ -132,15 +132,22 @@ arguments before Neovim can take `--cwd-file`.
   with it.
 - **The overlay (`overlays.default`) has coil-cli for any other Neovim,** such as Home Manager's
   `programs.neovim.finalPackage`: `pkgs.coil-cli.override { nvim = ...; }`, and
-  `pkgs.coil-filechooser.override { coil-cli = ...; }` for its picker. Their `nvim` and
+  `pkgs.coil-filechooser.override { coil-cli = ...; }` for its picker. The plugin is
+  `pkgs.vimPlugins.coil-nvim` there (added with `vimPlugins.extend`, which keeps the set
+  extensible), next to nixpkgs' plugins, and not a top-level package. Their `nvim` and
   `coil-cli` default to a `throw` in the package files, saying to override them: a default Neovim
   wouldn't have coil, and an argument without a default would fail as soon as the package is
-  evaluated, before `.override` could replace it. So they're in the overlay and not in `packages`,
-  where the standalone picker is `coil-standalone-filechooser`. In the overlay, `callPackage` fills
-  coil-filechooser's `coil-cli` in from `pkgs.coil-cli` (an argument named like a package gets it,
-  default or not), so it follows an overlay that overrides coil-cli, and without one it fails with
-  coil-cli's error. The overlay and `packages` come from one function (`coilPackages` in
-  `flake.nix`), and the `overlay-cli` check builds the Home Manager case.
+  evaluated, before `.override` could replace it. So they're in the overlay and `legacyPackages`
+  (for using them without the overlay), not in `packages`, where the standalone picker is
+  `coil-standalone-filechooser`. `nix flake check` builds `packages` but not `legacyPackages`. In
+  the overlay, `callPackage` fills coil-filechooser's `coil-cli` in from `pkgs.coil-cli` (an
+  argument named like a package gets it, default or not), so it follows an overlay that overrides
+  coil-cli, and without one it fails with coil-cli's error. Without the overlay (`legacyPackages`),
+  there's no `pkgs.coil-cli` to fill in,
+  so coil-filechooser fails with its own error. The overlay, `legacyPackages` and `packages` come
+  from one function (`coilPackages` in `flake.nix`). The `overlay-cli` and `legacy-cli` checks
+  build the Home Manager case each way, since `nix flake check` wouldn't otherwise build
+  `legacyPackages`.
 - **`coil-termfilechooser.nix` replaces the wrapper's `coil` with a store path** to a coil-cli
   package (`coil-standalone-filechooser` gets the standalone `coil`), so the portal finds it
   whatever its `PATH`, and `coil` itself needn't be installed. The `coil-standalone` package

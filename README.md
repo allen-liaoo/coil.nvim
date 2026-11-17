@@ -87,16 +87,8 @@ Options:
 Other arguments go to Neovim. After --, all arguments are file names.
 ```
 
-The `coil` binary comes with the plugin in `bin/coil` (with Nix, see [Nix](#nix) instead). Run `:CoilInstallCli` to put it on your
-`PATH`: it links `~/.local/bin/coil` (or `:CoilInstallCli <dir>` for `<dir>/coil`) to the
-plugin's copy, so updating the plugin updates the command too. A link of your own works the same:
-
-```sh
-# With lazy.nvim's default install directory
-ln -s ~/.local/share/nvim/lazy/coil.nvim/bin/coil ~/.local/bin/coil
-```
-
-starts your Neovim (`nvim`, or `$COIL_NVIM`), with your config in
+The `coil` binary comes with the plugin in `bin/coil` (different for [Nix](#nix) users). Run `:CoilInstallCli` to put it on your
+`~/.local/bin/coil`. It starts your Neovim (`nvim`, or `$COIL_NVIM`), with your config in
 coil's standalone mode, which turns on coil's `standalone` options. 
 
 Your config can check the mode with `require("coil").standalone()`, 
@@ -118,9 +110,8 @@ require("oil").setup({
 
 On Linux, [xdg-desktop-portal-termfilechooser](https://github.com/hunkyburrito/xdg-desktop-portal-termfilechooser)
 makes apps' open and save dialogs run a terminal file manager. coil comes with a wrapper for it,
-`bin/coil-termfilechooser`, which runs the `coil` next to it (with Nix, see
-[Nix](#nix)). Set it as the portal's `cmd` in
-`~/.config/xdg-desktop-portal-termfilechooser/config`:
+`bin/coil-termfilechooser`, which runs the `coil` next to it (different for [Nix](#nix) users).
+Set it as the portal's `cmd` in `~/.config/xdg-desktop-portal-termfilechooser/config`:
 
 ```ini
 [filechooser]
@@ -250,45 +241,66 @@ require("coil").setup({
 
 ## Nix
 
-The flake (`github:allen-liaoo/coil.nvim`) has:
+The flake has:
 
 | Output | What it is |
 |---|---|
 | `packages.<system>.coil-nvim` (also `default`) | The plugin. Install oil.nvim (and image.nvim, for images) yourself, as you would without coil |
-| `packages.<system>.coil-standalone` | The [standalone `coil`](#standalone-coil): a Neovim with coil and everything its previews use |
+| `packages.<system>.coil-standalone` | The [standalone `coil`](#standalone-coil): a bare Neovim with coil and everything its previews use |
 | `packages.<system>.coil-standalone-filechooser` | The [file chooser](#as-systems-file-chooser) wrapper, running `coil-standalone` |
 | `nixvimModules.default` | [`plugins.coil` for nixvim](#nixvim) |
-| `overlays.default` | The packages above in `pkgs`, plus `coil-cli` and `coil-filechooser`, for [a `coil` running your own Neovim](#your-own-neovim) |
+| `overlays.default` | The packages above in `pkgs` (the plugin as `vimPlugins.coil-nvim`), plus `coil-cli` and `coil-filechooser`, for [a `coil` running your own Neovim](#with-the-overlay) |
 
 Without flakes, `nix/` has the packages for `callPackage`, such as
 `pkgs.callPackage ./nix/coil-nvim.nix { }`.
 
 The Nix plugin has no `bin/`, since its `coil` would run whatever `nvim` is on `PATH`, so
-`:CoilInstallCli` doesn't apply. The `coil` command comes from one of the ways below instead,
-each running a known Neovim.
+`:CoilInstallCli` doesn't apply.
 
-### Standalone coil
+### Building Your Neovim
+Use the overlay:
+- `vimPlugins.coil-nvim` is the plugin derivation.
+- `coil-cli` makes a standalone coil that runs your neovim: `pkgs.coil-cli.override { nvim = <your Neovim>; }`. 
+    `coil-cli` needs a Neovim with coil in it, so it has no default: building it without `nvim`
+    fails with a message saying to pass one. That's also why it's in the overlay and
+`legacyPackages`, but not in `packages`.
+- `coil-filechooser` runs the `coil-cli`.
 
-`packages.<system>.coil-standalone` is a `coil` command with a Neovim of its own: coil, oil.nvim, image.nvim,
-mini.icons, oil-git-status.nvim, and the tools previews use (ImageMagick, ffmpeg, pdftoppm). It
-installs only `coil`, so it doesn't clash with a Neovim of your own.
-
-```sh
-nix profile install github:allen-liaoo/coil.nvim#coil-standalone
+```nix
+# Home Manager
+{ config, pkgs, inputs, ... }:
+{
+  nixpkgs.overlays = [ inputs.coil-nvim.overlays.default ];
+  programs.neovim = {
+    enable = true;
+    plugins = [
+      pkgs.vimPlugins.coil-nvim
+      {
+        plugin = pkgs.vimPlugins.oil-nvim;
+        type = "lua";
+        config = ''require("oil").setup()'';
+      }
+    ];
+  };
+  home.packages = [
+    (pkgs.coil-cli.override { nvim = config.programs.neovim.finalPackage; })
+    pkgs.coil-filechooser
+  ];
+}
 ```
 
-It runs as its own Neovim app (`NVIM_APPNAME=coil`), so its config is `~/.config/coil/init.lua`,
-an ordinary Neovim config. After that runs, `coil` sets up any bundled plugin it didn't:
+Without the overlay, the same packages are in `legacyPackages.<system>`, with the plugin as
+`coil-nvim`:
 
-```lua
--- ~/.config/coil/init.lua
-require("oil").setup({ view_options = { show_hidden = true } })
-require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
-vim.cmd.colorscheme("retrobox")
+```nix
+let
+  coil = inputs.coil-nvim.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+in
+{
+  programs.neovim.plugins = [ coil.coil-nvim ];
+  home.packages = [ (coil.coil-cli.override { nvim = config.programs.neovim.finalPackage; }) ];
+}
 ```
-
-For the [file chooser](#as-systems-file-chooser), `packages.<system>.coil-standalone-filechooser` runs this `coil`. Set its `bin/coil-termfilechooser` as the portal's
-`cmd`.
 
 ### nixvim
 
@@ -313,42 +325,28 @@ file chooser for this nixvim's Neovim, as read-only packages for you to install:
   that `coil`. Set its `bin/coil-termfilechooser` as the portal's `cmd`; installing
   `plugins.coil.cli.package` isn't needed for it.
 
-### Your Own Neovim
+### Standalone coil
 
-For a Neovim built some other way, such as Home Manager's `programs.neovim`, the overlay's
-`coil-cli` makes a standalone coil that runs it: `pkgs.coil-cli.override { nvim = <your Neovim>; }`.
+`packages.<system>.coil-standalone` is a bare Neovim along with: coil, oil.nvim, image.nvim,
+mini.icons, oil-git-status.nvim, and the tools previews use (ImageMagick, ffmpeg, pdftoppm). It
+installs only `coil`, so it doesn't clash with a Neovim of your own.
 
-```nix
-# Home Manager
-{ config, pkgs, inputs, ... }:
-{
-  nixpkgs.overlays = [ inputs.coil-nvim.overlays.default ];
-  programs.neovim = {
-    enable = true;
-    plugins = [
-      pkgs.coil-nvim
-      {
-        plugin = pkgs.vimPlugins.oil-nvim;
-        type = "lua";
-        config = ''require("oil").setup()'';
-      }
-    ];
-  };
-  home.packages = [
-    (pkgs.coil-cli.override { nvim = config.programs.neovim.finalPackage; })
-  ];
-}
+```sh
+nix profile install github:allen-liaoo/coil.nvim#coil-standalone
 ```
 
-`coil` runs that Neovim the way `nvim` does, with the same config and plugins (Home Manager's are
-in `~/.config/nvim` and `~/.local/share/nvim`), so leave `COIL_APPNAME` unset.
+It runs as its own Neovim app (`NVIM_APPNAME=coil`), so its config is `~/.config/coil/init.lua`,
+an ordinary Neovim config. After that runs, `coil` sets up any bundled plugin it didn't:
 
-`coil-cli` needs a Neovim with coil in it, so it has no default: building it without `nvim`
-fails with a message saying to pass one. That's also why it's in the overlay but not in
-`packages`.
+```lua
+-- ~/.config/coil/init.lua
+require("oil").setup({ view_options = { show_hidden = true } })
+require("coil").setup({ ratio = { 1, 3, 4 } }) -- see Options
+vim.cmd.colorscheme("retrobox")
+```
 
-For the [file chooser](#as-systems-file-chooser), the overlay's `coil-filechooser` runs `pkgs.coil-cli`. 
-Like `coil-cli`, it is in the overlay but not in `packages`.
+For the [file chooser](#as-systems-file-chooser), `packages.<system>.coil-standalone-filechooser` runs this standalone coil. Set its `bin/coil-termfilechooser` as the portal's
+`cmd`.
 
 ## Development
 

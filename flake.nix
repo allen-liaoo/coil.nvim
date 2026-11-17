@@ -43,6 +43,45 @@
       };
     in
     {
+      # Without coil-cli and coil-filechooser, which have nothing to run until given it
+      packages = forAllSystems (
+        system: pkgs:
+        let
+          coil = removeAttrs (coilPackages pkgs) [
+            "coil-cli"
+            "coil-filechooser"
+          ];
+        in
+        coil // { default = coil.coil-nvim; }
+      );
+
+      legacyPackages = forAllSystems (_: coilPackages);
+
+      overlays.default =
+        final: prev:
+        let
+          coil = coilPackages final;
+        in
+        removeAttrs coil [ "coil-nvim" ]
+        // {
+          vimPlugins = prev.vimPlugins.extend (_: _: { inherit (coil) coil-nvim; });
+        };
+
+      nixvimModules = rec {
+        coil = import ./nix/nixvim.nix self.packages;
+        default = coil;
+      };
+
+      apps = forAllSystems (
+        system: _: {
+          default = {
+            type = "app";
+            program = nixpkgs.lib.getExe self.packages.${system}.coil-standalone;
+            meta.description = "Standalone coil.nvim";
+          };
+        }
+      );
+
       devShells = forAllSystems (
         system: pkgs: {
           default = pkgs.mkShell {
@@ -70,26 +109,7 @@
         }
       );
 
-      # Without coil-cli and coil-filechooser, which have nothing to run until given it
-      packages = forAllSystems (
-        system: pkgs:
-        let
-          coil = removeAttrs (coilPackages pkgs) [
-            "coil-cli"
-            "coil-filechooser"
-          ];
-        in
-        coil // { default = coil.coil-nvim; }
-      );
-
-      # coil's packages in `pkgs`, with coil-cli and coil-filechooser, for a `coil` running a Neovim
-      # of your own (such as Home Manager's programs.neovim.finalPackage)
-      overlays.default = final: _prev: coilPackages final;
-
-      nixvimModules = rec {
-        coil = import ./nix/nixvim.nix self.packages;
-        default = coil;
-      };
+      formatter = forAllSystems (_: pkgs: pkgs.nixfmt-rfc-style);
 
       # The nixvim module, in a nixvim that starts headless without errors (nixvim from nvimx)
       checks = forAllSystems (
@@ -117,11 +137,14 @@
           withOverlay = pkgs.extend self.overlays.default;
           ownNvim = withOverlay.wrapNeovimUnstable withOverlay.neovim-unwrapped {
             plugins = [
-              withOverlay.coil-nvim
+              withOverlay.vimPlugins.coil-nvim
               withOverlay.vimPlugins.oil-nvim
             ];
           };
           ownCoil = withOverlay.coil-cli.override { nvim = ownNvim; };
+          # The same, without the overlay
+          legacy = self.legacyPackages.${system};
+          legacyCoil = legacy.coil-cli.override { nvim = ownNvim; };
           # `coil` runs `nvim`, with coil in it, and `picker` runs that `coil`
           cliCheck =
             name: nvim: coil: picker:
@@ -172,19 +195,11 @@
           overlay-cli = cliCheck "coil-overlay-cli" ownNvim ownCoil (
             withOverlay.coil-filechooser.override { coil-cli = ownCoil; }
           );
+          # legacyPackages', given the same Neovim
+          legacy-cli = cliCheck "coil-legacy-cli" ownNvim legacyCoil (
+            legacy.coil-filechooser.override { coil-cli = legacyCoil; }
+          );
         }
       );
-
-      apps = forAllSystems (
-        system: _: {
-          default = {
-            type = "app";
-            program = nixpkgs.lib.getExe self.packages.${system}.coil-standalone;
-            meta.description = "Standalone coil.nvim";
-          };
-        }
-      );
-
-      formatter = forAllSystems (_: pkgs: pkgs.nixfmt-rfc-style);
     };
 }
