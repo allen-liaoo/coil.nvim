@@ -72,6 +72,17 @@ require("coil").setup()
 The flake has the plugin as `packages.<system>.coil-nvim` (`nix/coil-nvim.nix` without flakes). You still need to install its dependencies (oil.nvim, image.nvim) separately.
 For [nixvim](https://github.com/nix-community/nixvim), the flake has a module, `nixvimModules.default`, adding options under `plugins.coil`.
 
+The Nix plugin has no `bin/`: its `coil` would run whatever `nvim` is on `PATH`. With nixvim, the
+module builds the [`coil` command](#as-standalone-file-manager) and the
+[file chooser](#as-systems-file-chooser) for your nixvim's Neovim, as packages to install:
+
+```nix
+# Home Manager
+home.packages = [ config.programs.nixvim.plugins.coil.cli.package ];
+# The file chooser's `cmd`:
+# ${config.programs.nixvim.plugins.coil.termfilechooser.package}/bin/coil-termfilechooser
+```
+
 ## As Standalone File Manager
 
 You can either use your neovim + coil.nvim as a standalone file manager, or use our (nix) distributed `coil` binary.
@@ -142,8 +153,9 @@ vim.cmd.colorscheme("retrobox")
 On Linux, [xdg-desktop-portal-termfilechooser](https://github.com/hunkyburrito/xdg-desktop-portal-termfilechooser)
 makes apps' open and save dialogs run a terminal file manager. coil comes with a wrapper for it,
 `bin/coil-termfilechooser`, which runs the `coil` next to it. With Nix, the flake's
-`coil-termfilechooser` package runs the flake's `coil-standalone` (without installing it). Set
-it as the portal's `cmd` in `~/.config/xdg-desktop-portal-termfilechooser/config`:
+`coil-termfilechooser` package runs the flake's `coil-standalone` (without installing it), and nixvim's
+`plugins.coil.termfilechooser.package` runs [your nixvim's](#nix). Set it as the portal's `cmd`
+in `~/.config/xdg-desktop-portal-termfilechooser/config`:
 
 ```ini
 [filechooser]

@@ -123,9 +123,13 @@ arguments before Neovim can take `--cwd-file`.
 
 ## Nix's commands (`nix/coil-cli.nix`, `nix/coil-termfilechooser.nix`)
 
+- **The Nix plugin has no `bin/`:** its `coil` would run whatever `nvim` is on `PATH`, and the
+  plugin can't name the Neovim it ends up in (that Neovim is built from it). Shebangs weren't
+  the problem, since stdenv patches them.
 - **`coil-cli.nix` wraps `bin/coil` for a given Neovim** (`nvim`, with no default, and an
   optional `appname`) and installs only `bin/coil`, so it can't collide with the user's own
-  Neovim in one profile. The standalone `coil` is built with it.
+  Neovim in one profile. The standalone `coil` and nixvim's `plugins.coil.cli.package` are built
+  with it.
 - **`coil-termfilechooser.nix` replaces the wrapper's `coil` with a store path** to a coil-cli
   package (the standalone `coil` by default), so the portal finds it whatever its `PATH`, and
   `coil` itself needn't be installed. The `coil-standalone` package doesn't install the picker.
@@ -161,6 +165,11 @@ arguments before Neovim can take `--cwd-file`.
 
 - Lives in coil's flake, built with `lib.nixvim.plugins.mkNeovimPlugin` like nixvim's own modules,
   so it can move upstream once coil is in nixpkgs' `vimPlugins`.
+- **`cli.package` and `termfilechooser.package` are read-only packages, not installed:**
+  nixvim's wrappers install only `build.package` (a fixed `symlinkJoin`), so a plugin module
+  can't add commands, and users add these themselves. `cli.package` runs `build.package` without
+  an app name, since nixvim's Neovim carries its own config. There's no cycle, since
+  `build.package` never depends on them. The flake check `nixvim-cli` checks both.
 - **`settings` is free-form,** passed to `setup()` as is. A typed version duplicated coil's
   defaults and descriptions; the user had it removed.
 - **`images.enable`** sets up image.nvim (with `kitty_method = "unicode-placeholders"` and

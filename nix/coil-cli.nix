@@ -1,5 +1,6 @@
 # The `coil` command (../bin/coil), running a given Neovim instead of the `nvim` on PATH. The
-# standalone `coil` (./coil-standalone.nix) is built with it.
+# standalone `coil` (./coil-standalone.nix) and nixvim's `plugins.coil.cli.package` (./nixvim.nix)
+# are built with it.
 #
 #   pkgs.callPackage ./nix/coil-cli.nix { nvim = <a Neovim with coil.nvim and oil.nvim>; }
 #

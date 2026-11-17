@@ -85,6 +85,20 @@ describe(":checkhealth coil", function()
     }, command_section())
   end)
 
+  it("says to use Nix's `coil` in a Nix build, which has no bin/", function()
+    local orig = cli.launcher
+    cli.launcher = function()
+      return "/nix/store/abc-coil.nvim/bin/coil"
+    end
+    set_path(dir)
+    local ok, report = pcall(command_section)
+    cli.launcher = orig
+    assert.is_true(ok, report)
+    assert.same({
+      "info: No `coil` on PATH. To use coil as a file manager from a shell, " .. cli.nix_advice,
+    }, report)
+  end)
+
   it("knows a `coil` that runs this coil.nvim's launcher", function()
     local link = assert(cli.install(dir .. "/bin"))
     set_path(dir .. "/bin")

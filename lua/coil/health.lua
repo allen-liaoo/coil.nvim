@@ -50,19 +50,26 @@ local function check_command()
   vim.health.start("coil: the `coil` command")
   local cli = require("coil.cli")
   local launcher = cli.launcher()
-  if vim.fn.executable(launcher) ~= 1 then
-    vim.health.error(
-      launcher .. " is missing or not executable",
-      "Reinstall coil.nvim with a plugin manager that keeps file modes (git clones do)"
-    )
-  end
-  if vim.fn.executable("bash") ~= 1 then
-    vim.health.warn("bash isn't on PATH, and `coil` is a bash script")
+  -- Without bin/, so `coil` comes from Nix packages, which run their own bash
+  local nix_build = vim.startswith(launcher, "/nix/store/") and not uv.fs_stat(launcher)
+  if not nix_build then
+    if vim.fn.executable(launcher) ~= 1 then
+      vim.health.error(
+        launcher .. " is missing or not executable",
+        "Reinstall coil.nvim with a plugin manager that keeps file modes (git clones do)"
+      )
+    end
+    if vim.fn.executable("bash") ~= 1 then
+      vim.health.warn("bash isn't on PATH, and `coil` is a bash script")
+    end
   end
   ---Advice for a `coil` link in PATH that should be this coil.nvim's
   ---@param link string
   ---@return string
   local function relink(link)
+    if nix_build then
+      return cli.nix_advice
+    end
     local dir = vim.fn.fnamemodify(link, ":h")
     return string.format(
       "Run :CoilInstallCli %s to link it to this coil.nvim",
@@ -79,7 +86,8 @@ local function check_command()
   local found = vim.fn.exepath("coil")
   if found == "" then
     return vim.health.info(
-      "No `coil` on PATH. To use coil as a file manager from a shell, run :CoilInstallCli"
+      "No `coil` on PATH. To use coil as a file manager from a shell, "
+        .. (nix_build and cli.nix_advice or "run :CoilInstallCli")
     )
   end
   local real = uv.fs_realpath(found)

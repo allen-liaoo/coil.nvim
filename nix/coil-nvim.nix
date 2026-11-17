@@ -4,6 +4,9 @@
 #
 # oil.nvim is not a dependency: add it yourself, as you would without coil (Home Manager, nixvim
 # and others have their own oil.nvim modules), so there is only one oil.nvim to configure.
+#
+# Without ../bin: its `coil` would run whatever `nvim` is on PATH. ./coil-cli.nix makes a `coil`
+# that runs a given Neovim, as nixvim's `plugins.coil.cli.package` does with nixvim's.
 {
   lib,
   vimUtils,
@@ -15,7 +18,6 @@ vimUtils.buildVimPlugin {
   src = lib.fileset.toSource {
     root = ../.;
     fileset = lib.fileset.unions [
-      ../bin
       ../lua
       ../doc/coil.txt
       ../plugin

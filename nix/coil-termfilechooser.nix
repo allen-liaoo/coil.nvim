@@ -5,7 +5,7 @@
 #   pkgs.callPackage ./nix/coil-termfilechooser.nix { }
 #
 # Runs the standalone `coil` (./coil-standalone.nix) unless `coil` is given: any ./coil-cli.nix
-# package.
+# package, such as nixvim's `plugins.coil.cli.package`.
 {
   lib,
   callPackage,

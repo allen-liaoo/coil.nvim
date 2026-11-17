@@ -13,6 +13,7 @@ packages:
 {
   lib,
   pkgs,
+  config,
   ...
 }:
 
@@ -52,6 +53,36 @@ packages:
           images, video frames and PDF pages in the preview: sets up image.nvim (which draws them)
           and adds ImageMagick, ffmpeg and poppler's pdftoppm (which make the thumbnails)
         '';
+
+        # Coil cli that runs this instance of neovim
+        cli.package = lib.mkOption {
+          type = lib.types.package;
+          readOnly = true;
+          default = pkgs.callPackage ./coil-cli.nix {
+            nvim = config.build.package;
+            version = config.plugins.coil.package.version or "0-unstable";
+          };
+          defaultText = lib.literalMD "`coil`, running this nixvim's Neovim";
+          description = ''
+            The `coil` command (coil as a terminal file manager), running this nixvim's Neovim
+            with its config. Add it to `home.packages` or `environment.systemPackages`.
+          '';
+        };
+
+        # Coil termfilechooser wrapper
+        termfilechooser.package = lib.mkOption {
+          type = lib.types.package;
+          readOnly = true;
+          default = pkgs.callPackage ./coil-termfilechooser.nix {
+            coil = config.plugins.coil.cli.package;
+          };
+          defaultText = lib.literalMD "`coil-termfilechooser`, running `plugins.coil.cli.package`";
+          description = ''
+            coil as the file picker of xdg-desktop-portal-termfilechooser, running
+            `plugins.coil.cli.package`. Set `''${this}/bin/coil-termfilechooser` as the portal's
+            `cmd`; installing `plugins.coil.cli.package` isn't needed for it.
+          '';
+        };
       };
 
       extraConfig =

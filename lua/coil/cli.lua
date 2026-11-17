@@ -10,6 +10,11 @@ M.launcher = function()
   return vim.fn.fnamemodify(source, ":p:h:h:h") .. "/bin/coil"
 end
 
+---Where Nix users get the `coil` command: the plugin's Nix build has no bin/, since its `coil`
+---would run whatever `nvim` is on PATH
+M.nix_advice =
+  "Install coil.nvim's Nix `coil-standalone` package, or with nixvim, plugins.coil.cli.package"
+
 ---Whether `path` is a copy of coil.nvim's launcher: bin/coil in a directory with coil's Lua
 ---@param path string
 ---@return boolean
@@ -37,9 +42,7 @@ M.install = function(dir)
   end
   local launcher = M.launcher()
   if vim.startswith(launcher, "/nix/store/") then
-    return nil,
-      "coil.nvim is in the Nix store, where its path changes with every update, so a link to it "
-        .. "would break. Put its bin/ on PATH with Nix instead"
+    return nil, "coil.nvim is in the Nix store, which has no `coil` to link. " .. M.nix_advice
   end
   if vim.fn.executable(launcher) ~= 1 then
     return nil, launcher .. " is missing or not executable"

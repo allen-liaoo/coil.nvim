@@ -90,6 +90,14 @@
               }
               // module;
             };
+          nixvimWithCoil = nixvim.legacyPackages.${system}.makeNixvimWithModule {
+            inherit pkgs;
+            module = {
+              imports = [ self.nixvimModules.default ];
+              plugins.coil.enable = true;
+            };
+          };
+          inherit (nixvimWithCoil.config.plugins.coil) cli termfilechooser;
         in
         {
           nixvim-module = nixvimCheck "coil-nixvim-module" {
@@ -114,6 +122,22 @@
               images.enable = true;
             };
           };
+          # The module's `coil` runs nixvim's Neovim, and its file picker runs that `coil`
+          nixvim-cli = pkgs.runCommandLocal "coil-nixvim-cli" { } ''
+            coil=${nixpkgs.lib.getExe cli.package}
+            $coil --version
+            grep -qF "COIL_NVIM='${nixpkgs.lib.getExe nixvimWithCoil}'" $coil
+            # A stand-in terminal, which logs the command it would run
+            cat >term <<'EOF'
+            #!${pkgs.runtimeShell}
+            printf '%s\n' "$@" >"$LOG"
+            EOF
+            chmod +x term
+            LOG=$PWD/log TERMCMD=$PWD/term \
+              ${nixpkgs.lib.getExe termfilechooser.package} 0 0 0 "$PWD" "$PWD/out"
+            grep -qxF "$coil" log
+            touch $out
+          '';
         }
       );
 
