@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # coil: Neovim as a terminal file manager, started in coil's standalone mode. The plugin ships it,
-# and the Nix `coil` (nix/coil.nix) wraps it, so both take the same arguments.
+# and the Nix `coil` (nix/coil-standalone.nix) wraps it, so both take the same arguments.
 #
 #   coil [options] [directory...]
 #
@@ -9,7 +9,7 @@
 #   COIL_APPNAME  if set, the NVIM_APPNAME Neovim runs as. Editors coil starts get the user's back.
 set -euo pipefail
 
-# nix/coil.nix replaces it with the package's version
+# nix/coil-standalone.nix replaces it with the package's version
 version=0-unstable
 
 usage() {

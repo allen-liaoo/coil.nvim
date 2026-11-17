@@ -103,7 +103,7 @@ plugin's copy, so updating the plugin updates the command too. A link of your ow
 ln -s ~/.local/share/nvim/lazy/coil.nvim/bin/coil ~/.local/bin/coil
 ```
 
- starts your Neovim (`nvim`, or `$COIL_NVIM`), with your config in
+starts your Neovim (`nvim`, or `$COIL_NVIM`), with your config in
 coil's standalone mode, which turns on coil's `standalone` options. 
 
 Your config can check the mode with `require("coil").standalone()`, 
@@ -122,9 +122,9 @@ require("oil").setup({
   set up oil.nvim and coil itself).
 
 ### Use Distributed Binary (Nix)
-The flake's default package is a `coil` binary: Neovim with coil, plus all its plugin and binary dependencies necessary for file preview. 
+The flake's `coil-standalone` package is a `coil` binary: Neovim with coil, plus all its plugin and binary dependencies necessary for file preview. 
 ```sh
-nix profile install github:allen-liaoo/coil.nvim
+nix profile install github:allen-liaoo/coil.nvim#coil-standalone
 ```
 
 It runs as its own Neovim app (`NVIM_APPNAME=coil`), so its config is `~/.config/coil/init.lua`,
@@ -141,7 +141,7 @@ vim.cmd.colorscheme("retrobox")
 
 On Linux, [xdg-desktop-portal-termfilechooser](https://github.com/hunkyburrito/xdg-desktop-portal-termfilechooser)
 makes apps' open and save dialogs run a terminal file manager. coil comes with a wrapper for it,
-`bin/coil-termfilechooser` (both in the plugin and in the Nix `coil`). Set it as the
+`bin/coil-termfilechooser` (both in the plugin and in the Nix `coil-standalone`). Set it as the
 portal's `cmd` in `~/.config/xdg-desktop-portal-termfilechooser/config`:
 
 ```ini

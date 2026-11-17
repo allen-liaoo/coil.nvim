@@ -4,7 +4,7 @@
 # `bin/coil-termfilechooser`), so it never clashes with a Neovim of your own. To add coil to your
 # own Neovim, use ./coil-nvim.nix instead.
 #
-#   pkgs.callPackage ./nix/coil.nix { }
+#   pkgs.callPackage ./nix/coil-standalone.nix { }
 #
 # Uses nixpkgs' oil.nvim unless `oil-nvim` is given.
 {

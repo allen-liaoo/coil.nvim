@@ -1,7 +1,7 @@
 # Standalone mode and the Nix packages
 
 coil is a plugin, and also a terminal file manager. Every file-manager behaviour lives in
-**standalone mode**, usable from any Neovim; the Nix `coil` package only bundles what someone
+**standalone mode**, usable from any Neovim; the Nix `coil-standalone` package only bundles what someone
 without a Neovim setup needs.
 
 ## The mode switch: `g:coil_standalone`
@@ -121,7 +121,7 @@ arguments before Neovim can take `--cwd-file`.
   coil.nvim's launcher or a different `coil` (the Nix one) is only info: either still starts
   coil.
 
-## The Nix `coil` (`nix/coil.nix`)
+## The Nix `coil-standalone` (`nix/coil-standalone.nix`)
 
 - **Installs only `bin/coil`**, so it can't collide with the user's own Neovim in one profile.
 - **No init of its own** (`wrapRc = false`): `COIL_APPNAME=coil` makes the launcher set
