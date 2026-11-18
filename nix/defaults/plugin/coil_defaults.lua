@@ -26,6 +26,11 @@ then
   require("oil-git-status").setup()
 end
 
+-- Counts of LSP diagnostics next to each entry, from files open with a language server attached
+if not package.loaded["oil-lsp-diagnostics"] then
+  require("oil-lsp-diagnostics").setup()
+end
+
 -- Icons in oil's icon column
 if _G.MiniIcons == nil then
   require("mini.icons").setup()

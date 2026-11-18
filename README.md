@@ -20,7 +20,9 @@ nix run github:allen-liaoo/coil.nvim -- ~/some/dir  # a given directory
 - For images in the preview (optional): [image.nvim](https://github.com/3rd/image.nvim) (requires [ImageMagick](https://github.com/ImageMagick/ImageMagick)).
     Video thumbnails need [ffmpeg](https://ffmpeg.org), and PDFs need [poppler](https://poppler.freedesktop.org)'s `pdftoppm`.
 - For previews of remote files: `scp` for SSH and the `aws` CLI for S3 (same requirements as oil).
-- For git status (optional): supports [oil-git-status.nvim](https://github.com/refractalize/oil-git-status.nvim).
+- For git status (optional): works well with [oil-git-status.nvim](https://github.com/refractalize/oil-git-status.nvim), since it draws git status to all oil buffers.
+- For lsp diagnostics (optional): works with [oil-lsp-diganostics](https://github.com/JezerM/oil-lsp-diagnostics.nvim), although it will not consistently show
+    the diganostics (see [#2](../../issues/2) for a fix).
 
 <details>
 <summary>Preview Under Tmux</summary>
@@ -34,6 +36,7 @@ kitty_method = "unicode-placeholders",
 tmux_show_only_in_active_window = true,
 })
 ```
+image.nvim's `unicode-placeholders` is buggy and may cause issues under tmux (see [#1](/../../issues/1) for a fix).
 </details>
 
 ## As Neovim Plugin
@@ -307,7 +310,7 @@ The module builds `coil-cli` and the file chooser for this nixvim's Neovim, as r
 ### Standalone Coil
 
 If you don't use Neovim, you can use `packages.<system>.coil-standalone`: a bare Neovim along with
-coil, oil.nvim, image.nvim, mini.icons, oil-git-status.nvim, and the tools previews use (ImageMagick, ffmpeg, pdftoppm). 
+coil.nvim, everything necessary for file previews, and git/lsp status.
 It installs only `coil`, so it doesn't clash with a Neovim of your own.
 
 ```sh

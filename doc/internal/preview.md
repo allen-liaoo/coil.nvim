@@ -51,8 +51,10 @@ Nix build and nixvim module set it; the README tells everyone else.
 Placeholders are characters image.nvim writes straight to the terminal (U+10EEEE plus two
 diacritics per cell; the foreground colour is the image id), outside Neovim's screen model. What
 follows from that, all of it image.nvim bugs that coil doesn't work around. None was reported
-upstream as of 2026-11-18; the maintainer's nvimx patches the first two in its image.nvim
-(`kitty/helpers.lua`'s `write_placeholder`).
+upstream as of 2026-11-18. The maintainer's nvimx patches the first two in its image.nvim
+(`kitty/helpers.lua`'s `write_placeholder`), and `coil-standalone` fetches those patches from
+nvimx, pinned to a commit (`nix/coil-standalone.nix`). coil's nixvim module doesn't: it uses
+whatever image.nvim the user's nixvim has.
 
 - **One column too far left.** image.nvim passes a 0-based column where the terminal wants
   1-based: its normal kitty path adds 1, `write_placeholder` doesn't. The picture covers the

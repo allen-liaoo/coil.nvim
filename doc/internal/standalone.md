@@ -167,9 +167,15 @@ arguments before Neovim can take `--cwd-file`.
   else this way. It also stopped `VIMINIT` leaking into Neovims started from `:terminal`.)
 - **Fallback setups, not merged defaults:** `nix/defaults/plugin/coil_defaults.lua` runs after
   the user's init and sets up only what init.lua didn't: oil (if `:Oil` doesn't exist), mini.icons,
-  oil-git-status (only if oil's sign column has room), image.nvim (if `:ImageReport` doesn't
-  exist), habamax (Neovim's default scheme draws keywords in the normal colour, so highlighted
+  oil-git-status (only if oil's sign column has room), oil-lsp-diagnostics (if init.lua didn't
+  load it), image.nvim (if `:ImageReport` doesn't exist), habamax (Neovim's default scheme draws keywords in the normal colour, so highlighted
   previews look plain). It's packaging, so it lives in `nix/`.
+- **image.nvim and oil-lsp-diagnostics are patched** with nvimx's fixes, fetched from nvimx's
+  GitHub at a pinned commit: image.nvim's for its kitty placeholders (see
+  [Previews](preview.md#kitty-unicode-placeholders)), oil-lsp-diagnostics' for buffers that
+  aren't local directories (it threw in the trash) and for counts lost when oil redraws a buffer,
+  which coil's panes make it do all the time. A new nvimx commit doesn't change the build until
+  the pin and hashes are bumped.
 - **`NVIM_APPNAME` is forced, not defaulted:** Neovim re-reads it on every `stdpath()` call, so it
   can't be cleared after startup, and a user's exported value must not take over the build. The
   user's value is passed in `g:coil_editor_env`, which coil applies to editors it starts. Known
