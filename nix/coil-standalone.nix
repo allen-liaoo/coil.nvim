@@ -1,5 +1,5 @@
 # `coil`: coil.nvim as a terminal file manager, for people who don't use Neovim themselves. It is
-# a Neovim with coil.nvim, oil.nvim, image.nvim (patched), oil-git-status.nvim, 
+# a Neovim with coil.nvim, oil.nvim, image.nvim (patched), oil-git-status.nvim,
 # oil-lsp-diagnostics.nvim (patched) and mini.icons, started in coil's
 # standalone mode by the plugin's own ../bin/coil (through ./coil-cli.nix). It installs only
 # `bin/coil`, so it never clashes with a Neovim of your own. The file picker is
@@ -26,7 +26,7 @@ let
   # Sets up the bundled plugins that ~/.config/coil/init.lua doesn't (./defaults)
   coil-defaults = vimUtils.buildVimPlugin {
     pname = "coil-defaults";
-    inherit (coil-nvim) version;
+    version = lib.fileContents ../VERSION;
     src = ./defaults;
   };
   # Plugin fixes from nvimx (https://github.com/allen-liaoo/nvimx), at a pinned commit
@@ -82,5 +82,4 @@ in
 callPackage ./coil-cli.nix {
   inherit nvim;
   appname = "coil";
-  inherit (coil-nvim) version;
 }

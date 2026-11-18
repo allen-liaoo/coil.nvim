@@ -25,11 +25,9 @@
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system nixpkgs.legacyPackages.${system});
       coilPackages = pkgs: rec {
         # nvim plugin
-        coil-nvim = pkgs.callPackage ./nix/coil-nvim.nix {
-          version = "0-unstable-${self.shortRev or self.dirtyShortRev or "dirty"}";
-        };
+        coil-nvim = pkgs.callPackage ./nix/coil-nvim.nix { };
         # standalone coil from your neovim, given with `.override { nvim = ...; }`
-        coil-cli = pkgs.callPackage ./nix/coil-cli.nix { inherit (coil-nvim) version; };
+        coil-cli = pkgs.callPackage ./nix/coil-cli.nix { };
         # the file picker wrapper for your coil-cli: in the overlay, callPackage fills in
         # pkgs.coil-cli, so it follows an overlay of yours that overrides coil-cli. Or
         # `.override { coil-cli = ...; }`

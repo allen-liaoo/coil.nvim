@@ -60,7 +60,6 @@ packages:
           readOnly = true;
           default = pkgs.callPackage ./coil-cli.nix {
             nvim = config.build.package;
-            version = config.plugins.coil.package.version or "0-unstable";
           };
           defaultText = lib.literalMD "`coil`, running this nixvim's Neovim";
           description = ''

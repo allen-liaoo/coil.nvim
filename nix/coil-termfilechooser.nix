@@ -15,12 +15,14 @@
   makeWrapper,
   coil-cli ? throw "coil-filechooser runs a coil-cli you give it: coil-filechooser.override { coil-cli = <your coil-cli>; }",
 }:
-runCommandLocal "coil-termfilechooser-${coil-cli.version}"
+let
+  version = lib.fileContents ../VERSION;
+in
+runCommandLocal "coil-termfilechooser-${version}"
   {
     nativeBuildInputs = [ makeWrapper ];
     passthru = {
-      inherit coil-cli;
-      inherit (coil-cli) version;
+      inherit coil-cli version;
     };
     meta = {
       description = "coil as the file picker of xdg-desktop-portal-termfilechooser";

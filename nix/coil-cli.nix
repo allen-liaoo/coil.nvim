@@ -12,10 +12,12 @@
   makeWrapper,
   nvim ? throw "coil-cli runs a Neovim you give it: coil-cli.override { nvim = <your Neovim>; } (coil-filechooser runs coil-cli)", # required
   appname ? null,
-  version ? "0-unstable",
 }:
 # Only coil's command: a Neovim's own bin/nvim and share/ would collide with the user's Neovim when
 # installed into the same profile
+let
+  version = lib.fileContents ../VERSION;
+in
 runCommandLocal "coil-${version}"
   {
     nativeBuildInputs = [ makeWrapper ];

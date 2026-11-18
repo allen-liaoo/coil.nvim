@@ -10,11 +10,10 @@
 {
   lib,
   vimUtils,
-  version ? "0-unstable",
 }:
 vimUtils.buildVimPlugin {
   pname = "coil.nvim";
-  inherit version;
+  version = lib.fileContents ../VERSION;
   src = lib.fileset.toSource {
     root = ../.;
     fileset = lib.fileset.unions [
