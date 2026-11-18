@@ -50,22 +50,23 @@ Nix build and nixvim module set it; the README tells everyone else.
 
 Placeholders are characters image.nvim writes straight to the terminal (U+10EEEE plus two
 diacritics per cell; the foreground colour is the image id), outside Neovim's screen model. What
-follows from that:
+follows from that, all of it image.nvim bugs that coil doesn't work around. None was reported
+upstream as of 2026-11-18; the maintainer's nvimx patches the first two in its image.nvim
+(`kitty/helpers.lua`'s `write_placeholder`).
 
-- **Attributes leak in.** They take whatever attributes Neovim's drawing left on, and kitty draws
-  those over the image (an underline from vim-illuminate became a line across every row). coil
-  wraps image.nvim's `kitty/helpers.write_placeholder` once, when its kitty backend has loaded, to
-  reset attributes first. Wrapping, rather than resetting before coil's own render, also covers
-  image.nvim's own redraws on scroll.
-- **They outlive the image.** Clearing deletes kitty's placement (`a=d,d=i`), but Neovim only
-  redraws cells whose contents it thinks changed, so placeholder cells stay wherever the next
-  preview has no new text. kitty shows their background there, so the wrapper also sets the
-  background of the image's window (NormalNC's when unfocused, else Normal's; none when the colour
-  scheme has none). Before that, the terminal's background showed through below short previews.
 - **One column too far left.** image.nvim passes a 0-based column where the terminal wants
   1-based: its normal kitty path adds 1, `write_placeholder` doesn't. The picture covers the
   separator left of the preview. coil can't shift it (the anchor line is empty and `screenpos`
-  clamps to its end). Plan: patch image.nvim in the Nix builds and upstream (see the TODO).
+  clamps to its end).
+- **Attributes leak in.** They take whatever attributes Neovim's last drawn cell left on, and
+  kitty draws those over the image (vim-illuminate's underline on the word under the cursor became
+  a line across every row). The fix resets attributes before the placeholders, in
+  `write_placeholder` so that image.nvim's own redraws on scroll get it too.
+- **They outlive the image.** Clearing deletes kitty's placement (`a=d,d=i`), but Neovim only
+  redraws cells whose contents it thinks changed, so placeholder cells stay wherever the next
+  preview has no new text, and kitty shows their background there. A reset alone gives them the
+  terminal's background, which shows through below short previews, so the fix also sets the image
+  window's (NormalNC's when unfocused, else Normal's; none when the colour scheme has none).
 - **`restore_cursor` without a save.** The placeholder path ends with `ESC[u` but never sent
   `ESC[s`. Neovim positions absolutely right after, so no effect was found, but it's a suspect if
   text ever lands in the wrong place after an image.
